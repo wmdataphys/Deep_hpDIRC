@@ -1,0 +1,51 @@
+{
+    "name": "IBU2Q_Augmented_Unfold",
+    "seed": 752022,
+    "run_val":1,
+    "augment":1,
+    "scalers":{
+        "MLP":"none",
+        "MNF":"none"
+    },
+    "model": {
+       "num_layers":8,
+       "identity_path":"C:\\Users\\James-PC\\James\\EIC\\IBU2Q-main\\IBU2Q-main\\Trained_Models\\IBU2Q_Augmented_Identity___Jan-29-2024\\IBU2Q_Augmented_Identity_epoch49_val_loss_0.000006.pth"
+   },
+    "dataset": {
+        "root_dir" : "C:\\Users\\James-PC\\James\\EIC\\IBU2Q-main\\IBU2Q-main",
+        "N_t": 1000000,
+        "N_v": 600000
+    },
+    "lr_scheduler": {
+        "step_size":25,
+        "gamma": 0.1
+    },
+    "optimizer": {
+        "lr": 1e-4,
+    	"KL_scale":0.0005,
+        "cost_scale":1e-4,
+        "mmd_scale":1.2
+    },
+    "num_epochs": 100,
+    "dataloader": {
+        "split":[0.7,0.15,0.15],
+        "train": {
+            "batch_size": 1024
+    	},
+        "val": {
+            "batch_size": 1024
+        },
+        "herwig": {
+            "batch_size": 75
+        }
+    },
+    "output": {
+	"dir": "C:\\Users\\James-PC\\James\\EIC\\IBU2Q-main\\IBU2Q-main\\Trained_Models"
+    },
+    "Inference": {
+            "samples": 10000,
+            "MNF_model":"C:\\Users\\James-PC\\James\\EIC\\IBU2Q-main\\IBU2Q-main\\Trained_Models\\IBU2Q_Augmented_Unfold___Jan-30-2024\\IBU2Q_Augmented_Unfold_epoch66_val_loss_0.022282.pth",
+            "out_dir": "C:\\Users\\James-PC\\James\\EIC\\IBU2Q-main\\IBU2Q-main\\Inference",
+            "out_file": "Inference_Augmented.pkl"
+        }
+}

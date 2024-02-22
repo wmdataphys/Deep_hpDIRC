@@ -1,0 +1,44 @@
+{
+    "name": "CherenkovFlow_V1_Kaons",
+    "seed": 752022,
+    "run_val":1,
+    "model": {
+       "num_layers":8
+   },
+    "dataset": {
+        "data_path" : "/sciclone/data10/jgiroux/Cherenkov/Scaled_Hit_Level_Kaons.csv",
+        "train_frac": 0.7
+    },
+    "lr_scheduler": {
+        "step_size":25,
+        "gamma": 0.1
+    },
+    "optimizer": {
+        "lr": 1e-4,
+    	"KL_scale":0.0005,
+        "cost_scale":1e-4,
+        "mmd_scale":1.2
+    },
+    "num_epochs": 100,
+    "dataloader": {
+        "split":[0.7,0.15,0.15],
+        "train": {
+            "batch_size": 2048
+    	},
+        "val": {
+            "batch_size": 2048
+        },
+        "herwig": {
+            "batch_size": 75
+        }
+    },
+    "output": {
+	"dir": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models"
+    },
+    "Inference": {
+            "samples": 10000,
+            "MNF_model":"path\\to\\Trained_Models\\IBU2Q.pth",
+            "out_dir": "path\\to\\Inference",
+            "out_file": "Inference_Covariance.pkl"
+        }
+}
