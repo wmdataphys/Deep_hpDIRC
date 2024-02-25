@@ -4,7 +4,6 @@ import random
 
 def create_dataset(file_path):
     df = pd.read_csv(file_path,sep=',',index_col=None,usecols=['x','y','time','P','theta','phi'])
-    df = df[(df.time < 1.0) & (df.P < 8.5)] # Cuts events greater than 500ns
     df = df.to_numpy()
     random.shuffle(df)
     hits = df[:,:3]

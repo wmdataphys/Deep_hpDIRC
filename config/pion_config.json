@@ -6,7 +6,7 @@
        "num_layers":8
    },
     "dataset": {
-        "data_path" : "/sciclone/data10/jgiroux/Cherenkov/Scaled_Hit_Level_Pions.csv",
+        "data_path" : "/sciclone/data10/jgiroux/Cherenkov/Scaled_Hit_Level_Pions_from_Rho.csv",
         "train_frac": 0.7
     },
     "lr_scheduler": {
@@ -14,7 +14,7 @@
         "gamma": 0.1
     },
     "optimizer": {
-        "lr": 1e-4,
+        "lr": 7e-5,
     	"KL_scale":0.0005,
         "cost_scale":1e-4,
         "mmd_scale":1.2
