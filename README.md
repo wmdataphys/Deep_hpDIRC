@@ -21,3 +21,7 @@ I have made the dataloader so you can utilize both classes more easily. There ar
 You can control which dataset is loaded within the config file through the "method" field, which can be Pion, Kaon or combined.
 
 All scaling is also handled in the dataset now as well. Take a look over these files to see the changes and how things tie together. But in general this is a more sound method.
+
+# TODO:
+
+Need to rewrite the two DLL files and also the inference file. Will push changes once I am done this.
