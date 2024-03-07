@@ -16,15 +16,8 @@ def create_dataset(file_path):
     metadata = df[:,6:]
     conds = (conds - conds.max(0)) / (conds.max(0) - conds.min(0))
     PID = np.ones_like(conds[:,0])
-<<<<<<< HEAD
     #conds = np.concatenate([conds,np.c_[PID]],axis=1)
     return hits,conds,unscaled_conds,metadata
-=======
-    conds = np.concatenate([conds,np.c_[PID]],axis=1)
-    return hits,conds#,unscaled_conds,metadata
-
-
->>>>>>> origin/main
 
 
 def scale_data(hits,stats={"x_max": 895,"x_min":3,"y_max":295,"y_min":3,"time_max":500.00,"time_min":0.0}):
@@ -36,19 +29,10 @@ def scale_data(hits,stats={"x_max": 895,"x_min":3,"y_max":295,"y_min":3,"time_ma
     time = 2.0 * (time - stats['time_min'])/(stats['time_max'] - stats['time_min']) - 1.0
 
     return np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
-<<<<<<< HEAD
 
 def unscale(x,max_,min_):
     return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
 
-
-from torch.utils.data import Dataset
-import numpy as np
-import os
-import torch
-import random
-import collections
-import pandas as pd
 
 
 class CherenkovPhotons(Dataset):
@@ -176,5 +160,3 @@ class DIRC_Dataset(Dataset):
 
 
         return hits,conds,PID,n_hits,unscaled_conds
-=======
->>>>>>> origin/main
