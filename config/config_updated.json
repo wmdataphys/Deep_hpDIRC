@@ -1,8 +1,8 @@
 {
-    "name": "GaussianSmear_Pions",
+    "name": "GaussianSmear_Kaons",
     "seed": 752022,
     "run_val":1,
-    "method":"Pion",
+    "method":"Kaon",
     "model": {
        "num_layers":8,
        "input_shape":3,

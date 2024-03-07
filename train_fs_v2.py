@@ -40,10 +40,10 @@ def main(config,resume):
     print('Creating Loaders.')
 
     train_dataset = CherenkovPhotons(kaon_path=config['dataset']['training']['kaon_data_path'],
-                    pion_path=config['dataset']['training']['kaon_data_path'],inference=False,mode=config['method'])
+                    pion_path=config['dataset']['training']['pion_data_path'],inference=False,mode=config['method'])
     # Evaluate on center of pixels
     val_dataset = CherenkovPhotons(kaon_path=config['dataset']['validation']['kaon_data_path'],
-                    pion_path=config['dataset']['validation']['kaon_data_path'],inference=True,mode=config['method'])
+                    pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'])
 
     train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config)
 
