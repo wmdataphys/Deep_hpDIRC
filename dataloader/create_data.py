@@ -3,9 +3,11 @@ import pandas as pd
 import random
 from torch.utils.data import Dataset
 
-def create_dataset(file_path):
-    df = pd.read_csv(file_path,sep=',',index_col=None)
-    df = df[df.P < 8.5] # Cuts events greater than 500ns
+def create_dataset(file_paths):
+    df1 = pd.read_csv(file_paths[0],sep=',',index_col=None)
+    df2 = pd.read_csv(file_paths[1],sep=',',index_col=None)
+    df3 = pd.read_csv(file_paths[2],sep=',',index_col=None)
+    df = pd.concat([df1,df2,df3],axis=0)
     df = df.to_numpy()
     print(len(df))
     random.shuffle(df)
@@ -14,13 +16,14 @@ def create_dataset(file_path):
     conds = df[:,3:6]
     unscaled_conds = conds.copy()
     metadata = df[:,6:]
-    conds = (conds - conds.max(0)) / (conds.max(0) - conds.min(0))
+    conditional_maxes = np.array([8.5,11.63,175.5])
+    conditional_mins = np.array([0.95,0.90,-176.])
+    conds = (conds - conditional_maxes) / (conditional_maxes - conditional_mins)
     PID = np.ones_like(conds[:,0])
-    #conds = np.concatenate([conds,np.c_[PID]],axis=1)
     return hits,conds,unscaled_conds,metadata
 
 
-def scale_data(hits,stats={"x_max": 895,"x_min":3,"y_max":295,"y_min":3,"time_max":500.00,"time_min":0.0}):
+def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
     x = hits[:,0]
     y = hits[:,1]
     time = hits[:,2]
@@ -34,10 +37,9 @@ def unscale(x,max_,min_):
     return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
 
 
-
 class CherenkovPhotons(Dataset):
 
-    def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,stats={"x_max": 895,"x_min":3,"y_max":295,"y_min":3,"time_max":500.00,"time_min":0.0}):
+    def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,stats={"x_max": 895,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
         if mode is None:
             print("Please select one of the following modes:")
             print("1. Pion")
@@ -88,10 +90,6 @@ class CherenkovPhotons(Dataset):
         return np.array([x,y,time])
 
     def __getitem__(self, idx):
-
-        # ['EventID','PDG','NHits','BarID','P','Theta','Phi','X','Y','Z',
-        # 'pmtID','pixelID','channel','pos_x','pos_y','pos_z','leadTime']
-
         # Get the sample
         data = self.data[idx]
         hits = data[:3]
@@ -114,26 +112,26 @@ class CherenkovPhotons(Dataset):
 
 
 
-class DIRC_Dataset(Dataset):
+class DLL_Dataset(Dataset):
 
-    def __init__(self,data,stats=None,method=None):
-        self.data = data
-        if method is None:
-            print('Please specify method. Exiting.')
-            exit()
-        if method == 'Pion':
-            for dicte in self.data:
-                dicte.update({"PID":211})
-
-        if method == 'Kaon':
-            for dicte in self.data:
-                dicte.update({"PID":321})
-
+    def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
+        self.data = np.load(file_path,allow_pickle=True)
         self.n_photons = 1000
         self.stats = stats
+        self.conditional_maxes = np.array([8.5,11.63,175.5])
+        self.conditional_mins = np.array([0.95,0.90,-176.])
 
     def __len__(self):
         return len(self.data)
+
+    def scale_data(self,hits,stats):
+        x = hits[:,0]
+        y = hits[:,1]
+        time = hits[:,2]
+        x = 2.0 * (x - stats['x_min'])/(stats['x_max'] - stats['x_min']) - 1.0
+        y = 2.0 * (y - stats['y_min'])/(stats['y_max'] - stats['y_min']) - 1.0
+        time = 2.0 * (time - stats['time_min'])/(stats['time_max'] - stats['time_min']) - 1.0
+        return np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
 
     def __getitem__(self, idx):
 
@@ -144,6 +142,8 @@ class DIRC_Dataset(Dataset):
         PID = np.array(particle['PID'])
         n_hits = len(hits)
 
+        hits = self.scale_data(hits,self.stats)
+        conds = (conds - self.conditional_maxes) / (self.conditional_maxes - self.conditional_mins)
 
         if len(hits) > self.n_photons:
             hits = hits[:self.n_photons]
@@ -154,9 +154,5 @@ class DIRC_Dataset(Dataset):
             conds = np.pad(conds,((0,n_needed),(0,0)),mode='constant')
         else:
             pass
-
-        hits = scale_data(hits)
-        conds = (conds - self.stats['max']) / (self.stats['max'] - self.stats['min'])
-
 
         return hits,conds,PID,n_hits,unscaled_conds

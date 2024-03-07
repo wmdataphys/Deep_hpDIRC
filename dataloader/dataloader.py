@@ -19,6 +19,22 @@ def DIRC_collate(batch):
 
     return torch.stack(hits),torch.stack(conditions),torch.tensor(PIDs),torch.stack(metadata),torch.stack(unscaled)
 
+
+def Inference_collate(batch):
+    hits = []
+    conditions = []
+    PIDs = []
+    unscaled = []
+    n_hits = []
+    for h,cond,PID,nh,u in batch:
+        hits.append(torch.tensor(h))
+        conditions.append(torch.tensor(cond))
+        PIDs.append(torch.tensor(PID))
+        n_hits.append(torch.tensor(nh))
+        unscaled.append(torch.tensor(u))
+
+    return torch.stack(hits),torch.stack(conditions),torch.tensor(PIDs),torch.tensor(nh),torch.stack(unscaled)
+
 # Create dataloaders to iterate.
 def CreateLoaders(train_dataset,val_dataset,config):
     train_loader = DataLoader(train_dataset,
@@ -29,3 +45,10 @@ def CreateLoaders(train_dataset,val_dataset,config):
                             shuffle=False,collate_fn=DIRC_collate,num_workers=8)
 
     return train_loader,val_loader
+
+# Create dataloaders to iterate.
+def CreateInferenceLoader(test_dataset):
+    test_loader =  DataLoader(test_dataset,
+                            batch_size=1,
+                            shuffle=False,collate_fn=Inference_collate,num_workers=0)
+    return test_loader

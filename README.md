@@ -22,6 +22,8 @@ You can control which dataset is loaded within the config file through the "meth
 
 All scaling is also handled in the dataset now as well. Take a look over these files to see the changes and how things tie together. But in general this is a more sound method.
 
+Updated the generation (run_inference.py) and DLL files (run_DLL_v2.py). These should work with new data pipeline. Also changed the statistics we are using slightly, specifically the min and max values for the x,y position. These should increased/decreased by 3 from what we had prior.
+
 # TODO:
 
-Need to rewrite the two DLL files and also the inference file. Will push changes once I am done this.
+Need to rewrite DIRC DLL file.
