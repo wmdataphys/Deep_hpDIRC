@@ -1,0 +1,57 @@
+{
+    "name": "GaussianSmear_Pions",
+    "seed": 752022,
+    "run_val":1,
+    "method":"Pion",
+    "model": {
+       "num_layers":8,
+       "input_shape":3,
+       "cond_shape":3
+   },
+    "dataset": {
+        "training": {
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Training_Hit_Level_Pions_from_Rho_March6.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Training_Hit_Level_Kaons_from_Phi_March6.csv"
+        },
+        "validation":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Validation_Hit_Level_Pions_from_Rho_March6.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Validation_Hit_Level_Kaons_from_Phi_March6.csv"
+        },
+        "testing":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Testing_Hit_Level_Pions_from_Rho_March6.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Testing_Hit_Level_Kaons_from_Phi_March6.csv"
+        }
+    },
+    "lr_scheduler": {
+        "step_size":25,
+        "gamma": 0.1
+    },
+    "optimizer": {
+        "lr": 1e-4,
+    	"KL_scale":0.0005,
+        "cost_scale":1e-4,
+        "mmd_scale":1.2
+    },
+    "num_epochs": 100,
+    "dataloader": {
+        "split":[0.7,0.15,0.15],
+        "train": {
+            "batch_size": 2048
+    	},
+        "val": {
+            "batch_size": 2048
+        },
+        "herwig": {
+            "batch_size": 75
+        }
+    },
+    "output": {
+	"dir": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models"
+    },
+    "Inference": {
+            "samples": 100,
+            "kaon_model_path":"C:\\Users\\James-PC\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\CherenkovFlow_V3_Kaons_Smeared___Feb-26-2024\\CherenkovFlow_V3_Kaons_Smeared_epoch99_val_loss_0.053775.pth",
+            "pion_model_path":"C:\\Users\\James-PC\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\CherenkovFlow_V3_Pions_Smeared___Feb-26-2024\\CherenkovFlow_V3_Pions_Smeared_epoch59_val_loss_0.057222.pth",
+            "out_dir": "path\\to\\Inference"
+        }
+}

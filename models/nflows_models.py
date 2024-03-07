@@ -10,13 +10,13 @@ from nflows.nn.nets import ResidualNet
 
 
 def create_nflows(input_shape,context_shape,num_layers):
-    context_encoder = nn.Sequential(*[nn.Linear(3,16),nn.ReLU(),nn.Linear(16,6)])
+    context_encoder = nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,6)])
     base_dist = ConditionalDiagonalNormal(shape=[input_shape],context_encoder=context_encoder)
     transforms = []
     for _ in range(num_layers):
         transforms.append(ReversePermutation(features=3))
         transforms.append(MaskedAffineAutoregressiveTransform(features=3,hidden_features=512,
-                                                                context_features=3))
+                                                                context_features=context_shape))
 
     transform = CompositeTransform(transforms)
     flow = Flow(transform,base_dist)

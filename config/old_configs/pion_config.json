@@ -1,12 +1,12 @@
 {
-    "name": "CherenkovFlow_V2_Kaons",
+    "name": "CherenkovFlow_V3_Pions_Smeared_p_3-5_theta_2-6",
     "seed": 752022,
     "run_val":1,
     "model": {
        "num_layers":8
    },
     "dataset": {
-        "data_path" : "/sciclone/data10/jgiroux/Cherenkov/Scaled_Hit_Level_Kaons_from_Phi.csv",
+        "data_path" : "/sciclone/data10/jgiroux/Cherenkov/Hit_Level_Pions_from_Rho_p_3-5__theta_2-6.csv",
         "train_frac": 0.7
     },
     "lr_scheduler": {

@@ -4,144 +4,130 @@ import argparse
 import torch
 import random
 import numpy as np
-from datetime import datetime
 from torch.utils.data import TensorDataset, DataLoader
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from dataloader.dataloader import CreateLoaders
 import pkbar
 import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.nn as nn
-from models.freia_models import create_freai
-from dataloader.create_data import return_data
-from mmd_loss import MMD
-import pandas as pd
-import pickle
-import time
+from models.nflows_models import create_nflows
+from dataloader.create_data import create_dataset,unscale
+from datetime import datetime
+import itertools
+import matplotlib.pyplot as plt
 
-def main(config):
+def make_plot(generations,hits,stats,barID,x_high,x_low):
+    fig,ax = plt.subplots(1,2,figsize=(18,4))
+    ax = ax.ravel()
+
+    x_true = unscale(hits[:,0],stats['x_max'],stats['x_min'])
+    y_true = unscale(hits[:,1],stats['y_max'],stats['y_min'])
+    t_true = unscale(hits[:,2],stats['time_max'],stats['time_min'])
+
+    ax[0].hist2d(x_true,y_true,density=True,range=[(0,892),(0,268)],bins=(144,48))
+    ax[0].set_xlabel(r'X $(mm)$',fontsize=20)
+    ax[0].set_ylabel(r'Y $(mm)$',fontsize=20)
+    ax[0].set_title(r'Pions: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
+    ax[0].text(s=r"Truth",x=10.,y=0.0,color='White',fontsize=25)
+
+    x = unscale(generations[:,:,0].flatten(),stats['x_max'],stats['x_min'])
+    y = unscale(generations[:,:,1].flatten(),stats['y_max'],stats['y_min'])
+    t = unscale(generations[:,:,2].flatten(),stats['time_max'],stats['time_min'])
+
+    ax[1].hist2d(x,y,density=True,range=[(0,892),(0,268)],bins=(144,48))
+    ax[1].set_xlabel(r'X $(mm)$',fontsize=20)
+    ax[1].set_ylabel(r'Y $(mm)$',fontsize=20)
+    ax[1].set_title(r'Pions: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
+    ax[1].text(s=r"Generated $\times 100$",x=10.,y=0.0,color='White',fontsize=25)
+    plt.savefig("Figures/Pions_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high),bbox_inches="tight")
+
+def main(config,resume):
 
     # Setup random seed
     torch.manual_seed(config['seed'])
     np.random.seed(config['seed'])
     random.seed(config['seed'])
     torch.cuda.manual_seed(config['seed'])
-
-    # Create experiment name
-    curr_date = datetime.now()
-    exp_name = config['name'] + '___' + curr_date.strftime('%b-%d-%Y___%H:%M:%S')
-    exp_name = exp_name[:-11]
-    print(exp_name)
-
-    # Create directory structure
-    output_folder = config['Inference']['out_dir']
+    print("Running inference")
 
 
-    # Load the dataset
+       # Load the dataset
     print('Creating Loaders.')
-    N_t= config['dataset']['N_t']
-    N_v = config['dataset']['N_v']
 
-    data,scaler = return_data(N_t=N_t,N_v=N_v,constrain=True)
-
-    sim_herwig          = data['sim_herwig'][N_t:]
-    gen_herwig          = data['gen_herwig'][N_t:]
-    scaled_sim_herwig   = data['scaled_sim_herwig'][N_t:]
-
-    gen_features        = data['gen_features']
-    sim_features        = data['sim_features']
-
-    train_gen_features = gen_features[:N_t]
-    train_sim_features = sim_features[:N_t]
-
-    val_gen_features = gen_features[N_t:]
-    val_sim_features = sim_features[N_t:]
-
-    scaled_gen_features = data['scaled_gen_features']
-    scaled_sim_features = data['scaled_sim_features']
-
-    train_gen = scaled_gen_features[:N_t]
-    train_sim = scaled_sim_features[:N_t]
-
-    val_gen = scaled_gen_features[N_t:]
-    val_sim = scaled_sim_features[N_t:]
-
-    print('Herwig: ',gen_herwig.shape)
-
-
-    train_dataset = TensorDataset(torch.tensor(train_sim),torch.tensor(train_gen))
-    val_dataset = TensorDataset(torch.tensor(val_sim),torch.tensor(val_gen))
-
-    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config)
-
-    herwig_data = TensorDataset(torch.tensor(scaled_sim_herwig),torch.tensor(gen_herwig))
-    herwig_loader = DataLoader(herwig_data,batch_size=config['dataloader']['herwig']['batch_size'],shuffle=False)
-
-
-     # Load the MNF model
-    net = create_freai(6,layers=config['model']['num_layers'])
-    net.to('cuda')
-    dict = torch.load(config['Inference']['MNF_model'])
-    net.load_state_dict(dict['net_state_dict'])
-
-
-
-
-
-    kbar = pkbar.Kbar(target=len(val_loader),width=20, always_stateful=False)
-    # This performs sampling for the OT-Flow
-    samples = config['Inference']['samples']
-    mus = []
-    sigmas = []
-    truth = []
-    net.eval()
-    start = time.time()
-    for i,data in enumerate(val_loader):
-        reco = data[0]
-        gen = data[1]
-        truth.append(data[0].numpy())
-
-        temp = []
-        for j in range(len(reco)):
-            temp.append(np.expand_dims(gen[j],0).repeat(samples,0))
-
-        gen = torch.tensor(np.concatenate(temp)).to('cuda').float()
-
-        with torch.no_grad():
-            targets,log_det = net.forward(gen,rev=False)
-
-        targets = scaler.inverse_transform(targets.detach().cpu().numpy())
-        targets = targets.reshape(-1,samples,reco.shape[1])
-        mus.append(np.mean(targets,axis=1))
-        sigmas.append([np.cov(targets[i],rowvar=False) for i in range(len(targets))])
-
-        # if i == 50:
-        #     break
-        kbar.update(i)
+    hits,conds,unscaled_conds,metadata = create_dataset(config['dataset']['data_path'])
+    N_t = int(config['dataset']['train_frac'] * len(hits))
+    N_v = len(hits) - N_t
     print(" ")
-    print(len(mus))
-    end = time.time()
-    elapsed_time = end - start
-    print('Elapsed Time: ',elapsed_time)
+    print("Hit Statistics: ")
+    print("Max: ",hits.max(0))
+    print("Min: ",hits.min(0))
+    print(" ")
+    print("Conditional Statistics: ")
+    print("Max: ",conds.max(0))
+    print("Min: ",conds.min(0))
+    print(" ")
 
-    mus = np.concatenate(mus)
-    print('Time / event: ',elapsed_time / len(mus))
-    truth = np.concatenate(truth)
-    uncertainty = np.concatenate(sigmas)
-    obs = {'Events':mus,'Truth':truth,'Covariance':uncertainty}
-    save_path = os.path.join(config['Inference']['out_dir'],config['Inference']['out_file'])
-    with open(save_path, 'wb') as f:
-        pickle.dump(obs,f)
+    # Create the model
+    # This will map gen -> Reco
+    num_layers = config['model']['num_layers']
+    net = create_nflows(hits.shape[1],conds.shape[1],8)
+    t_params = sum(p.numel() for p in net.parameters())
+    print("Network Parameters: ",t_params)
+    device = torch.device('cuda')
+    net.to('cuda')
+    dicte = torch.load(config['Inference']['model_path'])
+    net.load_state_dict(dicte['net_state_dict'])
+    n_samples = int(config['Inference']['samples'])
+
+    xs = [(-30,-20),(-20,-10),(-10,0),(0,10),(10,20),(20,30)]
+    bars = [0,1,2,3,4,5,6,24,25,26,27,28,29,30,31]
+    stats={"x_max": 895,"x_min":3,"y_max":295,"y_min":3,"time_max":500.00,"time_min":0.0}
+    combinations = list(itertools.product(xs,bars))
+    print('Generating PDFs for {0} combinations of BarID and x ranges.'.format(len(combinations)))
+
+
+    for j,combination in enumerate(combinations):
+        x_low = combination[0][0]
+        x_high = combination[0][1]
+        barID = combination[1]
+        print('Generating Bar {0}, x ({1},{2})'.format(barID,x_low,x_high))
+        print(" ")
+        generations = []
+        mom_idx = np.where((metadata[:,0] == barID) & (metadata[:,1] > x_low) & (metadata[:,1] < x_high))[0]
+        kin_dataset = TensorDataset(torch.tensor(hits[mom_idx]),torch.tensor(conds[mom_idx]),torch.tensor(unscaled_conds[mom_idx]))
+        kin_loader = DataLoader(kin_dataset,batch_size=1000,shuffle=False)
+        kbar = pkbar.Kbar(target=len(kin_loader), width=20, always_stateful=False)
+
+        for i, data in enumerate(kin_loader):
+            input  = data[0].to('cuda').float()
+            k = data[1].to('cuda').float()
+
+            with torch.set_grad_enabled(False):
+                gen = net._sample(num_samples=100,context=k)
+
+            generations.append(gen.detach().cpu().numpy())
+
+            kbar.update(i)
+
+        generations = np.concatenate(generations)
+
+        make_plot(generations,hits[mom_idx],stats,barID,x_high,x_low)
+        print(" ")
+
+
+
 
 
 
 if __name__=='__main__':
     # PARSE THE ARGS
-    parser = argparse.ArgumentParser(description='Inference')
+    parser = argparse.ArgumentParser(description='FastSim Training')
     parser.add_argument('-c', '--config', default='config.json',type=str,
                         help='Path to the config file (default: config.json)')
+    parser.add_argument('-r', '--resume', default=None, type=str,
+                        help='Path to the .pth model checkpoint to resume training')
     args = parser.parse_args()
 
     config = json.load(open(args.config))
 
-    main(config)
+    main(config,args.resume)

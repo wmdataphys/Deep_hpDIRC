@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --export=ALL
-#SBATCH --job-name=Kaons
+#SBATCH --job-name=Pions_Smeared
 #SBATCH --nodes=1
 #SBATCH --tasks=8
 #SBATCH --gpus=1
@@ -11,4 +11,4 @@ cd $SLURM_SUBMIT_DIR
 module load anaconda3/2023.09
 source activate ptorch
 
-python /sciclone/home/jgiroux/Cherenkov_FastSim/train_fs.py --config /sciclone/home/jgiroux/Cherenkov_FastSim/config/config.json
+python /sciclone/home/jgiroux/Cherenkov_FastSim/train_fs_v2.py --config /sciclone/home/jgiroux/Cherenkov_FastSim/config/config_updated.json
