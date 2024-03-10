@@ -57,10 +57,14 @@ class CherenkovPhotons(Dataset):
         if mode == "Kaon":
             columns=["x","y","time","P","theta","phi"]
             self.data = pd.read_csv(kaon_path,sep=',',index_col=None).to_numpy()
+            #df = pd.read_csv(kaon_path,sep=',',index_col=None)
+            #self.data = df[df.time < 150].to_numpy()
             self.data = np.concatenate([self.data,np.c_[np.ones_like(self.data[:,0])]],axis=1)
 
         elif mode == "Pion":
             self.data = pd.read_csv(pion_path,sep=',',index_col=None).to_numpy()
+            #df = pd.read_csv(pion_path,sep=',',index_col=None)
+            #self.data = df[df.time < 150].to_numpy()
             self.data = np.concatenate([self.data,np.c_[np.zeros_like(self.data[:,0])]],axis=1)
 
         elif mode == "Combined":
@@ -93,6 +97,7 @@ class CherenkovPhotons(Dataset):
         # Get the sample
         data = self.data[idx]
         hits = data[:3]
+      
         # When we perform inference, we take the centered mapping.
         if not self.inference:
             hits[0] = hits[0] + np.clip(np.random.normal(0,1),-3,3) # Add noise, clip due to sensor size
