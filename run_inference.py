@@ -114,7 +114,13 @@ def main(config,resume):
 
     # Create the model
     # This will map gen -> Reco
-    num_layers = int(config['model']['num_layers'])
+    if config['method'] == 'Pion':
+        num_layers = int(config['model']['pion_num_layers'])
+    elif config['method'] == 'Kaon':
+        num_layers = int(config['model']['kaon_num_layers'])
+    else:
+        num_layers = int(config['model']['num_layers'])
+        
     input_shape = int(config['model']['input_shape'])
     cond_shape = int(config['model']['cond_shape'])
     net = create_nflows(input_shape,cond_shape,num_layers)

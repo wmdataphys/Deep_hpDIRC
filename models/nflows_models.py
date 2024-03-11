@@ -7,6 +7,7 @@ from nflows.transforms.base import CompositeTransform
 from nflows.transforms.autoregressive import MaskedAffineAutoregressiveTransform
 from nflows.transforms.permutations import ReversePermutation
 from nflows.nn.nets import ResidualNet
+import torch.nn.functional as F
 
 
 def create_nflows(input_shape,context_shape,num_layers):
@@ -16,7 +17,7 @@ def create_nflows(input_shape,context_shape,num_layers):
     for _ in range(num_layers):
         transforms.append(ReversePermutation(features=3))
         transforms.append(MaskedAffineAutoregressiveTransform(features=3,hidden_features=512,
-                                                                context_features=context_shape))
+                                                                context_features=context_shape,num_blocks=3))
 
     transform = CompositeTransform(transforms)
     flow = Flow(transform,base_dist)

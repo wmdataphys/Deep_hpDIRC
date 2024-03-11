@@ -114,8 +114,9 @@ def main(config,resume):
 
             with torch.set_grad_enabled(True):
                 loss = -net.log_prob(inputs=input,context=k).mean()
-
+            
             loss.backward()
+            torch.nn.utils.clip_grad_value_(net.parameters(), 1.)
             optimizer.step()
             scheduler.step()
 
