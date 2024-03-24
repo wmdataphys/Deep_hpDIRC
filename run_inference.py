@@ -17,6 +17,7 @@ import itertools
 import matplotlib.pyplot as plt
 import time
 from matplotlib.colors import LogNorm
+from models.freia_models import FreiaNet
 
 def find_closest_value(number, value_list):
     return min(value_list, key=lambda x: abs(x - number))
@@ -43,9 +44,9 @@ def make_plot(generations,hits,stats,barID,x_high,x_low,method=None):
     ax[2].set_xlabel("Hit Time (ns)",fontsize=20)
     ax[2].set_ylabel("Density",fontsize=20)
 
-    x = generations[:,:,0].flatten()
-    y = generations[:,:,1].flatten()
-    t = generations[:,:,2].flatten()
+    x = generations[:,0].flatten()
+    y = generations[:,1].flatten()
+    t = generations[:,2].flatten()
     x = unscale(x,stats['x_max'],stats['x_min'])
     y = unscale(y,stats['y_max'],stats['y_min'])
     t = unscale(t,stats['time_max'],stats['time_min'])
@@ -64,11 +65,11 @@ def make_plot(generations,hits,stats,barID,x_high,x_low,method=None):
     if method == "Pion":
         ax[1].set_title(r'Pions: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
         ax[0].set_title(r'Pions: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
-        plt.savefig("4LPion_3LKaon/Pions_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high),bbox_inches="tight")
+        plt.savefig("Figures/Affine/Pions_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high),bbox_inches="tight")
     elif method == "Kaon":
         ax[1].set_title(r'Kaons: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
         ax[0].set_title(r'Kaons: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
-        plt.savefig("4LPion_3LKaon/Kaons_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high),bbox_inches="tight")
+        plt.savefig("Figures/Affine/Kaons_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high),bbox_inches="tight")
 
 
 def main(config,resume):
@@ -115,15 +116,17 @@ def main(config,resume):
     # Create the model
     # This will map gen -> Reco
     if config['method'] == 'Pion':
-        num_layers = int(config['model']['pion_num_layers'])
+        num_layers = int(config['model']['num_layers'])
     elif config['method'] == 'Kaon':
-        num_layers = int(config['model']['kaon_num_layers'])
+        num_layers = int(config['model']['num_layers'])
     else:
         num_layers = int(config['model']['num_layers'])
-        
+
+    num_layers = int(config['model']['num_layers'])
     input_shape = int(config['model']['input_shape'])
     cond_shape = int(config['model']['cond_shape'])
-    net = create_nflows(input_shape,cond_shape,num_layers)
+    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False)
+    #net = create_nflows(input_shape,cond_shape,num_layers)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
     device = torch.device('cuda')
@@ -166,7 +169,7 @@ def main(config,resume):
         end = time.time()
         generations = np.concatenate(generations)
         print(" ")
-        print(len(generations))
+        print(generations.shape)
         print("Elapsed time:",end - start)
         print("Time / event:",(end - start)/len(generations))
 

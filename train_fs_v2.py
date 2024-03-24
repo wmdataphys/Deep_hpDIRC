@@ -13,7 +13,7 @@ import torch.nn as nn
 from models.nflows_models import create_nflows
 from dataloader.create_data import CherenkovPhotons
 from datetime import datetime
-
+from models.freia_models import FreiaNet
 
 def main(config,resume):
 
@@ -62,11 +62,14 @@ def main(config,resume):
     num_layers = int(config['model']['num_layers'])
     input_shape = int(config['model']['input_shape'])
     cond_shape = int(config['model']['cond_shape'])
-    net = create_nflows(input_shape,cond_shape,num_layers)
+    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False)
+    #net = create_nflows(input_shape,cond_shape,num_layers)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
     device = torch.device('cuda')
     net.to('cuda')
+    #for p in net.parameters():
+    #    p.register_hook(lambda grad: torch.clamp(grad,-0.9,0.9).to(grad.device))
 
     # Optimizer
     num_epochs=int(config['num_epochs'])
@@ -114,9 +117,9 @@ def main(config,resume):
 
             with torch.set_grad_enabled(True):
                 loss = -net.log_prob(inputs=input,context=k).mean()
-            
+
             loss.backward()
-            torch.nn.utils.clip_grad_value_(net.parameters(), 1.)
+            torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=0.5,error_if_nonfinite=True)
             optimizer.step()
             scheduler.step()
 

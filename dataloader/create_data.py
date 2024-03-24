@@ -39,7 +39,7 @@ def unscale(x,max_,min_):
 
 class CherenkovPhotons(Dataset):
 
-    def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,stats={"x_max": 895,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
+    def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
         if mode is None:
             print("Please select one of the following modes:")
             print("1. Pion")
@@ -99,9 +99,9 @@ class CherenkovPhotons(Dataset):
         hits = data[:3]
       
         # When we perform inference, we take the centered mapping.
-        if not self.inference:
-            hits[0] = hits[0] + np.clip(np.random.normal(0,1),-3,3) # Add noise, clip due to sensor size
-            hits[1] = hits[1] + np.clip(np.random.normal(0,1),-3,3) # Add noise, clip due to sensor size
+#        if not self.inference:
+#            hits[0] = hits[0] + np.random.uniform(-2.95,2.95)#np.clip(np.random.normal(0,1),-3,3) # Add noise, clip due to sensor size
+#            hits[1] = hits[1] + np.random.uniform(-2.95,2.95)#np.clip(np.random.normal(0,1),-3,3) # Add noise, clip due to sensor size
 
         hits = self.scale_data(hits,self.stats)
         conds = data[3:6]
@@ -148,7 +148,7 @@ class DLL_Dataset(Dataset):
         n_hits = len(hits)
 
         hits = self.scale_data(hits,self.stats)
-        conds = (conds - self.conditional_maxes) / (self.conditional_maxes - self.conditional_mins)
+        conds = (conds - self.conditional_mins) / (self.conditional_maxes - self.conditional_mins)
 
         if len(hits) > self.n_photons:
             hits = hits[:self.n_photons]
