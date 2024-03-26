@@ -1,8 +1,8 @@
 {
-    "name": "Kaon_Affine300Epochs_16Layers",
+    "name": "Pion_Affine300Epochs_16Layers",
     "seed": 752022,
     "run_val":1,
-    "method":"Kaon",
+    "method":"Pion",
     "model": {
        "num_layers":16,
        "input_shape":3,

@@ -18,49 +18,82 @@ import matplotlib.pyplot as plt
 import time
 from matplotlib.colors import LogNorm
 from models.freia_models import FreiaNet
+import matplotlib.colors as mcolors
 
-def find_closest_value(number, value_list):
-    return min(value_list, key=lambda x: abs(x - number))
-
-def set_to_closest(number_batch, value_list):
-    return np.array([find_closest_value(num, value_list) for num in number_batch])
 
 def make_plot(generations,hits,stats,barID,x_high,x_low,method=None):
-    x_allowed = np.linspace(0,892,144) + 3.
-    y_allowed = np.linspace(0,292,44) + 3.
-    fig,ax = plt.subplots(2,2,figsize=(18,8))
+    bins_x = np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  53.,  59.,  65.,
+        71.,  77.,  83.,  89.,  95., 103., 109., 115., 121., 127., 133.,
+       139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
+       209., 215., 221., 227., 233., 239., 245., 253., 259., 265., 271.,
+       277., 283., 289., 295., 303., 309., 315., 321., 327., 333., 339.,
+       345., 353., 359., 365., 371., 377., 383., 389., 395., 403., 409.,
+       415., 421., 427., 433., 439., 445., 453., 459., 465., 471., 477.,
+       483., 489., 495., 503., 509., 515., 521., 527., 533., 539., 545.,
+       553., 559., 565., 571., 577., 583., 589., 595., 603., 609., 615.,
+       621., 627., 633., 639., 645., 653., 659., 665., 671., 677., 683.,
+       689., 695., 703., 709., 715., 721., 727., 733., 739., 745., 753.,
+       759., 765., 771., 777., 783., 789., 795., 803., 809., 815., 821.,
+       827., 833., 839., 845., 853., 859., 865., 871., 877., 883., 889.,
+       895.])
+    
+    bins_y = np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  53.,  59.,  65.,
+        71.,  77.,  83.,  89.,  95., 103., 109., 115., 121., 127., 133.,
+       139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
+       209., 215., 221., 227., 233., 239., 245., 253., 259., 265., 271.,
+       277., 283., 289., 295.])
+
+    fig,ax = plt.subplots(4,2,figsize=(18,16))
     ax = ax.ravel()
 
     x_true = unscale(hits[:,0],stats['x_max'],stats['x_min'])
     y_true = unscale(hits[:,1],stats['y_max'],stats['y_min'])
     t_true = unscale(hits[:,2],stats['time_max'],stats['time_min'])
 
-    ax[0].hist2d(x_true,y_true,density=True,range=[(0,892),(0,292)],bins=(144,48))
+    ax[0].hist2d(x_true,y_true,density=True,bins=[bins_x,bins_y],norm=mcolors.LogNorm())
     ax[0].set_xlabel(r'X $(mm)$',fontsize=20)
     ax[0].set_ylabel(r'Y $(mm)$',fontsize=20)
     ax[0].text(s=r"Truth",x=10.,y=0.0,color='White',fontsize=25)
+    # Time PDF
     ax[2].hist(t_true,density=True,color='blue',label='Truth',bins=100,range=[0,200])
     ax[2].set_title("True Hit Time",fontsize=20)
     ax[2].set_xlabel("Hit Time (ns)",fontsize=20)
     ax[2].set_ylabel("Density",fontsize=20)
+    # X PDF
+    ax[4].hist(x_true,density=True,color='blue',label='Truth',bins=100)
+    ax[4].set_title("True X Distribution",fontsize=20)
+    ax[4].set_xlabel("X (mm)",fontsize=20)
+    ax[4].set_ylabel("Density",fontsize=20)
+    # Y PDF
+    ax[6].hist(y_true,density=True,color='blue',label='Truth',bins=100)
+    ax[6].set_title("True Y Distribution",fontsize=20)
+    ax[6].set_xlabel("Y (mm)",fontsize=20)
+    ax[6].set_ylabel("Density",fontsize=20)
+
 
     x = generations[:,0].flatten()
     y = generations[:,1].flatten()
     t = generations[:,2].flatten()
-    x = unscale(x,stats['x_max'],stats['x_min'])
-    y = unscale(y,stats['y_max'],stats['y_min'])
-    t = unscale(t,stats['time_max'],stats['time_min'])
-    #x = set_to_closest(x,x_allowed)
-    #y = set_to_closest(y,y_allowed)
-
-    ax[1].hist2d(x,y,density=True,range=[(0,892),(0,292)],bins=(144,48))
+    ax[1].hist2d(x,y,density=True,bins=[bins_x,bins_y],norm=mcolors.LogNorm())
     ax[1].set_xlabel(r'X $(mm)$',fontsize=20)
     ax[1].set_ylabel(r'Y $(mm)$',fontsize=20)
     ax[1].text(s=r"Generated $\times 100$",x=10.,y=0.0,color='White',fontsize=25)
+    # Time PDF
     ax[3].hist(t,density=True,color='blue',label='Truth',bins=100,range=[0,200])
     ax[3].set_title("Generated Hit Time",fontsize=20)
     ax[3].set_xlabel("Hit Time (ns)",fontsize=20)
     ax[3].set_ylabel("Density",fontsize=20)
+    # X PDF
+    ax[5].hist(x,density=True,color='blue',label='Truth',bins=100,range=[0,895])
+    ax[5].set_title("Generated X Distribution",fontsize=20)
+    ax[5].set_xlabel("X (mm)",fontsize=20)
+    ax[5].set_ylabel("Density",fontsize=20)
+    # Y PDF
+    ax[7].hist(y,density=True,color='blue',label='Truth',bins=100,range=[0,295])
+    ax[7].set_title("Generated Y Distribution",fontsize=20)
+    ax[7].set_xlabel("Y (mm)",fontsize=20)
+    ax[7].set_ylabel("Density",fontsize=20)
+
     plt.subplots_adjust(hspace=0.5)
     if method == "Pion":
         ax[1].set_title(r'Pions: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
@@ -163,7 +196,7 @@ def main(config,resume):
             with torch.set_grad_enabled(False):
                 gen = net._sample(num_samples=n_samples,context=k)
 
-            generations.append(gen.detach().cpu().numpy())
+            generations.append(gen)
 
             kbar.update(i)
         end = time.time()
