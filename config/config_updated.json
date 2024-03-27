@@ -1,18 +1,26 @@
 {
-    "name": "Pion_Affine300Epochs_16Layers",
+    "name": "Kaon_Affine300Epochs_10Layers",
     "seed": 752022,
     "run_val":1,
-    "method":"Pion",
+    "method":"Kaon",
     "model": {
-       "num_layers":16,
+       "num_layers":10,
        "input_shape":3,
-       "cond_shape":3
+       "cond_shape":3,
+       "num_blocks":2,
+       "hidden_nodes": 256
    },
     "dataset": {
         "training": {
+	    "smeared": {
             "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Pions_Train_Presmear.csv",
             "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Kaons_Train_Presmear.csv"
         },
+	    "unsmeared": {
+	    "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Training_Hit_Level_Pions_from_Rho_March6.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Training_Hit_Level_Kaons_from_Phi_March6.csv"
+	    }
+	},
         "validation":{
             "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Validation_Hit_Level_Pions_from_Rho_March6.csv",
             "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Validation_Hit_Level_Kaons_from_Phi_March6.csv"
@@ -55,6 +63,7 @@
 	"dir": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models"
     },
     "Inference": {
+	    "gen_dir": "Figures/Affine",
             "samples": 100,
             "kaon_model_path":"/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Kaon_AffineTest___Mar-22-2024/Kaon_AffineTest_epoch99_val_loss_0.063166.pth",
             "pion_model_path":"/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/GaussianSmear_Pions___Mar-06-2024/GaussianSmear_Pions_epoch22_val_loss_0.023239.pth",

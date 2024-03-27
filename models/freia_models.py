@@ -16,12 +16,14 @@ from nflows.utils import torchutils
 
 
 class FreiaNet(nn.Module):
-    def __init__(self,input_shape,layers,context_shape,embedding=False):
+    def __init__(self,input_shape,layers,context_shape,embedding=False,hidden_units=512,num_blocks=2):
         super(FreiaNet, self).__init__()
         self.input_shape = input_shape
         self.layers = layers
         self.context_shape = context_shape
         self.embedding = embedding
+        self.hidden_units = hidden_units
+        self.num_blocks = num_blocks
         self._allowed_x = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  53.,  59.,  65.,
                                                     71.,  77.,  83.,  89.,  95., 103., 109., 115., 121., 127., 133.,
                                                     139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
@@ -56,9 +58,16 @@ class FreiaNet(nn.Module):
 
             return inn
 
+        def block(hidden_units):
+            return [nn.Linear(hidden_units,hidden_units),nn.ReLU(),nn.Linear(hidden_units,hidden_units),nn.ReLU()]
+
         def subnet_fc(c_in, c_out):
-            return nn.Sequential(nn.Linear(c_in, 512),nn.ReLU(),
-                                 nn.Linear(512,c_out))
+            blks = [nn.Linear(c_in,hidden_units)]
+            for _ in range(num_blocks):
+                blks += block(hidden_units)
+
+            blks += [nn.Linear(hidden_units,c_out)]
+            return nn.Sequential(*blks)
 
         self.sequence = create_freai(self.input_shape,self.layers,self.context_shape)
 

@@ -39,8 +39,8 @@ def main(config,resume):
        # Load the dataset
     print('Creating Loaders.')
 
-    train_dataset = CherenkovPhotons(kaon_path=config['dataset']['training']['kaon_data_path'],
-                    pion_path=config['dataset']['training']['pion_data_path'],inference=False,mode=config['method'])
+    train_dataset = CherenkovPhotons(kaon_path=config['dataset']['training']['smeared']['kaon_data_path'],
+                    pion_path=config['dataset']['training']['smeared']['pion_data_path'],inference=False,mode=config['method'])
     # Evaluate on center of pixels
     val_dataset = CherenkovPhotons(kaon_path=config['dataset']['validation']['kaon_data_path'],
                     pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'])
@@ -62,7 +62,9 @@ def main(config,resume):
     num_layers = int(config['model']['num_layers'])
     input_shape = int(config['model']['input_shape'])
     cond_shape = int(config['model']['cond_shape'])
-    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False)
+    num_blocks = int(config['model']['num_blocks'])
+    hidden_nodes = int(config['model']['hidden_nodes'])
+    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
     #net = create_nflows(input_shape,cond_shape,num_layers)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)

@@ -21,7 +21,7 @@ from models.freia_models import FreiaNet
 import matplotlib.colors as mcolors
 
 
-def make_plot(generations,hits,stats,barID,x_high,x_low,method=None):
+def make_plot(generations,hits,stats,barID,x_high,x_low,method=None,samples=1,folder=None):
     bins_x = np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  53.,  59.,  65.,
         71.,  77.,  83.,  89.,  95., 103., 109., 115., 121., 127., 133.,
        139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
@@ -77,7 +77,7 @@ def make_plot(generations,hits,stats,barID,x_high,x_low,method=None):
     ax[1].hist2d(x,y,density=True,bins=[bins_x,bins_y],norm=mcolors.LogNorm())
     ax[1].set_xlabel(r'X $(mm)$',fontsize=20)
     ax[1].set_ylabel(r'Y $(mm)$',fontsize=20)
-    ax[1].text(s=r"Generated $\times 100$",x=10.,y=0.0,color='White',fontsize=25)
+    #ax[1].text(s=r"Generated $\times {0}$".format(samples),x=10.,y=0.0,color='Red',fontsize=25)
     # Time PDF
     ax[3].hist(t,density=True,color='blue',label='Truth',bins=100,range=[0,200])
     ax[3].set_title("Generated Hit Time",fontsize=20)
@@ -96,14 +96,17 @@ def make_plot(generations,hits,stats,barID,x_high,x_low,method=None):
 
     plt.subplots_adjust(hspace=0.5)
     if method == "Pion":
-        ax[1].set_title(r'Pions: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
+        path_ = os.path.join(folder,"Pions_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high))
+        ax[1].set_title(r'Generated ($\times {3}$) Pions: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID,samples),fontsize=20)
         ax[0].set_title(r'Pions: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
-        plt.savefig("Figures/Affine/Pions_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high),bbox_inches="tight")
+        plt.savefig(path_,bbox_inches="tight")
     elif method == "Kaon":
-        ax[1].set_title(r'Kaons: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
+        path_ = os.path.join(folder,"Kaons_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high))
+        ax[1].set_title(r'Generated ($\times {3}$) Kaons: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID,samples),fontsize=20)
         ax[0].set_title(r'Kaons: $x \in ({0},{1})$, BarID: {2}'.format(x_low,x_high,barID),fontsize=20)
-        plt.savefig("Figures/Affine/Kaons_BarID{0}_x({1},{2}).pdf".format(barID,x_low,x_high),bbox_inches="tight")
-
+        plt.savefig(path_,bbox_inches="tight")
+    
+    plt.close(fig)
 
 def main(config,resume):
 
@@ -119,14 +122,14 @@ def main(config,resume):
     print('Creating Loaders.')
     if config['method'] == "Pion":
         print("Generating for pions.")
-        file_paths = [config['dataset']['training']['pion_data_path'],
+        file_paths = [config['dataset']['training']['unsmeared']['pion_data_path'],
                       config['dataset']['validation']['pion_data_path'],
                       config['dataset']['testing']['gen']['pion_data_path']]
         dicte = torch.load(config['Inference']['pion_model_path'])
 
     elif config['method'] == 'Kaon':
         print("Generation for kaons.")
-        file_paths = [config['dataset']['training']['kaon_data_path'],
+        file_paths = [config['dataset']['training']['unsmeared']['kaon_data_path'],
                       config['dataset']['validation']['kaon_data_path'],
                       config['dataset']['testing']['gen']['kaon_data_path']]
         dicte = torch.load(config['Inference']['kaon_model_path'])
@@ -155,10 +158,11 @@ def main(config,resume):
     else:
         num_layers = int(config['model']['num_layers'])
 
-    num_layers = int(config['model']['num_layers'])
     input_shape = int(config['model']['input_shape'])
     cond_shape = int(config['model']['cond_shape'])
-    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False)
+    num_blocks = int(config['model']['num_blocks'])
+    hidden_nodes = int(config['model']['hidden_nodes'])
+    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
     #net = create_nflows(input_shape,cond_shape,num_layers)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
@@ -170,8 +174,12 @@ def main(config,resume):
 
     # Control what you want to generate pair wise here:
     xs = [(-30,-20),(-20,-10),(-10,0),(0,10),(10,20),(20,30)]
+    bars = [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
+       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
+       34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]
     #bars = [0,1,2,3,4,5,6,24,25,26,27,28,29,30,31]
-    bars = [31,0]
+    #bars = [31,0]
+    #bars = [9,10,11]
     stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}
     combinations = list(itertools.product(xs,bars))
     print('Generating PDFs for {0} combinations of BarID and x ranges.'.format(len(combinations)))
@@ -186,7 +194,18 @@ def main(config,resume):
         generations = []
         mom_idx = np.where((metadata[:,0] == barID) & (metadata[:,1] > x_low) & (metadata[:,1] < x_high))[0]
         kin_dataset = TensorDataset(torch.tensor(hits[mom_idx]),torch.tensor(conds[mom_idx]),torch.tensor(unscaled_conds[mom_idx]))
-        kin_loader = DataLoader(kin_dataset,batch_size=1000,shuffle=False)
+        
+        if len(kin_dataset) == 0:
+            print(" ")
+            print('No data at Bar {0}, x ({1},{2})'.format(barID,x_low,x_high))
+            print(" ")
+            continue
+        if len(kin_dataset) < 1000:
+            batch_size = len(kin_dataset)
+        else:
+            batch_size = 1000
+
+        kin_loader = DataLoader(kin_dataset,batch_size=batch_size,shuffle=False)
         kbar = pkbar.Kbar(target=len(kin_loader), width=20, always_stateful=False)
         start = time.time()
         for i, data in enumerate(kin_loader):
@@ -205,8 +224,11 @@ def main(config,resume):
         print(generations.shape)
         print("Elapsed time:",end - start)
         print("Time / event:",(end - start)/len(generations))
+        folder = os.path.join(config['Inference']['gen_dir'],"BarID_{0}".format(barID))
+        if not os.path.exists(folder):
+            os.mkdir(folder)
 
-        make_plot(generations,hits[mom_idx],stats,barID,x_high,x_low,config['method'])
+        make_plot(generations,hits[mom_idx],stats,barID,x_high,x_low,config['method'],n_samples,folder)
         print(" ")
 
 
