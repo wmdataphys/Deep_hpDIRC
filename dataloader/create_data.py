@@ -4,10 +4,10 @@ import random
 from torch.utils.data import Dataset
 
 def create_dataset(file_paths):
-    df1 = pd.read_csv(file_paths[0],sep=',',index_col=None)
-    df2 = pd.read_csv(file_paths[1],sep=',',index_col=None)
-    df3 = pd.read_csv(file_paths[2],sep=',',index_col=None)
-    df = pd.concat([df1,df2,df3],axis=0)
+    df1 = pd.read_csv(file_paths[0],sep=',',index_col=None)#,nrows=10000)
+    df2 = pd.read_csv(file_paths[1],sep=',',index_col=None)#,nrows=10000)
+    df3 = pd.read_csv(file_paths[2],sep=',',index_col=None)#,nrows=10000)
+    df = pd.concat([df1,df2,df3],axis=0)                   # Useful for debugging
     df = df.to_numpy()
     print(len(df))
     random.shuffle(df)
@@ -38,7 +38,6 @@ def unscale(x,max_,min_):
 
 
 class CherenkovPhotons(Dataset):
-
     def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
         if mode is None:
             print("Please select one of the following modes:")
@@ -119,12 +118,15 @@ class CherenkovPhotons(Dataset):
 
 class DLL_Dataset(Dataset):
 
-    def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
+    def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0},time_cuts=None):
         self.data = np.load(file_path,allow_pickle=True)
-        self.n_photons = 1000
+        self.n_photons = 1500
         self.stats = stats
         self.conditional_maxes = np.array([8.5,11.63,175.5])
         self.conditional_mins = np.array([0.95,0.90,-176.])
+        self.time_cuts = time_cuts
+        if self.time_cuts is not None:
+            print('Rejecting photons with time > {0}'.format(self.time_cuts))
 
     def __len__(self):
         return len(self.data)
@@ -143,20 +145,29 @@ class DLL_Dataset(Dataset):
         particle = self.data[idx]
         hits = np.array(particle['hits'])
         conds = np.array(particle['conditions'])
+
+        if self.time_cuts is not None:
+            idx = np.where(hits[:,2] < self.time_cuts)[0]
+            hits = hits[idx]
+            conds = conds[idx]
+
         unscaled_conds = conds.copy()
         PID = np.array(particle['PID'])
         n_hits = len(hits)
 
         hits = self.scale_data(hits,self.stats)
-        conds = (conds - self.conditional_mins) / (self.conditional_maxes - self.conditional_mins)
+        conds = (conds - self.conditional_maxes) / (self.conditional_maxes - self.conditional_mins)
 
         if len(hits) > self.n_photons:
             hits = hits[:self.n_photons]
+            conds = conds[:self.n_photons]
+            unscaled_conds = unscaled_conds[:self.n_photons]
 
         elif len(hits) < self.n_photons:
             n_needed = self.n_photons - len(hits)
-            hits = np.pad(hits,((0,n_needed),(0,0)),mode='constant')
-            conds = np.pad(conds,((0,n_needed),(0,0)),mode='constant')
+            hits = np.pad(hits,((0,n_needed),(0,0)),mode='constant',constant_values=-9999)
+            conds = np.pad(conds,((0,n_needed),(0,0)),mode='constant',constant_values=-9999)
+            unscaled_conds = np.pad(unscaled_conds,((0,n_needed),(0,0)),mode='constant',constant_values=-999)
         else:
             pass
 

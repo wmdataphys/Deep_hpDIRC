@@ -1,8 +1,8 @@
 {
-    "name": "Kaon_Affine300Epochs_10Layers",
+    "name": "Pion_Affine300Epochs_10Layers",
     "seed": 752022,
     "run_val":1,
-    "method":"Kaon",
+    "method":"Pion",
     "model": {
        "num_layers":10,
        "input_shape":3,
@@ -55,8 +55,8 @@
         "val": {
             "batch_size": 2048
         },
-        "herwig": {
-            "batch_size": 75
+        "test": {
+            "batch_size": 25
         }
     },
     "output": {

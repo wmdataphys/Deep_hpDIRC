@@ -33,7 +33,7 @@ def Inference_collate(batch):
         n_hits.append(torch.tensor(nh))
         unscaled.append(torch.tensor(u))
 
-    return torch.stack(hits),torch.stack(conditions),torch.tensor(PIDs),torch.tensor(nh),torch.stack(unscaled)
+    return torch.stack(hits),torch.stack(conditions),torch.tensor(PIDs),torch.tensor(n_hits),torch.stack(unscaled)
 
 # Create dataloaders to iterate.
 def CreateLoaders(train_dataset,val_dataset,config):
@@ -47,8 +47,8 @@ def CreateLoaders(train_dataset,val_dataset,config):
     return train_loader,val_loader
 
 # Create dataloaders to iterate.
-def CreateInferenceLoader(test_dataset):
+def CreateInferenceLoader(test_dataset,config):
     test_loader =  DataLoader(test_dataset,
-                            batch_size=1,
+                            batch_size=config['dataloader']['test']['batch_size'],
                             shuffle=False,collate_fn=Inference_collate,num_workers=0)
     return test_loader
