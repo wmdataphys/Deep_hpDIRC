@@ -45,12 +45,9 @@ def main(config,resume):
     val_dataset = CherenkovPhotons(kaon_path=config['dataset']['validation']['kaon_data_path'],
                     pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'])
 
-    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config)
 
     history = {'train_loss':[],'val_loss':[],'lr':[]}
 
-    print("Training Size: {0}".format(len(train_dataset)))
-    print("Validation Size: {0}".format(len(val_dataset)))
 
     train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config)
 

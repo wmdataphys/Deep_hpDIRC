@@ -20,40 +20,42 @@ from matplotlib.colors import LogNorm
 from models.freia_models import FreiaNet
 import matplotlib.colors as mcolors
 
-
 def make_plot(generations,hits,stats,barID,x_high,x_low,method=None,samples=1,folder=None):
-    bins_x = np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  53.,  59.,  65.,
-        71.,  77.,  83.,  89.,  95., 103., 109., 115., 121., 127., 133.,
-       139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
-       209., 215., 221., 227., 233., 239., 245., 253., 259., 265., 271.,
-       277., 283., 289., 295., 303., 309., 315., 321., 327., 333., 339.,
-       345., 353., 359., 365., 371., 377., 383., 389., 395., 403., 409.,
-       415., 421., 427., 433., 439., 445., 453., 459., 465., 471., 477.,
-       483., 489., 495., 503., 509., 515., 521., 527., 533., 539., 545.,
-       553., 559., 565., 571., 577., 583., 589., 595., 603., 609., 615.,
-       621., 627., 633., 639., 645., 653., 659., 665., 671., 677., 683.,
-       689., 695., 703., 709., 715., 721., 727., 733., 739., 745., 753.,
-       759., 765., 771., 777., 783., 789., 795., 803., 809., 815., 821.,
-       827., 833., 839., 845., 853., 859., 865., 871., 877., 883., 889.,
-       895.])
+    # Matches physical sensor
+    bins_x = np.array([0,  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,48,50, 53.,  59.,  65.,
+        71.,  77.,  83.,  89.,  95., 98,100, 103., 109., 115., 121., 127., 133.,
+       139., 145.,148,150, 153., 159., 165., 171., 177., 183., 189., 195.,198,200, 203.,
+       209., 215., 221., 227., 233., 239., 245.,248,250, 253., 259., 265., 271.,
+       277., 283., 289., 295.,298,300, 303., 309., 315., 321., 327., 333., 339.,
+       345.,348,350, 353., 359., 365., 371., 377., 383., 389., 395.,398,400, 403., 409.,
+       415., 421., 427., 433., 439., 445.,448,450, 453., 459., 465., 471., 477.,
+       483., 489., 495.,498,500, 503., 509., 515., 521., 527., 533., 539., 545.,548,550,
+       553., 559., 565., 571., 577., 583., 589., 595.,598,600, 603., 609., 615.,
+       621., 627., 633., 639., 645.,648,650, 653., 659., 665., 671., 677., 683.,
+       689., 695.,698,700, 703., 709., 715., 721., 727., 733., 739., 745.,748,750, 753.,
+       759., 765., 771., 777., 783., 789., 795.,798,800, 803., 809., 815., 821.,
+       827., 833., 839., 845.848,850, 853., 859., 865., 871., 877., 883., 889.,
+       895.,898,900])
     
-    bins_y = np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  53.,  59.,  65.,
-        71.,  77.,  83.,  89.,  95., 103., 109., 115., 121., 127., 133.,
-       139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
-       209., 215., 221., 227., 233., 239., 245., 253., 259., 265., 271.,
-       277., 283., 289., 295.])
+    bins_y = np.array([0,  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,48,50, 53.,  59.,  65.,
+        71.,  77.,  83.,  89.,  95.,98,100, 103., 109., 115., 121., 127., 133.,
+       139., 145.,148,150, 153., 159., 165., 171., 177., 183., 189., 195.,198,200, 203.,
+       209., 215., 221., 227., 233., 239., 245.,248,250, 253., 259., 265., 271.,
+       277., 283., 289., 295.,298,300])
+    
+    #x_spaces = [45,95,145,195,245,295,345,395,445,495,545,595,645,695,745,795]
+    #y_spaces = [45,95,145,195,245]
 
     fig,ax = plt.subplots(4,2,figsize=(18,16))
     ax = ax.ravel()
-
-    x_true = unscale(hits[:,0],stats['x_max'],stats['x_min'])
-    y_true = unscale(hits[:,1],stats['y_max'],stats['y_min'])
+    # We have a 2mm offset.
+    x_true = unscale(hits[:,0],stats['x_max'],stats['x_min']) - 2
+    y_true = unscale(hits[:,1],stats['y_max'],stats['y_min']) - 2
     t_true = unscale(hits[:,2],stats['time_max'],stats['time_min'])
 
     ax[0].hist2d(x_true,y_true,density=True,bins=[bins_x,bins_y],norm=mcolors.LogNorm())
     ax[0].set_xlabel(r'X $(mm)$',fontsize=20)
     ax[0].set_ylabel(r'Y $(mm)$',fontsize=20)
-    ax[0].text(s=r"Truth",x=10.,y=0.0,color='White',fontsize=25)
     # Time PDF
     ax[2].hist(t_true,density=True,color='blue',label='Truth',bins=100,range=[0,200])
     ax[2].set_title("True Hit Time",fontsize=20)
@@ -70,14 +72,13 @@ def make_plot(generations,hits,stats,barID,x_high,x_low,method=None,samples=1,fo
     ax[6].set_xlabel("Y (mm)",fontsize=20)
     ax[6].set_ylabel("Density",fontsize=20)
 
-
-    x = generations[:,0].flatten()
-    y = generations[:,1].flatten()
-    t = generations[:,2].flatten()
+    # Also a 2mm offset it seems. Probably needs correction only after so many PMTs
+    x = generations[:,0].flatten() - 2
+    y = generations[:,1].flatten() - 2
+    t = generations[:,2].flatten() 
     ax[1].hist2d(x,y,density=True,bins=[bins_x,bins_y],norm=mcolors.LogNorm())
     ax[1].set_xlabel(r'X $(mm)$',fontsize=20)
     ax[1].set_ylabel(r'Y $(mm)$',fontsize=20)
-    #ax[1].text(s=r"Generated $\times {0}$".format(samples),x=10.,y=0.0,color='Red',fontsize=25)
     # Time PDF
     ax[3].hist(t,density=True,color='blue',label='Truth',bins=100,range=[0,200])
     ax[3].set_title("Generated Hit Time",fontsize=20)
@@ -117,6 +118,9 @@ def main(config,resume):
     torch.cuda.manual_seed(config['seed'])
     print("Running inference")
 
+    if not os.path.exists(config['Inference']['gen_dir']):
+        print('Generations can be found in: ' + config['Inference']['gen_dir'])
+        os.mkdir(config['Inference']['gen_dir'])
 
        # Load the dataset
     print('Creating Loaders.')
