@@ -79,6 +79,7 @@ class MAAF(nn.Module):
             context_encoder =  nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape*2)])
             distribution = ConditionalDiagonalNormal(shape=[input_shape],context_encoder=context_encoder)
             for k in range(layers):
+                transforms.append(ReversePermutation(features=input_shape))
                 transforms.append(MaskedAffineAutoregressiveTransform(features=input_shape,hidden_features=hidden_features,
                                                                 context_features=context_shape,num_blocks=num_blocks))
 
