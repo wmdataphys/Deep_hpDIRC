@@ -10,7 +10,7 @@ import pkbar
 import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.nn as nn
-from models.nflows_models import create_nflows
+from models.nflows_models import create_nflows,MAAF
 from dataloader.create_data import create_dataset,unscale
 from datetime import datetime
 import itertools
@@ -62,12 +62,12 @@ def make_plot(generations,hits,stats,barID,x_high,x_low,method=None,samples=1,fo
     ax[2].set_xlabel("Hit Time (ns)",fontsize=20)
     ax[2].set_ylabel("Density",fontsize=20)
     # X PDF
-    ax[4].hist(x_true,density=True,color='blue',label='Truth',bins=100)
+    ax[4].hist(x_true,density=True,color='blue',label='Truth',bins=100,range=[0,895])
     ax[4].set_title("True X Distribution",fontsize=20)
     ax[4].set_xlabel("X (mm)",fontsize=20)
     ax[4].set_ylabel("Density",fontsize=20)
     # Y PDF
-    ax[6].hist(y_true,density=True,color='blue',label='Truth',bins=100)
+    ax[6].hist(y_true,density=True,color='blue',label='Truth',bins=100,range=[0,295])
     ax[6].set_title("True Y Distribution",fontsize=20)
     ax[6].set_xlabel("Y (mm)",fontsize=20)
     ax[6].set_ylabel("Density",fontsize=20)
@@ -166,6 +166,7 @@ def main(config,resume):
     cond_shape = int(config['model']['cond_shape'])
     num_blocks = int(config['model']['num_blocks'])
     hidden_nodes = int(config['model']['hidden_nodes'])
+    #net = MAAF(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
     net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
     #net = create_nflows(input_shape,cond_shape,num_layers)
     t_params = sum(p.numel() for p in net.parameters())
@@ -181,6 +182,8 @@ def main(config,resume):
     bars = [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
        34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]
+    #xs = [(0,10)]
+    #bars = [31]
     #bars = [0,1,2,3,4,5,6,24,25,26,27,28,29,30,31]
     #bars = [31,0]
     #bars = [9,10,11]
@@ -198,7 +201,6 @@ def main(config,resume):
         generations = []
         mom_idx = np.where((metadata[:,0] == barID) & (metadata[:,1] > x_low) & (metadata[:,1] < x_high))[0]
         kin_dataset = TensorDataset(torch.tensor(hits[mom_idx]),torch.tensor(conds[mom_idx]),torch.tensor(unscaled_conds[mom_idx]))
-        
         if len(kin_dataset) == 0:
             print(" ")
             print('No data at Bar {0}, x ({1},{2})'.format(barID,x_low,x_high))
@@ -225,7 +227,7 @@ def main(config,resume):
         end = time.time()
         generations = np.concatenate(generations)
         print(" ")
-        print(generations.shape)
+        #print(generations.shape)
         print("Elapsed time:",end - start)
         print("Time / event:",(end - start)/len(generations))
         folder = os.path.join(config['Inference']['gen_dir'],"BarID_{0}".format(barID))

@@ -22,10 +22,10 @@ from models.freia_models import FreiaNet
 from sklearn.metrics import roc_curve, auc,roc_auc_score
 from sklearn import metrics
 
-def plot_DLL(kaons,pions):
-    # This function is gross need to rewrite it
-    # Kaon label = 1
-    # pion label = 0
+def plot_DLL(kaons,pions,out_folder):
+    #     # This function is gross need to rewrite it
+    #     # Kaon label = 1
+    #     # Pion label = 0
     dll_k = []
     dll_p = []
     kin_p = []
@@ -60,7 +60,8 @@ def plot_DLL(kaons,pions):
     plt.ylabel('A.U.',fontsize=25)
     plt.legend(fontsize=20)
     plt.title(r'$ \Delta \mathcal{L}_{K \pi}$',fontsize=30)
-    plt.savefig('Inference/Affine/DLL_piK.pdf',bbox_inches='tight')
+    out_path_DLL = os.path.join(out_folder,"DLL_piK.pdf")
+    plt.savefig(out_path_DLL,bbox_inches='tight')
     plt.close()
 
     def sigmoid(x):
@@ -79,41 +80,80 @@ def plot_DLL(kaons,pions):
 
     # Plot ROC curve
     plt.figure()
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.plot(fpr, tpr, color='red', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], color='k', lw=2, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC) Curve')
-    plt.legend(loc="lower right")
-    plt.savefig('Inference/Affine/DLL_piK_ROC.pdf',bbox_inches='tight')
+    plt.xlabel('False Positive Rate',fontsize=25)
+    plt.ylabel('True Positive Rate',fontsize=25)
+    plt.title('Receiver Operating Characteristic (ROC) Curve',fontsize=25,pad=20)
+    plt.legend(loc="lower right",fontsize=18)
+    plt.ylim(0,1)
+    plt.xticks(fontsize=18)  # adjust fontsize as needed
+    plt.yticks(fontsize=18)  # adjust fontsize as needed
+    out_path_DLL_ROC = os.path.join(out_folder,"DLL_piK_ROC.pdf")
+    plt.savefig(out_path_DLL_ROC,bbox_inches='tight')
     plt.close()
+    #plt.show()
 
     mom_ranges = [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5]
     centers = [mr+0.25 for mr in mom_ranges[:-1]]
     aucs = []
     lengths = []
+    aucs_upper = []
+    aucs_lower = []
+    n_kaons = []
+    n_pions = []
     for i in range(len(mom_ranges) - 1):
         mom_low = mom_ranges[i]
         mom_high = mom_ranges[i+1]
         idx = np.where((total_conds > mom_low) & (total_conds < mom_high))[0]
         p = np.array(delta_log_likelihood)[idx]
         t = np.array(true_labels)[idx]
+        print("Momentum Range: ",mom_low,"-",mom_high)
+        print("# Kaons: ",len(t[t==1]))
+        n_kaons.append(len(t[t==1]))
+        n_pions.append(len(t[t==0]))
+        print("# Pions: ",len(t[t==0]))
         lengths.append(len(p))
-        aucs.append(roc_auc_score(t,p))
+        fpr,tpr,thresholds = roc_curve(t,p)
+        AUC = []
+        sigma_tpr = np.sqrt(tpr * (1.0 - tpr) / len(t))
+        sigma_fpr = np.sqrt(fpr * (1.0 - fpr) / len(t))
+        #print('FPR: ',fpr,'+-',sigma_fpr, " TPR: ",tpr,"+-",sigma_tpr)
 
-    fig = plt.figure(figsize=(10,10),dpi=300)
-    plt.plot(centers,aucs,label="AUC",color='red',marker='o')
-    plt.legend(fontsize=20)
+        for _ in range(1000):
+            fpr_ = np.random.normal(fpr,sigma_fpr)
+            tpr_ = np.random.normal(tpr,sigma_tpr)
+
+            AUC.append(np.trapz(y=tpr_,x=fpr_))
+
+
+        aucs.append(np.mean(AUC))
+        aucs_upper.append(np.percentile(AUC,97.5))
+        aucs_lower.append(np.percentile(AUC,2.5))
+
+    fig = plt.figure(figsize=(10,10))
+    plt.errorbar(centers,aucs,yerr=[np.array(aucs) - np.array(aucs_lower),np.array(aucs_upper) - np.array(aucs)],label="AUC",color='red',marker='o',capsize=5)
+    plt.legend(loc='upper left',fontsize=20)
     plt.xlabel("Momentum [GeV/c]",fontsize=20)
     plt.ylabel("AUC",fontsize=20)
     plt.xticks(fontsize=18)  # adjust fontsize as needed
     plt.yticks(fontsize=18)  # adjust fontsize as needed
     plt.title("AUC as function of Momentum - Analytic",fontsize=20)
-    plt.ylim(0.5,1.0)
-    plt.savefig('Inference/Affine/DLL_piK_AUC_func_P.pdf',bbox_inches='tight')
-    plt.ylim(0.5,1.0)
+    plt.ylim(0.85,0.9)
+
+    ax2 = plt.twinx()
+
+    # Plot bars for pions and kaons
+    ax2.bar(np.array(centers) - 0.1, n_pions, width=0.2, label='Pions', color='blue', alpha=0.25)
+    ax2.bar(np.array(centers) + 0.1, n_kaons, width=0.2, label='Kaons', color='green', alpha=0.25)
+    ax2.set_ylabel('Counts', fontsize=20)
+    ax2.tick_params(axis='y', labelsize=18)
+    ax2.legend(loc='upper right', fontsize=20)
+    #plt.ylim(0.5,1.0)
+    out_path_AUC_func_P = os.path.join(out_folder,"DLL_piK_AUC_func_P.pdf")
+    plt.savefig(out_path_AUC_func_P,bbox_inches='tight')
     plt.close()
 
 def drop_and_sum(x,batch_size):
@@ -236,15 +276,21 @@ def main(config,resume):
         kaon_net.load_state_dict(dicte['net_state_dict'])
 
         LL_Pion,LL_Kaon = run_inference_seperate(pions,kaons,pion_net,kaon_net)
-        pion_path = os.path.join(config['Inference']['out_dir'],"Pion_DLL_Results-TESTING.pkl")
+        
+        if not os.path.exists(config['Inference']['out_dir']):
+            print('Inference plots can be found in: ' + config['Inference']['out_dir'])
+            os.mkdir(config['Inference']['out_dir'])
+
+        pion_path = os.path.join(config['Inference']['out_dir'],"Pion_DLL_Results.pkl")
         with open(pion_path,"wb") as file:
             pickle.dump(LL_Pion,file)
 
-        kaon_path = os.path.join(config['Inference']['out_dir'],"Kaon_DLL_Results-TESTING.pkl")
+        kaon_path = os.path.join(config['Inference']['out_dir'],"Kaon_DLL_Results.pkl")
         with open(kaon_path,"wb") as file:
             pickle.dump(LL_Kaon,file)
 
-        plot_DLL(LL_Kaon,LL_Pion)
+
+        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir'])
         
     else:
         print("WIP. Functions not defined. Exiting.")

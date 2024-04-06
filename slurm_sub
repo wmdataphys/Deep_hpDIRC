@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --export=ALL
-#SBATCH --job-name=pAffine
+#SBATCH --job-name=kAffine
 #SBATCH --nodes=1
 #SBATCH --tasks=8
 #SBATCH --gpus=1

@@ -1,38 +1,38 @@
 {
-    "name": "Kaon_Affine300Epochs_8Layers",
+    "name": "Pion_Affine300Epochs_10Layers_512Nodes_UpdatedData",
     "seed": 752022,
     "run_val":1,
-    "method":"Kaon",
+    "method":"Pion",
     "model": {
-       "num_layers":8,
+       "num_layers":10,
        "input_shape":3,
        "cond_shape":3,
        "num_blocks":2,
-       "hidden_nodes": 256
+       "hidden_nodes": 512
    },
     "dataset": {
         "training": {
 	    "smeared": {
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Pions_Train_Presmear.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Kaons_Train_Presmear.csv"
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Training_Hit_Level_Pions_from_Rho_April4_Smeared.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Training_Hit_Level_Kaons_from_Phi_April4_Smeared.csv"
         },
 	    "unsmeared": {
-	    "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Training_Hit_Level_Pions_from_Rho_March6.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Training_Hit_Level_Kaons_from_Phi_March6.csv"
+	    "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Training_Hit_Level_Pions_from_Rho_April4.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Training_Hit_Level_Kaons_from_Phi_April4.csv"
 	    }
 	},
         "validation":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Validation_Hit_Level_Pions_from_Rho_March6.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Validation_Hit_Level_Kaons_from_Phi_March6.csv"
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Validation_Hit_Level_Pions_from_Rho_April4.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Validation_Hit_Level_Kaons_from_Phi_April4.csv"
         },
         "testing":{
 	    "DLL":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Testing_Hit_Level_Pions_from_Rho_March6.pkl",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Testing_Hit_Level_Kaons_from_Phi_March6.pkl"
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Testing_Pions_From_Rho_April3_2024.pkl",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Testing_Kaons_From_Phi_April3_2024.pkl"
 	    },
 	    "gen":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Testing_Hit_Level_Pions_from_Rho_March6.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Testing_Hit_Level_Kaons_from_Phi_March6.csv"
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Testing_Hit_Level_Pions_from_Rho_April4.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/UpdatedData/Testing_Hit_Level_Kaons_from_Phi_April4.csv"
         }
 	}
     },

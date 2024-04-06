@@ -93,10 +93,6 @@ class MAAF(nn.Module):
     def log_prob(self,inputs,context):
         return self.sequence.log_prob(inputs,context=context)
 
-
-    def __sample(self,num_samples,context):
-        return self.sequence._sample(num_samples,context=context)
-
     def unscale(self,x,max_,min_):
         return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
 
@@ -108,10 +104,10 @@ class MAAF(nn.Module):
         return closest_values
             
     def _sample(self,num_samples,context):
-        samples = self.__sample(num_samples,context)
-        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
-        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
-        t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']).detach().cpu()
+        samples = self.sequence._sample(num_samples,context)
+        x = self.unscale(samples[:,:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
+        y = self.unscale(samples[:,:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
+        t = self.unscale(samples[:,:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']).detach().cpu()
         x = self.set_to_closest(x,self._allowed_x)
         y = self.set_to_closest(y,self._allowed_y)
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).numpy()

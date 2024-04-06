@@ -119,7 +119,7 @@ class CherenkovPhotons(Dataset):
 class DLL_Dataset(Dataset):
 
     def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0},time_cuts=None):
-        self.data = np.load(file_path,allow_pickle=True)
+        self.data = np.load(file_path,allow_pickle=True)#[:10000] Useful for testing
         self.n_photons = 1500
         self.stats = stats
         self.conditional_maxes = np.array([8.5,11.63,175.5])
@@ -143,8 +143,32 @@ class DLL_Dataset(Dataset):
     def __getitem__(self, idx):
 
         particle = self.data[idx]
-        hits = np.array(particle['hits'])
-        conds = np.array(particle['conditions'])
+        pmtID = np.array(particle['pmtID'])
+        o_box = pmtID//108
+        if o_box[0] == 1:
+            pmtID -= 108
+
+        pixelID = np.array(particle['pixelID'])
+
+        row = (pmtID//18) * 8 + pixelID//8
+        col = (pmtID%18) * 8 + pixelID%8
+
+        time = np.array(particle['leadTime'])
+
+        pos_time = np.where((time > 0) & (time < 500))[0]
+        row = row[pos_time]
+        col = col[pos_time]
+        time = time[pos_time]
+        pmtID = pmtID[pos_time]
+
+        assert len(row) == len(time)
+
+        x = col * 6. + (pmtID % 18) * 2. + 3.
+        y = row * 6. + (pmtID // 18) * 2. + 3.
+
+        hits = np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
+        conds = np.array([particle['P'],particle['Theta'],particle['Phi']])
+        conds = conds.reshape(1,-1).repeat(len(x),0)
 
         if self.time_cuts is not None:
             idx = np.where(hits[:,2] < self.time_cuts)[0]
@@ -152,7 +176,7 @@ class DLL_Dataset(Dataset):
             conds = conds[idx]
 
         unscaled_conds = conds.copy()
-        PID = np.array(particle['PID'])
+        PID = np.array(particle['PDG'])
         n_hits = len(hits)
 
         hits = self.scale_data(hits,self.stats)
