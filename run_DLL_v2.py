@@ -42,17 +42,10 @@ def plot_DLL(kaons,pions,out_folder):
         dll_p.append((np.array(pions[i]['hyp_kaon']) - np.array(pions[i]['hyp_pion'])).flatten())
         kin_p.append(pions[i]['Kins'][:,0,:])
 
-    kin_k = np.concatenate(kin_k)
     kin_p = np.concatenate(kin_p)
+    kin_k = np.concatenate(kin_k)
     dll_p = np.concatenate(dll_p)
     dll_k = np.concatenate(dll_k)
-
-    total_predictions = predicted_pions + predicted_kaons
-    total_truth = np.concatenate([np.zeros_like(dll_p),np.ones_like(dll_k)])
-
-    total_predictions = np.array(total_predictions)
-    total_truth = np.array(total_truth)
-    total_conds = np.array(list(kin_p) + list(kin_k))
 
     plt.hist(dll_k,bins=100,density=True,alpha=1.,range=[-50,50],label='Kaons',color='red',histtype='step',lw=3)
     plt.hist(dll_p,bins=100,density=True,range=[-50,50],alpha=1.0,label='Pions',color='blue',histtype='step',lw=3)
@@ -72,7 +65,7 @@ def plot_DLL(kaons,pions,out_folder):
 
     delta_log_likelihood = list(sk) + list(sp)
     true_labels = list(np.ones_like(sk)) + list(np.zeros_like(sp))
-
+    total_conds = np.array(list(kin_k) + list(kin_p))
 
     # Compute ROC curve
     fpr, tpr, thresholds = roc_curve(true_labels, delta_log_likelihood)
@@ -132,6 +125,7 @@ def plot_DLL(kaons,pions,out_folder):
         aucs.append(np.mean(AUC))
         aucs_upper.append(np.percentile(AUC,97.5))
         aucs_lower.append(np.percentile(AUC,2.5))
+        print("Mean AUC: ",np.mean(AUC)," 95%",np.percentile(AUC,2.5),"-",np.percentile(AUC,97.5))
 
     fig = plt.figure(figsize=(10,10))
     plt.errorbar(centers,aucs,yerr=[np.array(aucs) - np.array(aucs_lower),np.array(aucs_upper) - np.array(aucs)],label="AUC",color='red',marker='o',capsize=5)
@@ -141,7 +135,7 @@ def plot_DLL(kaons,pions,out_folder):
     plt.xticks(fontsize=18)  # adjust fontsize as needed
     plt.yticks(fontsize=18)  # adjust fontsize as needed
     plt.title("AUC as function of Momentum - Analytic",fontsize=20)
-    plt.ylim(0.85,0.9)
+    plt.ylim(0.75,0.95)
 
     ax2 = plt.twinx()
 
