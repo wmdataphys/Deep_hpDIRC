@@ -119,8 +119,8 @@ class CherenkovPhotons(Dataset):
 class DLL_Dataset(Dataset):
 
     def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0},time_cuts=None):
-        self.data = np.load(file_path,allow_pickle=True)#[:10000] Useful for testing
-        self.n_photons = 1500
+        self.data = np.load(file_path,allow_pickle=True)#[:10000] # Useful for testing
+        self.n_photons = 250
         self.stats = stats
         self.conditional_maxes = np.array([8.5,11.63,175.5])
         self.conditional_mins = np.array([0.95,0.90,-176.])
@@ -183,6 +183,7 @@ class DLL_Dataset(Dataset):
         conds = (conds - self.conditional_maxes) / (self.conditional_maxes - self.conditional_mins)
 
         if len(hits) > self.n_photons:
+            hits = hits[np.argsort(time)]
             hits = hits[:self.n_photons]
             conds = conds[:self.n_photons]
             unscaled_conds = unscaled_conds[:self.n_photons]
