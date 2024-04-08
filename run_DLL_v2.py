@@ -21,6 +21,113 @@ from dataloader.create_data import DLL_Dataset
 from models.freia_models import FreiaNet
 from sklearn.metrics import roc_curve, auc,roc_auc_score
 from sklearn import metrics
+from scipy.optimize import curve_fit
+import glob
+from PyPDF2 import PdfWriter
+from scipy.stats import norm
+
+def merge_PDF(out_dir):
+    pdf_dir = os.path.join(out_dir,'DLL')
+    pdf_files = sorted(glob.glob(os.path.join(pdf_dir, '*.pdf')))
+
+    pdf_files.sort(key=lambda x: float(x.split('_p(')[-1].split(')')[0].split(',')[0]))
+    output_pdf = PdfWriter()
+
+    for pdf_file in pdf_files:
+        with open(pdf_file, 'rb') as f:
+            pdf_data = f.read()
+            output_pdf.append(fileobj=f)
+
+    # Save the combined PDF to a file
+    with open(os.path.join(out_dir,'Combined_DLL.pdf'), 'wb') as f:
+        output_pdf.write(f)
+
+
+def fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder):
+    print("Running fine grained DLL analysis.")
+
+    def gaussian(x, amplitude, mean, stddev):
+        return (1 / (np.sqrt(2*np.pi)*stddev))* np.exp(-((x - mean) / stddev) ** 2 / 2)
+        #A*np.exp(-(x-mu)**2/(2.*sigma_squared))
+
+    out_DLL_folder = os.path.join(out_folder,"DLL")
+    if not os.path.exists(out_DLL_folder):
+        os.mkdir(out_DLL_folder)
+
+    bins = 100
+    bounds = list(np.arange(np.min(kin_k[:,0]),np.max(kin_k[:,0]),0.1))
+    bounds = np.array(bounds + [8.5])
+    bound_centers = []
+    sigma_seps = []
+
+    for k in range(len(bounds)-1):
+        upper = bounds[k+1]
+        lower = bounds[k]
+        p_idx = np.where((kin_p[:,0] >= lower) & (kin_p[:,0] < upper))[0]
+        k_idx = np.where((kin_k[:,0] >= lower) & (kin_k[:,0] < upper))[0]
+        print('Kaons: ',len(k_idx)," Pions: ",len(p_idx)," for |p| in ({0:.2f},{1:.2f})".format(lower,upper))
+        
+        if len(k_idx) < 100 or len(p_idx) < 100:
+            print('Skipping due to low stats.')
+            continue
+
+
+        hist_k, bin_edges_k = np.histogram(dll_k[k_idx], bins=bins, density=True,range=[-50,50])
+        bin_centers_k = (bin_edges_k[:-1] + bin_edges_k[1:]) / 2
+        try:
+            popt_k, pcov_k = curve_fit(gaussian, bin_centers_k, hist_k, p0=[1, np.mean(dll_k[k_idx]), np.std(dll_k[k_idx])],maxfev=1000,bounds = ([0, -np.inf, 1e-9], [np.inf, np.inf, np.inf]))
+            amplitude_k, mean_k, stddev_k = popt_k
+        except RuntimeError as e:
+            print('Kaon error, skipping.')
+            print(e)
+            continue
+
+        hist_p, bin_edges_p = np.histogram(dll_p[p_idx], bins=bins, density=True,range=[-50,50])
+        bin_centers_p = (bin_edges_p[:-1] + bin_edges_p[1:]) / 2
+        try:
+            popt_p, pcov_p = curve_fit(gaussian, bin_centers_p, hist_p, p0=[1, np.mean(dll_p[p_idx]), np.std(dll_p[p_idx])],maxfev=1000,bounds = ([0, -np.inf, 1e-9], [np.inf, np.inf, np.inf]))
+            amplitude_p, mean_p, stddev_p = popt_p
+        except RuntimeError as e:
+            print('Pion error, skipping.')
+            print(e)
+            continue
+        
+        sigma_sep = (mean_k - mean_p) / ((stddev_k + stddev_p)/2.) #np.sqrt(stddev_k**2 + stddev_p**2)
+        sigma_seps.append(sigma_sep)
+        bound_centers.append((upper + lower)/2.0)
+
+        fig,ax = plt.subplots(1,2,figsize=(12,4))
+        ax = ax.ravel()
+        ax[0].hist(dll_k[k_idx],bins=bins,density=True,alpha=1.,range=[-50,50],label=r'$\mathcal{K}$',color='red',histtype='step',lw=3)
+        ax[0].hist(dll_p[p_idx],bins=bins,density=True,range=[-50,50],alpha=1.0,label=r'$\pi$',color='blue',histtype='step',lw=3)
+        ax[0].set_xlabel('Loglikelihood Difference',fontsize=25)
+        ax[0].set_ylabel('A.U.',fontsize=25)
+        ax[0].legend(fontsize=20)
+        ax[0].set_title(r'$ \Delta \mathcal{L}_{K \pi}$',fontsize=30)
+
+        ax[1].plot(bin_centers_k, gaussian(bin_centers_k, *popt_k),color='red', label=r"$\mathcal{K}$: " +r"$\mu={0:.2f}, \sigma={1:.2f}$".format(mean_k,stddev_k))
+        ax[1].plot(bin_centers_p, gaussian(bin_centers_p, *popt_p),color='blue', label=r"$\pi$: " +r"$\mu={0:.2f}, \sigma={1:.2f}$".format(mean_p,stddev_p))
+        ax[1].set_xlabel('Fitted Loglikelihood Difference',fontsize=25)
+        ax[1].set_ylabel('A.U.',fontsize=25)
+        ax[1].legend(fontsize=20,loc=(1.01,0.5))
+        ax[1].set_title(r'$ \Delta \mathcal{L}_{K \pi}$',fontsize=30)
+        ax[1].text(85, 0.013, r'$\sigma_{sep.} =$'+'{0:.2f}'.format(sigma_sep), fontsize=18, ha='center', va='center')
+        ax[1].text(100,0.005,  r'$|\vec{p}| \in $'+'({0:.2f},{1:.2f}) GeV'.format(lower,upper), fontsize=18, ha='center', va='center')
+        plt.subplots_adjust(wspace=0.3)
+
+        out_path_DLL = os.path.join(out_DLL_folder,"DLL_piK_p({0:.2f},{1:.2f}).pdf".format(lower,upper))
+        plt.savefig(out_path_DLL,bbox_inches='tight')
+        plt.close()
+
+    plt.plot(bound_centers,sigma_seps,label=r"$\sigma_{sep.}$",color='red',marker='o')
+    plt.legend(loc='upper right',fontsize=20)
+    plt.xlabel("Momentum [GeV/c]",fontsize=20)
+    plt.ylabel(r"$\sigma$",fontsize=20)
+    plt.xticks(fontsize=18)  # adjust fontsize as needed
+    plt.yticks(fontsize=18)  # adjust fontsize as needed
+    plt.title("$\sigma_{sep.}$ as a function of Momentum",fontsize=20)
+    plt.savefig(os.path.join(out_folder,'Seperation_Average.pdf'),bbox_inches='tight')
+    plt.close()
 
 def plot_DLL(kaons,pions,out_folder):
     #     # This function is gross need to rewrite it
@@ -47,8 +154,11 @@ def plot_DLL(kaons,pions,out_folder):
     dll_p = np.concatenate(dll_p)
     dll_k = np.concatenate(dll_k)
 
-    plt.hist(dll_k,bins=100,density=True,alpha=1.,range=[-50,50],label='Kaons',color='red',histtype='step',lw=3)
-    plt.hist(dll_p,bins=100,density=True,range=[-50,50],alpha=1.0,label='Pions',color='blue',histtype='step',lw=3)
+    fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder)
+    merge_PDF(out_folder)
+
+    plt.hist(dll_k,bins=100,density=True,alpha=1.,range=[-50,50],label=r'$\mathcal{K}$',color='red',histtype='step',lw=3)
+    plt.hist(dll_p,bins=100,density=True,range=[-50,50],alpha=1.0,label=r'$\pi$',color='blue',histtype='step',lw=3)
     plt.xlabel('Loglikelihood Difference',fontsize=25)
     plt.ylabel('A.U.',fontsize=25)
     plt.legend(fontsize=20)
