@@ -3,3 +3,6 @@
 *Figures*
 *oldfiles*
 *pycache*
+*.pcm*
+*.so*
+*.d*
