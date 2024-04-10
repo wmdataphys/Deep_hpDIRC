@@ -9,6 +9,8 @@ This was just the first way I could get slurm to not complain. Probably a better
 
 # Import Notes:
 
+If you are running on real data or simulation make sure to check the create_data.py folder and implement the correct maximum time!!!
+
 To run an interactive job: salloc -N -n 8 --gpus=1 --time=01:00:00
 
 To submit a job with the submit_slurm script: sbatch slurm_sub
