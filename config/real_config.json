@@ -1,0 +1,72 @@
+{
+    "name": "Kaon_Affine300Epochs_8Layers_512Nodes_RealData",
+    "seed": 752022,
+    "run_val":1,
+    "method":"Kaon",
+    "model": {
+       "num_layers":8,
+       "input_shape":3,
+       "cond_shape":3,
+       "num_blocks":2,
+       "hidden_nodes": 512
+   },
+    "dataset": {
+        "training": {
+	    "unsmeared": {
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Pions_From_Data.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Kaons_From_Data.csv"
+        },
+	    "smeared": {
+	    "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Pions_From_Data_Smeared.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Kaons_From_Data_Smeared.csv"
+	    }
+	},
+        "validation":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Validation_Hit_Level_Pions_From_Data.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Validation_Hit_Level_Kaons_From_Data.csv"
+        },
+        "testing":{
+	    "DLL":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Testing_Hit_Level_Pions_From_Data.pkl",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Testing_Hit_Level_Kaons_From_Data.pkl"
+	    },
+	    "gen":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Testing_Hit_Level_Pions_From_Data.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Testing_Hit_Level_Kaons_From_Data.csv"
+        }
+	}
+    },
+    "lr_scheduler": {
+        "step_size":25,
+        "gamma": 0.1
+    },
+    "optimizer": {
+        "lr": 7e-4,
+    	"KL_scale":0.0005,
+        "cost_scale":1e-4,
+        "mmd_scale":1.2
+    },
+    "num_epochs": 300,
+    "dataloader": {
+        "split":[0.7,0.15,0.15],
+        "train": {
+            "batch_size": 2048
+    	},
+        "val": {
+            "batch_size": 2048
+        },
+        "test": {
+            "batch_size": 25
+        }
+    },
+    "output": {
+	"dir": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models"
+    },
+    "Inference": {
+	    "gen_dir": "Figures/Affine",
+            "samples": 100,
+            "kaon_model_path":"/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Kaon_AffineTest___Mar-22-2024/Kaon_AffineTest_epoch99_val_loss_0.063166.pth",
+            "pion_model_path":"/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/GaussianSmear_Pions___Mar-06-2024/GaussianSmear_Pions_epoch22_val_loss_0.023239.pth",
+            "out_dir": "path\\to\\Inference"
+        }
+}

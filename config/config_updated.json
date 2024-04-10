@@ -1,10 +1,10 @@
 {
-    "name": "Pion_Affine300Epochs_10Layers_512Nodes_UpdatedData",
+    "name": "Kaon_Affine300Epochs_8Layers_512Nodes_UpdatedData_IncreasedEmbed",
     "seed": 752022,
     "run_val":1,
-    "method":"Pion",
+    "method":"Kaon",
     "model": {
-       "num_layers":10,
+       "num_layers":8,
        "input_shape":3,
        "cond_shape":3,
        "num_blocks":2,

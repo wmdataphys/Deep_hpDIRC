@@ -47,7 +47,7 @@ class FreiaNet(nn.Module):
         if self.embedding:
             self.context_embedding = nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape)])
 
-        context_encoder =  nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape*2)])
+        context_encoder =  nn.Sequential(*[nn.Linear(context_shape,128),nn.ReLU(),nn.Linear(128,input_shape*2)])
 
         self.distribution = ConditionalDiagonalNormal(shape=[input_shape],context_encoder=context_encoder)
 

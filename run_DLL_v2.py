@@ -355,8 +355,8 @@ def main(config,resume):
 
     assert config["method"] in ["Combined","Pion","Kaon"]
 
-    test_pions = DLL_Dataset(file_path=config['dataset']['testing']['DLL']['pion_data_path'],time_cuts=args.time)
-    test_kaons = DLL_Dataset(file_path=config['dataset']['testing']['DLL']['kaon_data_path'],time_cuts=args.time)
+    test_pions = DLL_Dataset(file_path=config['dataset']['testing']['DLL_RealData']['pion_data_path'],time_cuts=args.time)
+    test_kaons = DLL_Dataset(file_path=config['dataset']['testing']['DLL_RealData']['kaon_data_path'],time_cuts=args.time)
 
     print("# of Pions: ",len(test_pions))
     print("# of Kaons: ",len(test_kaons))

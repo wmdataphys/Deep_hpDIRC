@@ -22,8 +22,8 @@ def create_dataset(file_paths):
     PID = np.ones_like(conds[:,0])
     return hits,conds,unscaled_conds,metadata
 
-
-def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
+# Real data time max = 380, simulation = 500
+def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0}):
     x = hits[:,0]
     y = hits[:,1]
     time = hits[:,2]
@@ -38,7 +38,7 @@ def unscale(x,max_,min_):
 
 
 class CherenkovPhotons(Dataset):
-    def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
+    def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0}):
         if mode is None:
             print("Please select one of the following modes:")
             print("1. Pion")
@@ -118,7 +118,7 @@ class CherenkovPhotons(Dataset):
 
 class DLL_Dataset(Dataset):
 
-    def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0},time_cuts=None):
+    def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0},time_cuts=None):
         self.data = np.load(file_path,allow_pickle=True)#[:10000] # Useful for testing
         self.n_photons = 250
         self.stats = stats
