@@ -2,17 +2,22 @@ import numpy as np
 import pandas as pd
 import random
 from torch.utils.data import Dataset
+import torch
 
-def create_dataset(file_paths):
-    df1 = pd.read_csv(file_paths[0],sep=',',index_col=None)#,nrows=10000)
-    df2 = pd.read_csv(file_paths[1],sep=',',index_col=None)#,nrows=10000)
-    df3 = pd.read_csv(file_paths[2],sep=',',index_col=None)#,nrows=10000)
-    df = pd.concat([df1,df2,df3],axis=0)                   # Useful for debugging
+def create_dataset(file_paths,stats):
+    if len(file_paths) > 1:
+        df1 = pd.read_csv(file_paths[0],sep=',',index_col=None)#,nrows=10000)
+        df2 = pd.read_csv(file_paths[1],sep=',',index_col=None)#,nrows=10000)
+        df3 = pd.read_csv(file_paths[2],sep=',',index_col=None)#,nrows=10000)
+        df = pd.concat([df1,df2,df3],axis=0)                   # Useful for debugging
+    else:
+        df = pd.read_csv(file_paths[0],sep=',',index_col=None)
+
     df = df.to_numpy()
     print(len(df))
     random.shuffle(df)
     hits = df[:,:3]
-    hits = scale_data(hits)
+    hits = scale_data(hits,stats)
     conds = df[:,3:6]
     unscaled_conds = conds.copy()
     metadata = df[:,6:]
@@ -22,23 +27,21 @@ def create_dataset(file_paths):
     PID = np.ones_like(conds[:,0])
     return hits,conds,unscaled_conds,metadata
 
-# Real data time max = 380, simulation = 500
-def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0}):
+
+def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.0,"time_min":0.0}):
     x = hits[:,0]
     y = hits[:,1]
     time = hits[:,2]
+
     x = 2.0 * (x - stats['x_min'])/(stats['x_max'] - stats['x_min']) - 1.0
     y = 2.0 * (y - stats['y_min'])/(stats['y_max'] - stats['y_min']) - 1.0
     time = 2.0 * (time - stats['time_min'])/(stats['time_max'] - stats['time_min']) - 1.0
 
     return np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
 
-def unscale(x,max_,min_):
-    return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
-
-
+# Real data is 380ns max, simulation is 500 ns max
 class CherenkovPhotons(Dataset):
-    def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0}):
+    def __init__(self,kaon_path=None,pion_path=None,mode=None,combined=False,inference=False,log_time=False,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}):
         if mode is None:
             print("Please select one of the following modes:")
             print("1. Pion")
@@ -52,18 +55,37 @@ class CherenkovPhotons(Dataset):
         self.pion_path = pion_path
         self.conditional_maxes = np.array([8.5,11.63,175.5])
         self.conditional_mins = np.array([0.95,0.90,-176.])
+        self.log_time = log_time
 
         if mode == "Kaon":
             columns=["x","y","time","P","theta","phi"]
-            self.data = pd.read_csv(kaon_path,sep=',',index_col=None).to_numpy()
-            #df = pd.read_csv(kaon_path,sep=',',index_col=None)
-            #self.data = df[df.time < 150].to_numpy()
+            self.data = pd.read_csv(kaon_path,sep=',',index_col=None)
+            self.data = self.modify_tails(self.data)
+            if self.log_time:
+                self.data[:,0] = np.log(self.data[:,0])
+                self.stats['x_max'] = 6.800170048114738
+                self.stats['x_min'] = -11.639826026001888
+                self.data[:,1] = np.log(self.data[:,1])
+                self.stats['y_max'] = 5.697093360008697
+                self.stats['y_min'] = -11.012369390162362
+                self.data[:,2] = np.log(self.data[:,2])
+                self.stats['time_max'] = 5.931767619849855
+                self.stats['time_min'] = -10.870140433500834
             self.data = np.concatenate([self.data,np.c_[np.ones_like(self.data[:,0])]],axis=1)
 
         elif mode == "Pion":
-            self.data = pd.read_csv(pion_path,sep=',',index_col=None).to_numpy()
-            #df = pd.read_csv(pion_path,sep=',',index_col=None)
-            #self.data = df[df.time < 150].to_numpy()
+            self.data = pd.read_csv(pion_path,sep=',',index_col=None)
+            self.data = self.modify_tails(self.data)
+            if self.log_time:
+                self.data[:,0] = np.log(self.data[:,0])
+                self.stats['x_max'] = 6.800170048114738
+                self.stats['x_min'] = -11.639826026001888
+                self.data[:,1] = np.log(self.data[:,1])
+                self.stats['y_max'] = 5.697093360008697
+                self.stats['y_min'] = -11.012369390162362
+                self.data[:,2] = np.log(self.data[:,2])
+                self.stats['time_max'] = 5.931767619849855
+                self.stats['time_min'] = -10.870140433500834
             self.data = np.concatenate([self.data,np.c_[np.zeros_like(self.data[:,0])]],axis=1)
 
         elif mode == "Combined":
@@ -83,6 +105,50 @@ class CherenkovPhotons(Dataset):
     def __len__(self):
         return len(self.data)
 
+    def modify_tails(self,data):
+        print('Modifying your tails quickly.')
+        list_of_data = []
+        # Without Time cuts
+        #time_bins = [0,80] + list(np.arange(80,376,1))
+        #N = len(np.arange(80,376,1))
+        # With time cuts < 150ns
+        time_bins = [0,80] + list(np.arange(80,150,1))
+        N = len(np.arange(80,150,1))
+        # modify right tail
+        for i in range(len(time_bins) - 1):
+            temp_data = data[(data.time > time_bins[i]) & (data.time < time_bins[i+1])]
+            if i > 1:
+                #f = len(temp_data) / (len(temp_data) * np.sqrt(i/2.))
+                f = np.exp(-i**1.2 / N)
+                temp_data = temp_data.sample(frac=f)
+            list_of_data.append(temp_data)
+
+        d = pd.concat(list_of_data)
+
+        list_of_data = []
+        # modify left tail
+        # Without time cuts
+        #time_bins = list(np.arange(0,10,1)) + [150,380]
+        #N = len(np.arange(0,10,1))
+        # With time cuts
+        time_bins = list(np.arange(0,15,1)) + [150]
+        N = len(list(np.arange(0,15,1)))
+        for i in range(len(time_bins) - 1):
+            temp_data = d[(d.time > time_bins[i]) & (d.time < time_bins[i+1])]
+            #if i < 9 :
+            if i < 15:
+                #f = len(temp_data) / (len(temp_data) *np.sqrt(i+50))
+                f = 1.0 - np.exp(-(i+1)/N)
+                temp_data = temp_data.sample(frac=f)
+
+            list_of_data.append(temp_data)
+
+        dd = pd.concat(list_of_data)
+
+        del d,list_of_data
+
+        return dd.to_numpy()
+
     def scale_data(self,hits,stats):
         x = hits[0]
         y = hits[1]
@@ -96,11 +162,6 @@ class CherenkovPhotons(Dataset):
         # Get the sample
         data = self.data[idx]
         hits = data[:3]
-      
-        # When we perform inference, we take the centered mapping.
-#        if not self.inference:
-#            hits[0] = hits[0] + np.random.uniform(-2.95,2.95)#np.clip(np.random.normal(0,1),-3,3) # Add noise, clip due to sensor size
-#            hits[1] = hits[1] + np.random.uniform(-2.95,2.95)#np.clip(np.random.normal(0,1),-3,3) # Add noise, clip due to sensor size
 
         hits = self.scale_data(hits,self.stats)
         conds = data[3:6]
@@ -115,11 +176,10 @@ class CherenkovPhotons(Dataset):
         return hits,conds,PID,metadata,unscaled_conds
 
 
-
 class DLL_Dataset(Dataset):
-
-    def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0},time_cuts=None):
-        self.data = np.load(file_path,allow_pickle=True)#[:10000] # Useful for testing
+    # Real Max: 376.82, Min: 1.901769999999999e-05
+    def __init__(self,file_path,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0},time_cuts=None,log_time=False):
+        self.data = np.load(file_path,allow_pickle=True) # Useful for testing
         self.n_photons = 250
         self.stats = stats
         self.conditional_maxes = np.array([8.5,11.63,175.5])
@@ -127,6 +187,11 @@ class DLL_Dataset(Dataset):
         self.time_cuts = time_cuts
         if self.time_cuts is not None:
             print('Rejecting photons with time > {0}'.format(self.time_cuts))
+        self.log_time = log_time
+        if self.log_time:
+            print('Using log time.')
+            self.stats['time_max'] = 5.931767619849855
+            self.stats['time_min'] = -10.870140433500834
 
     def __len__(self):
         return len(self.data)
@@ -159,6 +224,7 @@ class DLL_Dataset(Dataset):
         row = row[pos_time]
         col = col[pos_time]
         time = time[pos_time]
+
         pmtID = pmtID[pos_time]
 
         assert len(row) == len(time)
@@ -169,31 +235,36 @@ class DLL_Dataset(Dataset):
         hits = np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
         conds = np.array([particle['P'],particle['Theta'],particle['Phi']])
         conds = conds.reshape(1,-1).repeat(len(x),0)
+        unscaled_conds = conds.copy()
+
+        if len(hits) >= self.n_photons:
+            hits = hits[np.argsort(time)]
+            hits = hits[:self.n_photons]
+            conds = conds[:self.n_photons]
+            unscaled_conds = unscaled_conds[:self.n_photons]
+
+        if self.log_time:
+            hits[:,2] = np.log(hits[:,2])
+
 
         if self.time_cuts is not None:
             idx = np.where(hits[:,2] < self.time_cuts)[0]
             hits = hits[idx]
             conds = conds[idx]
 
-        unscaled_conds = conds.copy()
+        
         PID = np.array(particle['PDG'])
         n_hits = len(hits)
 
         hits = self.scale_data(hits,self.stats)
         conds = (conds - self.conditional_maxes) / (self.conditional_maxes - self.conditional_mins)
 
-        if len(hits) > self.n_photons:
-            hits = hits[np.argsort(time)]
-            hits = hits[:self.n_photons]
-            conds = conds[:self.n_photons]
-            unscaled_conds = unscaled_conds[:self.n_photons]
-
-        elif len(hits) < self.n_photons:
+        if len(hits) < self.n_photons:
             n_needed = self.n_photons - len(hits)
-            hits = np.pad(hits,((0,n_needed),(0,0)),mode='constant',constant_values=-9999)
-            conds = np.pad(conds,((0,n_needed),(0,0)),mode='constant',constant_values=-9999)
-            unscaled_conds = np.pad(unscaled_conds,((0,n_needed),(0,0)),mode='constant',constant_values=-999)
+            hits = np.pad(hits,((0,n_needed),(0,0)),mode='constant',constant_values=-np.inf)
+            conds = np.pad(conds,((0,n_needed),(0,0)),mode='constant',constant_values=-np.inf)
+            unscaled_conds = np.pad(unscaled_conds,((0,n_needed),(0,0)),mode='constant',constant_values=-np.inf)
         else:
             pass
-
+    
         return hits,conds,PID,n_hits,unscaled_conds

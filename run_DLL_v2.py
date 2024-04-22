@@ -25,6 +25,7 @@ from scipy.optimize import curve_fit
 import glob
 from PyPDF2 import PdfWriter
 from scipy.stats import norm
+from matplotlib.colors import LogNorm
 
 def merge_PDF(out_dir):
     pdf_dir = os.path.join(out_dir,'DLL')
@@ -129,10 +130,18 @@ def fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder):
     plt.savefig(os.path.join(out_folder,'Seperation_Average.pdf'),bbox_inches='tight')
     plt.close()
 
-def plot_DLL(kaons,pions,out_folder):
+def plot_DLL(kaons,pions,out_folder,datatype):
     #     # This function is gross need to rewrite it
     #     # Kaon label = 1
     #     # Pion label = 0
+    if datatype == 'Simulation':
+        real = False
+    elif datatype == 'Real':
+        real = True
+    else:
+        print("Are you using simulation or real data? Specify in the config file under datatype")
+        exit()
+
     dll_k = []
     dll_p = []
     kin_p = []
@@ -141,30 +150,84 @@ def plot_DLL(kaons,pions,out_folder):
     predicted_kaons = []
     kaon_labels = []
     pion_labels = []
+    nhits_k = []
+    nhits_pi = []
+    ll_p = []
+    ll_k = []
     for i in range(len(kaons)):
         dll_k.append((np.array(kaons[i]['hyp_kaon']) - np.array(kaons[i]['hyp_pion'])).flatten())
-        kin_k.append(kaons[i]['Kins'][:,0,:])
+        ll_k.append(np.array(kaons[i]['hyp_kaon']).flatten())
+        kin_k.append(kaons[i]['Kins'])
+        nhits_k.append(kaons[i]['Nhits'])
 
     for i in range(len(pions)):
         dll_p.append((np.array(pions[i]['hyp_kaon']) - np.array(pions[i]['hyp_pion'])).flatten())
-        kin_p.append(pions[i]['Kins'][:,0,:])
+        ll_p.append(np.array(pions[i]['hyp_pion']).flatten())
+        kin_p.append(pions[i]['Kins'])
+        nhits_pi.append(pions[i]['Nhits'])
 
     kin_p = np.concatenate(kin_p)
     kin_k = np.concatenate(kin_k)
     dll_p = np.concatenate(dll_p)
     dll_k = np.concatenate(dll_k)
+    nhits_k = np.concatenate(nhits_k)
+    nhits_pi = np.concatenate(nhits_pi)
+    ll_k = np.concatenate(ll_k)
+    ll_p = np.concatenate(ll_p)
+    ll_k = ll_k[np.where((kin_k[:,0] > 3.0) & (kin_k[:,0] < 3.5))[0]]
+    nhits_k = nhits_k[np.where((kin_k[:,0] > 3.0) & (kin_k[:,0] < 3.5))[0]]
+    ll_p = ll_p[np.where((kin_p[:,0] > 3.0) & (kin_p[:,0] < 3.5))[0]]
+    nhits_pi = nhits_pi[np.where((kin_p[:,0] > 3.0) & (kin_p[:,0] < 3.5))[0]]
 
+    # DLL fits in P bins
     fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder)
     merge_PDF(out_folder)
 
+    # DLL over phase space
     plt.hist(dll_k,bins=100,density=True,alpha=1.,range=[-50,50],label=r'$\mathcal{K}$',color='red',histtype='step',lw=3)
     plt.hist(dll_p,bins=100,density=True,range=[-50,50],alpha=1.0,label=r'$\pi$',color='blue',histtype='step',lw=3)
     plt.xlabel('Loglikelihood Difference',fontsize=25)
     plt.ylabel('A.U.',fontsize=25)
     plt.legend(fontsize=20)
-    plt.title(r'$ \Delta \mathcal{L}_{K \pi}$',fontsize=30)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.title(r'$ \Delta \mathcal{L}_{\mathcal{K} \pi}$',fontsize=30)
     out_path_DLL = os.path.join(out_folder,"DLL_piK.pdf")
     plt.savefig(out_path_DLL,bbox_inches='tight')
+    plt.close()
+
+    # LL vs photon yield
+    if real:
+        r = [(0,250),(-500,100)]
+    else:
+        r = [(0,250),(-150,100)]
+    plt.hist2d(nhits_k, ll_k, bins=[100,50], cmap='plasma', norm=LogNorm(), range=r)
+    plt.title(r'$\log \mathcal{L}_{\mathcal{K}}$ as a function of $N_{\gamma_c}$', fontsize=30, pad=10)
+    plt.xlabel(r'$N_{\gamma_c}$', fontsize=25)
+    plt.ylabel(r'$\log \mathcal{L}_{\mathcal{K}}$', fontsize=25)
+    text_x, text_y = 0.84, 0.12
+    text = r'$\mathcal{K}^{+-}$'
+    plt.text(text_x, text_y, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes, fontsize=30)
+    text_bbox = plt.text(text_x, text_y, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes, fontsize=30, bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.2'))
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    out_path_khits = os.path.join(out_folder,"Kaons_LL_function_of_NHits.pdf")
+    plt.savefig(out_path_khits,bbox_inches="tight")
+    plt.close()
+
+
+    plt.hist2d(nhits_pi, ll_p, bins=[100,50], cmap='plasma', norm=LogNorm(), range=r)
+    plt.title(r'$\log \mathcal{L}_{\pi}$ as a function of $N_{\gamma_c}$', fontsize=30, pad=10)
+    plt.xlabel(r'$N_{\gamma_c}$', fontsize=25)
+    plt.ylabel(r'$\log \mathcal{L}_{\pi}$', fontsize=25)
+    text_x, text_y = 0.84, 0.12
+    text = r'$\pi^{+-}$'
+    plt.text(text_x, text_y, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes, fontsize=30)
+    text_bbox = plt.text(text_x, text_y, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes, fontsize=30, bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.2'))
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    out_path_phits = os.path.join(out_folder,"Pions_DLL_function_of_NHits.pdf")
+    plt.savefig(out_path_phits,bbox_inches="tight")
     plt.close()
 
     def sigmoid(x):
@@ -177,11 +240,10 @@ def plot_DLL(kaons,pions,out_folder):
     true_labels = list(np.ones_like(sk)) + list(np.zeros_like(sp))
     total_conds = np.array(list(kin_k) + list(kin_p))
 
-    # Compute ROC curve
     fpr, tpr, thresholds = roc_curve(true_labels, delta_log_likelihood)
     roc_auc = auc(fpr, tpr)
 
-    # Plot ROC curve
+    # ROC Curve
     plt.figure()
     plt.plot(fpr, tpr, color='red', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
     plt.plot([0, 1], [0, 1], color='k', lw=2, linestyle='--')
@@ -199,6 +261,7 @@ def plot_DLL(kaons,pions,out_folder):
     plt.close()
     #plt.show()
 
+    # ROC as a function of momentum
     mom_ranges = [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5]
     centers = [mr+0.25 for mr in mom_ranges[:-1]]
     aucs = []
@@ -245,7 +308,7 @@ def plot_DLL(kaons,pions,out_folder):
     plt.xticks(fontsize=18)  # adjust fontsize as needed
     plt.yticks(fontsize=18)  # adjust fontsize as needed
     plt.title("AUC as function of Momentum - Analytic",fontsize=20)
-    plt.ylim(0.75,0.95)
+    plt.ylim(np.min(aucs) - 0.05,np.max(aucs) + 0.05)
 
     ax2 = plt.twinx()
 
@@ -255,7 +318,6 @@ def plot_DLL(kaons,pions,out_folder):
     ax2.set_ylabel('Counts', fontsize=20)
     ax2.tick_params(axis='y', labelsize=18)
     ax2.legend(loc='upper right', fontsize=20)
-    #plt.ylim(0.5,1.0)
     out_path_AUC_func_P = os.path.join(out_folder,"DLL_piK_AUC_func_P.pdf")
     plt.savefig(out_path_AUC_func_P,bbox_inches='tight')
     plt.close()
@@ -264,7 +326,8 @@ def drop_and_sum(x,batch_size):
     lls = []
     for b in range(batch_size):
         ll = x[b]
-        mask = torch.isinf(ll)
+        #mask = torch.isinf(ll)
+        mask = torch.isnan(ll)
        # print('inside',ll[~mask].shape)
         lls.append(ll[~mask].sum().detach().cpu().numpy())
     return lls
@@ -285,7 +348,9 @@ def run_inference_seperate(pions,kaons,pion_net,kaon_net):
         n_hits = data[3].numpy()
         c = data[1].reshape(int(b*n_photons),3).to('cuda').float()
         PID = data[2].numpy()
-        unsc = data[4].numpy()
+        unsc = data[4].numpy()[:,0,:]
+        #invMass = data[5].numpy()
+
         t_ = time.time()
         with torch.set_grad_enabled(False):
             pion_hyp_pion = pion_net.log_prob(h,context=c).reshape(-1,n_photons)
@@ -293,7 +358,10 @@ def run_inference_seperate(pions,kaons,pion_net,kaon_net):
             pion_hyp_kaon = kaon_net.log_prob(h,context=c).reshape(-1,n_photons)
             pion_hyp_kaon = drop_and_sum(pion_hyp_kaon,pion_hyp_kaon.shape[0])
             delta_t.append((time.time() - t_) / b)
-        LL_Pion.append({"hyp_pion":pion_hyp_pion,"hyp_kaon":pion_hyp_kaon,"Truth":PID,"Kins":unsc})
+
+        assert len(pion_hyp_kaon) == len(pion_hyp_pion)
+        assert len(unsc) == len(pion_hyp_pion)
+        LL_Pion.append({"hyp_pion":pion_hyp_pion,"hyp_kaon":pion_hyp_kaon,"Truth":PID,"Kins":unsc,"Nhits":n_hits})#,"invMass":invMass})
 
         kbar.update(i)
         #if i == 5000:
@@ -316,7 +384,8 @@ def run_inference_seperate(pions,kaons,pion_net,kaon_net):
         n_hits = data[3].numpy()
         c = data[1].reshape(int(b*n_photons),3).to('cuda').float()
         PID = data[2].numpy()
-        unsc = data[4].numpy()
+        unsc = data[4].numpy()[:,0,:]
+        #invMass = data[5].numpy()
         t_ = time.time()
         with torch.set_grad_enabled(False):
             kaon_hyp_kaon = kaon_net.log_prob(h,context=c).reshape(-1,n_photons)
@@ -324,7 +393,10 @@ def run_inference_seperate(pions,kaons,pion_net,kaon_net):
             kaon_hyp_pion = pion_net.log_prob(h,context=c).reshape(-1,n_photons)
             kaon_hyp_pion = drop_and_sum(kaon_hyp_pion,kaon_hyp_pion.shape[0])
         delta_t.append((time.time() - t_) / b)
-        LL_Kaon.append({"hyp_kaon":kaon_hyp_kaon,"hyp_pion":kaon_hyp_pion,"Truth":PID,"Kins":unsc})
+
+        assert len(kaon_hyp_kaon) == len(kaon_hyp_pion)
+        assert len(unsc) == len(kaon_hyp_kaon)
+        LL_Kaon.append({"hyp_kaon":kaon_hyp_kaon,"hyp_pion":kaon_hyp_pion,"Truth":PID,"Kins":unsc,"Nhits":n_hits})#,"invMass":invMass})
 
         kbar.update(i)
         #if i == 5000:
@@ -346,7 +418,7 @@ def main(config,resume):
     random.seed(config['seed'])
     torch.cuda.manual_seed(config['seed'])
     print("Running inference")
-
+    datatype = config['datatype']
     num_layers = int(config['model']['num_layers'])
     input_shape = int(config['model']['input_shape'])
     cond_shape = int(config['model']['cond_shape'])
@@ -354,9 +426,11 @@ def main(config,resume):
     hidden_nodes = int(config['model']['hidden_nodes'])
 
     assert config["method"] in ["Combined","Pion","Kaon"]
+    log_time = config['log_time']
+    stats = config['stats']
 
-    test_pions = DLL_Dataset(file_path=config['dataset']['testing']['DLL_RealData']['pion_data_path'],time_cuts=args.time)
-    test_kaons = DLL_Dataset(file_path=config['dataset']['testing']['DLL_RealData']['kaon_data_path'],time_cuts=args.time)
+    test_pions = DLL_Dataset(file_path=config['dataset']['testing']['DLL']['pion_data_path'],time_cuts=args.time,log_time=log_time,stats=stats)
+    test_kaons = DLL_Dataset(file_path=config['dataset']['testing']['DLL']['kaon_data_path'],time_cuts=args.time,log_time=log_time,stats=stats)
 
     print("# of Pions: ",len(test_pions))
     print("# of Kaons: ",len(test_kaons))
@@ -365,14 +439,14 @@ def main(config,resume):
     kaons = CreateInferenceLoader(test_kaons,config)
 
     if config['method'] != "Combined":
-        pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
+        pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
         #pion_net = create_nflows(input_shape,cond_shape,num_layers)
         device = torch.device('cuda')
         pion_net.to('cuda')
         dicte = torch.load(config['Inference']['pion_model_path'])
         pion_net.load_state_dict(dicte['net_state_dict'])
 
-        kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
+        kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
         #kaon_net = create_nflows(input_shape,cond_shape,num_layers)
         device = torch.device('cuda')
         kaon_net.to('cuda')
@@ -394,7 +468,7 @@ def main(config,resume):
             pickle.dump(LL_Kaon,file)
 
 
-        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir'])
+        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir'],datatype)
         
     else:
         print("WIP. Functions not defined. Exiting.")

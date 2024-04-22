@@ -49,9 +49,12 @@ def make_plot(generations,hits,stats,barID,x_high,x_low,method=None,samples=1,fo
     fig,ax = plt.subplots(4,2,figsize=(18,16))
     ax = ax.ravel()
     # We have a 2mm offset.
-    x_true = unscale(hits[:,0],stats['x_max'],stats['x_min']) - 2
-    y_true = unscale(hits[:,1],stats['y_max'],stats['y_min']) - 2
-    t_true = unscale(hits[:,2],stats['time_max'],stats['time_min'])
+    x_true = hits[:,0] - 2
+    y_true = hits[:,1] - 2
+    t_true = hits[:,2]
+    #x_true = unscale(hits[:,0],stats['x_max'],stats['x_min']) - 2
+    #y_true = unscale(hits[:,1],stats['y_max'],stats['y_min']) - 2
+    #t_true = unscale(hits[:,2],stats['time_max'],stats['time_min'])
 
     ax[0].hist2d(x_true,y_true,density=True,bins=[bins_x,bins_y],norm=mcolors.LogNorm())
     ax[0].set_xlabel(r'X $(mm)$',fontsize=20)
@@ -117,11 +120,6 @@ def main(config,resume):
     random.seed(config['seed'])
     torch.cuda.manual_seed(config['seed'])
     print("Running inference")
-    stats = config['stats']
-
-    base_folder = config['Inference']['gen_dir'].split("/")[0]
-    if not os.path.exists(base_folder):
-        os.mkdir(base_folder)
 
     if not os.path.exists(config['Inference']['gen_dir']):
         print('Generations can be found in: ' + config['Inference']['gen_dir'])
@@ -131,33 +129,18 @@ def main(config,resume):
     print('Creating Loaders.')
     if config['method'] == "Pion":
         print("Generating for pions.")
-        file_paths = [config['dataset']['training']['unsmeared']['pion_data_path'],
-                      config['dataset']['validation']['pion_data_path'],
-                      config['dataset']['testing']['gen']['pion_data_path']]
+        data = np.load(config['dataset']['mcmc']['pion_data_path'],allow_pickle=True)
         dicte = torch.load(config['Inference']['pion_model_path'])
 
     elif config['method'] == 'Kaon':
         print("Generation for kaons.")
-        file_paths = [config['dataset']['training']['unsmeared']['kaon_data_path'],
-                      config['dataset']['validation']['kaon_data_path'],
-                      config['dataset']['testing']['gen']['kaon_data_path']]
+        data = np.load(config['dataset']['mcmc']['kaon_data_path'],allow_pickle=True)
         dicte = torch.load(config['Inference']['kaon_model_path'])
     else:
         print("Specify particle to generate in config file")
         exit()
     log_time = bool(config['log_time'])
-    hits,conds,unscaled_conds,metadata = create_dataset(file_paths,stats)
-
-    print(" ")
-    print("Hit Statistics: ")
-    print("Max: ",hits.max(0))
-    print("Min: ",hits.min(0))
-    print(" ")
-    print("Conditional Statistics: ")
-    print("Max: ",conds.max(0))
-    print("Min: ",conds.min(0))
-    print(" ")
-
+    print(data.keys())
     # Create the model
     # This will map gen -> Reco
     if config['method'] == 'Pion':
@@ -172,7 +155,7 @@ def main(config,resume):
     num_blocks = int(config['model']['num_blocks'])
     hidden_nodes = int(config['model']['hidden_nodes'])
     #net = MAAF(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
-    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,log_time=log_time,stats=stats)
+    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,log_time=log_time)
     #net = create_nflows(input_shape,cond_shape,num_layers)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
@@ -191,11 +174,16 @@ def main(config,resume):
     #bars = [31]
     #bars = [0,1,2,3,4,5,6,24,25,26,27,28,29,30,31]
     #bars = [31,0]
-    #bars = [9,10,11]s
-
+    #bars = [9,10,11]
+    # Real data time max = 376.82
+    stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}
     combinations = list(itertools.product(xs,bars))
     print('Generating PDFs for {0} combinations of BarID and x ranges.'.format(len(combinations)))
+    barIDs = np.array(data['BarID'])
+    barX = np.array(data['X'])
 
+    print(barIDs)
+    print(barX)
 
     for j,combination in enumerate(combinations):
         x_low = combination[0][0]
@@ -204,42 +192,47 @@ def main(config,resume):
         print('Generating Bar {0}, x ({1},{2})'.format(barID,x_low,x_high))
         print(" ")
         generations = []
-        mom_idx = np.where((metadata[:,0] == barID) & (metadata[:,1] > x_low) & (metadata[:,1] < x_high))[0]
-        kin_dataset = TensorDataset(torch.tensor(hits[mom_idx]),torch.tensor(conds[mom_idx]),torch.tensor(unscaled_conds[mom_idx]))
-        if len(kin_dataset) == 0:
+        mom_idx = np.where((barIDs == barID) & (barX > x_low) & (barX < x_high))[0]
+
+        if len(mom_idx) == 0:
             print(" ")
             print('No data at Bar {0}, x ({1},{2})'.format(barID,x_low,x_high))
             print(" ")
             continue
-        if len(kin_dataset) < 1000:
-            batch_size = len(kin_dataset)
-        else:
-            batch_size = 1000
 
-        kin_loader = DataLoader(kin_dataset,batch_size=batch_size,shuffle=False)
-        kbar = pkbar.Kbar(target=len(kin_loader), width=20, always_stateful=False)
+        track_params = [data['conds'][l] for l in mom_idx]
+        true_hits = np.concatenate([data['Hits'][l] for l in mom_idx])
+        photon_yields = data['NHits'][mom_idx]
+
+        kbar = pkbar.Kbar(target=len(photon_yields), width=20, always_stateful=False)
         start = time.time()
-        for i, data in enumerate(kin_loader):
-            input  = data[0].to('cuda').float()
-            k = data[1].to('cuda').float()
+        for i in range(len(track_params)):
+            k = torch.tensor(track_params[i][:1]).to('cuda').float()
+            num_samples = int(photon_yields[i])
+            #print(k.shape)
+            #print(k)
+            #print(num_samples)
+            #num_samples = min(100,num_samples)
+            #print(num_samples)
 
             with torch.set_grad_enabled(False):
-                gen = net._sample(num_samples=n_samples,context=k)
-
+                #gen = net.probabalistic_sample(pre_compute_dist=3000,context=k,photon_yield=num_samples)
+                gen = net._sample(num_samples=num_samples,context=k)
             generations.append(gen)
 
             kbar.update(i)
         end = time.time()
         generations = np.concatenate(generations)
+        #np.save(generations,'test.npy')
         print(" ")
-        print(generations.max(),generations.min())
+        #print(generations.shape)
         print("Elapsed time:",end - start)
         print("Time / event:",(end - start)/len(generations))
         folder = os.path.join(config['Inference']['gen_dir'],"BarID_{0}".format(barID))
         if not os.path.exists(folder):
             os.mkdir(folder)
 
-        make_plot(generations,hits[mom_idx],stats,barID,x_high,x_low,config['method'],n_samples,folder)
+        make_plot(generations,true_hits,stats,barID,x_high,x_low,config['method'],n_samples,folder)
         print(" ")
 
 

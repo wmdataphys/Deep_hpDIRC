@@ -1,8 +1,11 @@
 {
-    "name": "Kaon_Affine300Epochs_8Layers_512Nodes_RealData",
+    "name": "Pions_ExpTails_150ns",
     "seed": 752022,
     "run_val":1,
-    "method":"Kaon",
+    "method":"Pion",
+    "datatype": "Real",
+    "log_time": 0,
+    "stats": {"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":150.00,"time_min":0.0},
     "model": {
        "num_layers":8,
        "input_shape":3,
@@ -12,13 +15,13 @@
    },
     "dataset": {
         "training": {
-	    "unsmeared": {
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Pions_From_Data.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Kaons_From_Data.csv"
-        },
 	    "smeared": {
-	    "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Pions_From_Data_Smeared.csv",
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Pions_From_Data_Smeared.csv",
             "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Kaons_From_Data_Smeared.csv"
+        },
+	    "unsmeared": {
+	    "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Pions_From_Data.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Kaons_From_Data.csv"
 	    }
 	},
         "validation":{

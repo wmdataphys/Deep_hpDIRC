@@ -14,6 +14,7 @@ from models.nflows_models import create_nflows
 from dataloader.create_data import CherenkovPhotons
 from datetime import datetime
 from models.freia_models import FreiaNet
+from models.nflows_models import MAAF
 
 def main(config,resume):
 
@@ -38,12 +39,13 @@ def main(config,resume):
 
        # Load the dataset
     print('Creating Loaders.')
+    stats = config['stats']
 
     train_dataset = CherenkovPhotons(kaon_path=config['dataset']['training']['smeared']['kaon_data_path'],
-                    pion_path=config['dataset']['training']['smeared']['pion_data_path'],inference=False,mode=config['method'])
+                    pion_path=config['dataset']['training']['smeared']['pion_data_path'],inference=False,mode=config['method'],log_time=config['log_time'],stats=stats)
     # Evaluate on center of pixels
     val_dataset = CherenkovPhotons(kaon_path=config['dataset']['validation']['kaon_data_path'],
-                    pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'])
+                    pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'],log_time=config['log_time'],stats=stats)
 
 
     history = {'train_loss':[],'val_loss':[],'lr':[]}
@@ -61,7 +63,9 @@ def main(config,resume):
     cond_shape = int(config['model']['cond_shape'])
     num_blocks = int(config['model']['num_blocks'])
     hidden_nodes = int(config['model']['hidden_nodes'])
-    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
+    log_time = bool(config['log_time'])
+    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,log_time=log_time,stats=stats)
+    #net = MAAF(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
     #net = create_nflows(input_shape,cond_shape,num_layers)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)

@@ -43,7 +43,7 @@ class FreiaNet(nn.Module):
                                                     139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
                                                     209., 215., 221., 227., 233., 239., 245., 253., 259., 265., 271.,
                                                     277., 283., 289., 295.]))
-        self.stats_ = {"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}
+        self.stats_ = {"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0}
         if self.embedding:
             self.context_embedding = nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape)])
 

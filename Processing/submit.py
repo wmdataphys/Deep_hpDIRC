@@ -1,56 +1,3 @@
-# import os
-# import subprocess
-
-# # Directory containing the files
-# files_directory = "/sciclone/data10/jgiroux/Cherenkov/Real_Data/json"
-
-# # Path to the Python script to be executed
-# python_script = "/sciclone/home/jgiroux/Cherenkov_FastSim/Processing/make_GlueX_data.py"
-
-# # Directory to store submission scripts
-# submission_scripts_directory = "/sciclone/home/jgiroux/Cherenkov_FastSim/Processing/scripts"
-
-# # Create the submission scripts directory if it doesn't exist
-# os.makedirs(submission_scripts_directory, exist_ok=True)
-
-# # Amount of RAM to request for each job (in megabytes)
-# ram_per_job = 8192  # 8 GB
-
-# # Iterate over the files in the directory
-# for filename in os.listdir(files_directory):
-#     # Check if the item is a file
-#     if os.path.isfile(os.path.join(files_directory, filename)):
-#         # Construct the full file path
-#         #file_path = os.path.join(files_directory, filename)
-#         file_path = os.path.join(files_directory,"hd_root_071725.json")
-        
-#         # Create a submission script for each file
-#         submission_script = f"""\
-# #!/bin/bash
-# #SBATCH --export=ALL
-# #SBATCH --job-name={os.path.splitext(filename)[0]}
-# #SBATCH --nodes=1
-# #SBATCH --tasks=1
-# #SBATCH -t 72:00:00
-# #SBATCH --mem={ram_per_job}M 
-
-
-# module load anaconda3/2023.09
-# source activate ptorch
-
-# python {python_script} --file {file_path}
-# """
-
-#         # Write the submission script to a file in the submission scripts directory
-#         submission_script_path = os.path.join(submission_scripts_directory, f"{os.path.splitext(filename)[0]}.sh")
-#         with open(submission_script_path, 'w') as f:
-#             f.write(submission_script)
-            
-#         # Execute the submission script
-#         subprocess.run(["sbatch", submission_script_path])
-
-#     break
-
 import os
 import subprocess
 
@@ -104,3 +51,4 @@ python {python_script} --file {file_path}
         subprocess.run(["sbatch", submission_script_path])
       
     #break  # For testing purposes, remove this line to process all files
+
