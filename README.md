@@ -9,6 +9,8 @@ This was just the first way I could get slurm to not complain. Probably a better
 
 # Import Notes:
 
+April 2022 - I included code to run tests with tail modification on real data in the CherenkovPhotons dataset. If you do not want this you can simply comment it out and include .to_numpy() on the reading of the .csv file. Have not implemented this on a config level basis yet. Not sure if it will stay.
+
 If you are running on real data or simulation make sure to check the create_data.py folder and implement the correct maximum time!!!
 
 To run an interactive job: salloc -N -n 8 --gpus=1 --time=01:00:00
