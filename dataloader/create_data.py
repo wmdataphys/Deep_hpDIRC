@@ -59,8 +59,15 @@ class CherenkovPhotons(Dataset):
 
         if mode == "Kaon":
             columns=["x","y","time","P","theta","phi"]
-            self.data = pd.read_csv(kaon_path,sep=',',index_col=None)
-            self.data = self.modify_tails(self.data)
+            if not self.inference:
+                print('Using training mode.')
+                self.data = pd.read_csv(kaon_path,sep=',',index_col=None)
+                self.data = self.modify_tails(self.data)
+            else:
+                print("Using inference mode.")
+                data = pd.read_csv(kaon_path,sep=',',index_col=None)
+                self.data = data[data.time < self.stats['time_max']].to_numpy()
+
             if self.log_time:
                 self.data[:,0] = np.log(self.data[:,0])
                 self.stats['x_max'] = 6.800170048114738
@@ -74,8 +81,14 @@ class CherenkovPhotons(Dataset):
             self.data = np.concatenate([self.data,np.c_[np.ones_like(self.data[:,0])]],axis=1)
 
         elif mode == "Pion":
-            self.data = pd.read_csv(pion_path,sep=',',index_col=None)
-            self.data = self.modify_tails(self.data)
+            if not self.inference:
+                print('Using training mode.')
+                self.data = pd.read_csv(pion_path,sep=',',index_col=None)
+                self.data = self.modify_tails(self.data)
+            else:
+                print("Using inference mode.")
+                data = pd.read_csv(pion_path,sep=',',index_col=None)
+                self.data = data[data.time < self.stats['time_max']].to_numpy()
             if self.log_time:
                 self.data[:,0] = np.log(self.data[:,0])
                 self.stats['x_max'] = 6.800170048114738
