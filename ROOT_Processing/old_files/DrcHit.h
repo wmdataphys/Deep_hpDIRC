@@ -14,14 +14,14 @@
 
 class DrcHit : public TObject {
 
-public:   
+public:
  
   //Constructor
   DrcHit();
 
   ~DrcHit(){};
  
-  // Accessors 
+  // Accessors
   Int_t GetType()        { return fType; }
   Int_t GetNreflections()  { return fNreflections; }
   Long64_t GetPathId()  { return fPathId; }
@@ -49,7 +49,7 @@ public:
   void SetPixelId(Int_t val) { fPixelId = val; }
   void SetChannel(Int_t val) { fChannel=val; }
   void SetLeadTime(Double_t val) { fLeadTime=val; }
-  void SetTotTime(Double_t val) { fTotTime=val; } 
+  void SetTotTime(Double_t val) { fTotTime=val; }
 
 protected:
 

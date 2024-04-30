@@ -10,7 +10,8 @@ def count_lines(filename):
         return sum(1 for line in file)
 
 def extract_json(file_path):
-    data_dict = {'EventID':None, 'PDG':None, 'NHits':None, 'BarID':None, 'P':None, 'Theta':None, 'Phi':None, 'X':None, 'Y':None, 'Z':None, 'pmtID':None, 'pixelID':None, 'channel':None, 'leadTime':None}
+    #data_dict = {'EventID':None, 'PDG':None, 'NHits':None, 'BarID':None, 'P':None, 'Theta':None, 'Phi':None, 'X':None, 'Y':None, 'Z':None, 'pmtID':None, 'pixelID':None, 'channel':None, 'leadTime':None}
+    data_dict = {}
     EventID = []
     PDG = []
     NHits = []
@@ -21,6 +22,10 @@ def extract_json(file_path):
     X = []
     Y = []
     Z = []
+    LikelihoodElectron = []
+    LikelihoodPion = []
+    LikelihoodKaon = []
+    LikelihoodProton = []
     pmtID = []
     pixelID = []
     channel = []
@@ -44,6 +49,10 @@ def extract_json(file_path):
             X.append(data['X'])
             Y.append(data['Y'])
             Z.append(data['Z'])
+            LikelihoodElectron.append(data['LikelihoodElectron'])
+            LikelihoodPion.append(data['LikelihoodPion'])
+            LikelihoodKaon.append(data['LikelihoodKaon'])
+            LikelihoodProton.append(data['LikelihoodProton'])
             invMass.append(data['invMass'])
             pmtID.append(data['pmtID'])
             pixelID.append(data['pixelID'])
@@ -68,12 +77,16 @@ def extract_json(file_path):
     data_dict['Y']  =        np.array(Y)
     data_dict['Z']  =        np.array(Z)
     data_dict['invMass'] = np.array(invMass)
+    data_dict['LikelihoodElectron'] = np.array(LikelihoodElectron)
+    data_dict['LikelihoodPion'] = np.array(LikelihoodPion)
+    data_dict['LikelihoodKaon'] = np.array(LikelihoodKaon)
+    data_dict['LikelihoodProton'] = np.array(LikelihoodProton)
     data_dict['pmtID']  =        pmtID
     data_dict['pixelID']  =        pixelID
     data_dict['channel']  =        channel
     data_dict['leadTime']  =        leadTime      
 
-    print(" Done " )
+    print(" Done " ,len(data_dict))
     return data_dict
 
 def parse_data(data_dict):
@@ -89,9 +102,21 @@ def parse_data(data_dict):
     conditional_mins = np.array([0.95,0.90,-176.])
     kbar = pkbar.Kbar(target=len(np.unique(data_dict['EventID'])), width=20, always_stateful=False)
     l = 0
+    # For actual data
+    # rho_mass_upper = 0.9
+    # rho_mass_lower = 0.6
+    # phi_mass_lower = 1.0
+    # phi_mass_upper = 1.04
+    # For particle gun -> Inv mass has no meaning here
+    rho_mass_upper = np.inf
+    rho_mass_lower = -np.inf
+    phi_mass_lower = -np.inf
+    phi_mass_upper = np.inf
     for j in np.unique(data_dict['EventID']):
         idx = np.where(data_dict['EventID'] == j)[0]
         ys = data_dict['Y'][idx]
+        #print('PDG',data_dict['PDG'][idx])
+        #print(j)
         if len(idx) > 2:
             print('Skipping event.')
             kbar.update(l)
@@ -128,25 +153,27 @@ def parse_data(data_dict):
                 
                 
                 event0 = {'EventID':idx[0],'invMass':data_dict['invMass'][idx][obox_0_idx], 'PDG':data_dict['PDG'][idx][obox_0_idx], 'NHits':len(pmt_obox_0), 'BarID':data_dict['BarID'][idx][obox_0_idx], 'P':data_dict['P'][idx][obox_0_idx], 'Theta':data_dict['Theta'][idx][obox_0_idx], 'Phi':data_dict['Phi'][idx][obox_0_idx], 'X':data_dict['X'][idx][obox_0_idx], 'Y':data_dict['Y'][idx][obox_0_idx], 'Z':data_dict['Z'][idx][obox_0_idx],
-                        'pmtID':pmt_obox_0, 'pixelID':pixel_obox_0, 'channel':channel_obox_0, 'leadTime':leadTime_obox_0}
+                        'pmtID':pmt_obox_0, 'pixelID':pixel_obox_0, 'channel':channel_obox_0, 'leadTime':leadTime_obox_0,'LikelihoodElectron':data_dict['LikelihoodElectron'][idx][obox_0_idx],'LikelihoodPion':data_dict['LikelihoodPion'][idx][obox_0_idx],'LikelihoodKaon':data_dict['LikelihoodKaon'][idx][obox_0_idx],'LikelihoodProton':data_dict['LikelihoodProton'][idx][obox_0_idx]}
                 event1 = {'EventID':idx[0],'invMass':data_dict['invMass'][idx][obox_1_idx], 'PDG':data_dict['PDG'][idx][obox_1_idx], 'NHits':len(pmt_obox_1), 'BarID':data_dict['BarID'][idx][obox_1_idx], 'P':data_dict['P'][idx][obox_1_idx], 'Theta':data_dict['Theta'][idx][obox_1_idx], 'Phi':data_dict['Phi'][idx][obox_1_idx], 'X':data_dict['X'][idx][obox_1_idx], 'Y':data_dict['Y'][idx][obox_1_idx], 'Z':data_dict['Z'][idx][obox_1_idx],
-                        'pmtID':pmt_obox_1, 'pixelID':pixel_obox_1, 'channel':channel_obox_1, 'leadTime':leadTime_obox_1}
+                        'pmtID':pmt_obox_1, 'pixelID':pixel_obox_1, 'channel':channel_obox_1, 'leadTime':leadTime_obox_1,'LikelihoodElectron':data_dict['LikelihoodElectron'][idx][obox_1_idx],'LikelihoodPion':data_dict['LikelihoodPion'][idx][obox_1_idx],'LikelihoodKaon':data_dict['LikelihoodKaon'][idx][obox_1_idx],'LikelihoodProton':data_dict['LikelihoodProton'][idx][obox_1_idx]}
                 
             if (event0['PDG'] in PIDS) and (len(pmt_obox_0) < 300) and (event0['P'] < conditional_maxes[0]) and (event0['P'] > conditional_mins[0]) and (event0['Theta'] < conditional_maxes[1]) and (event0['Theta'] > conditional_mins[1]) and (event0['Phi'] < conditional_maxes[2]) and (event0['Phi'] > conditional_mins[2]):
                 #clean_events.append(event0)
-                if (abs(event0['PDG']) == 321) and (event0['invMass'] > 1.0) and (event0['invMass'] < 1.04):
+                if (abs(event0['PDG']) == 321) and (event0['invMass'] > phi_mass_lower) and (event0['invMass'] < phi_mass_upper):
                     kaons.append(event0)
-                elif (abs(event0['PDG']) == 211) and (event0['invMass'] > 0.6) and (event0['invMass'] < 0.9):
+                elif (abs(event0['PDG']) == 211) and (event0['invMass'] > rho_mass_lower) and (event0['invMass'] < rho_mass_upper):
                     pions.append(event0) # Else its a pion
                 else:
+                    #print('Skipped')
                     continue
             if (event1['PDG'] in PIDS) and (len(pmt_obox_1) < 300)  and (event1['P'] < conditional_maxes[0]) and (event1['P'] > conditional_mins[0]) and (event1['Theta'] < conditional_maxes[1]) and (event1['Theta'] > conditional_mins[1]) and (event1['Phi'] < conditional_maxes[2]) and (event1['Phi'] > conditional_mins[2]):
                 #clean_events.append(event1)
-                if (abs(event1['PDG']) == 321) and (event1['invMass'] > 1.0) and (event1['invMass'] < 1.04):
+                if (abs(event1['PDG']) == 321) and (event1['invMass'] > phi_mass_lower) and (event1['invMass'] < phi_mass_upper):
                     kaons.append(event1)
-                elif (abs(event1['PDG']) == 211) and (event1['invMass'] > 0.6) and (event1['invMass'] < 0.9):
+                elif (abs(event1['PDG']) == 211) and (event1['invMass'] > rho_mass_lower) and (event1['invMass'] < rho_mass_upper):
                     pions.append(event1) # Else its a pion
                 else:
+                    #print("skipped")
                     continue
 
             if event1['PDG'] not in PIDS or event0['PDG'] not in PIDS:
@@ -169,17 +196,18 @@ def parse_data(data_dict):
                     channel_obox = np.array(data_dict['channel'][idx])[hits_in_obox]
              
                     event = {'EventID':idx,'invMass':data_dict['invMass'][idx], 'PDG':data_dict['PDG'][idx], 'NHits':len(pmt_obox), 'BarID':data_dict['BarID'][idx], 'P':data_dict['P'][idx], 'Theta':data_dict['Theta'][idx], 'Phi':data_dict['Phi'][idx], 'X':data_dict['X'][idx], 'Y':data_dict['Y'][idx], 'Z':data_dict['Z'][idx],
-                        'pmtID':pmt_obox, 'pixelID':pixel_obox, 'channel':channel_obox, 'leadTime':leadTime_obox}
+                        'pmtID':pmt_obox, 'pixelID':pixel_obox, 'channel':channel_obox, 'leadTime':leadTime_obox,'LikelihoodElectron':data_dict['LikelihoodElectron'][idx],'LikelihoodPion':data_dict['LikelihoodPion'][idx],'LikelihoodKaon':data_dict['LikelihoodKaon'][idx],'LikelihoodProton':data_dict['LikelihoodProton'][idx]}
                         
                 else:  
                     event = {'EventID':idx,'invMass':data_dict['invMass'][idx], 'PDG':data_dict['PDG'][idx], 'NHits':data_dict['NHits'][idx], 'BarID':data_dict['BarID'][idx], 'P':data_dict['P'][idx], 'Theta':data_dict['Theta'][idx], 'Phi':data_dict['Phi'][idx], 'X':data_dict['X'][idx], 'Y':data_dict['Y'][idx], 'Z':data_dict['Z'][idx],
-                            'pmtID':data_dict['pmtID'][idx], 'pixelID':data_dict['pixelID'][idx], 'channel':data_dict['channel'][idx], 'leadTime':data_dict['leadTime'][idx]}
+                            'pmtID':data_dict['pmtID'][idx], 'pixelID':data_dict['pixelID'][idx], 'channel':data_dict['channel'][idx], 'leadTime':data_dict['leadTime'][idx],'LikelihoodElectron':data_dict['LikelihoodElectron'][idx],'LikelihoodPion':data_dict['LikelihoodPion'][idx],'LikelihoodKaon':data_dict['LikelihoodKaon'][idx],'LikelihoodProton':data_dict['LikelihoodProton'][idx]}
                 
-                if (abs(event['PDG']) == 321) and (event['invMass'] > 1.0) and (event['invMass'] < 1.04):
+                if (abs(event['PDG']) == 321) and (event['invMass'] > phi_mass_lower) and (event['invMass'] < phi_mass_upper):
                     kaons.append(event)
-                elif (abs(event['PDG']) == 211) and (event['invMass'] > 0.6) and (event['invMass'] < 0.9):
+                elif (abs(event['PDG']) == 211) and (event['invMass'] > rho_mass_lower) and (event['invMass'] < rho_mass_upper):
                     pions.append(event) # Else its a pion
                 else:
+                    #print('Skipped single track')
                     continue
                 #clean_events.append(event)
         kbar.update(l)

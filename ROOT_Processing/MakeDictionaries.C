@@ -1,6 +1,7 @@
 #define glx__sim
 #include "DrcEvent.h"
 #include "glxtools.C"
+#include <cmath>
 
 struct EventStruct{
     int EventID;
@@ -14,6 +15,10 @@ struct EventStruct{
     Float_t X;
     Float_t Y;
     Float_t Z;
+    Double_t LikelihoodElectron;
+    Double_t LikelihoodPion;
+    Double_t LikelihoodKaon;
+    Double_t LikelihoodProton;
     vector <int> pmtID;
     vector <int> pixelID;
     vector <int> channel;
@@ -37,6 +42,10 @@ void WriteStructJson(EventStruct evtstruct, std::ofstream& out)
     Form("\"X\" : %f, ", evtstruct.X) <<
     Form("\"Y\" : %f, ", evtstruct.Y) <<
     Form("\"Z\" : %f, ", evtstruct.Z) <<
+    Form("\"LikelihoodElectron\" : %f, ", evtstruct.LikelihoodElectron) <<
+    Form("\"LikelihoodPion\" : %f, ", evtstruct.LikelihoodPion) <<
+    Form("\"LikelihoodKaon\" : %f, ", evtstruct.LikelihoodKaon) <<
+    Form("\"LikelihoodProton\" : %f, ", evtstruct.LikelihoodProton) <<
     Form("\"pmtID\" : [");
     for (int i = 0; i < evtstruct.NHits; i++)
     {
@@ -96,39 +105,14 @@ void MakeDictionaries(TString inFileName, TString outFileName = "Phi.json")
         const int ps = glx_events->GetEntriesFast();
         if (ps > 2)
         {
-           //cout << "Skipping because p " << ps << endl;
-           continue; // Why is this ??
+          //cout << "Skipping because p " << ps << endl;
+          continue; // Why is this ??
         }
         for (int p = 0; p < ps; p++)
         {
-            //cout << "EV: " << ev << ": " << p << endl;
-            //if (p != 0) continue;
+            cout << "EV: " << ev << ": " << p << endl;
             
             glx_nextEventc(ev,p,10);
-
-            // if(glx_event->GetParent()>0) continue;
-            // //  cout << "mass: " << glx_event->GetInvMass() << " PDG" << glx_event->GetPdg() << endl;
-            // // For Rho -> pi+pi- 776 +- 147 MeV
-            // if (abs(glx_event->GetPdg()) == 211)
-            // {
-            //     if ((glx_event->GetInvMass() < 0.776 - 0.147) || (glx_event->GetInvMass() > 0.776 + 0.147))
-            //     {   //cout << "Skipping PDG " << evtStruct.PDG << " with Mass " << evtStruct.invMass << endl;
-            //         continue;
-            //     }
-            // }
-            // // For phi -> K+K- 1019 +- 10 MeV
-            // else if (abs(glx_event->GetPdg()) == 321)
-            // {
-            //     if ((glx_event->GetInvMass() < 1.0) || (glx_event->GetInvMass() > 1.1))
-            //     {   //cout << "Skipping PDG " << evtStruct.PDG << " with Mass " << evtStruct.invMass << endl;
-            //         continue;
-            //     }
-            // }
-            
-            // if ((abs(glx_event->GetPdg()) != 321) || (abs(glx_event->GetPdg()) != 211)){
-            //      cout << "Skipping: " <<  glx_event->GetPdg() << endl;
-            //      //cout << glx_event->GetPdg() << endl;
-            //      continue;}
 
             EventStruct evtStruct;
             evtStruct.EventID = ev;
@@ -143,7 +127,17 @@ void MakeDictionaries(TString inFileName, TString outFileName = "Phi.json")
             evtStruct.Y = hpos.Y();
             evtStruct.Z = hpos.Z();
             evtStruct.invMass = glx_event->GetInvMass();
-            
+            evtStruct.LikelihoodElectron = glx_event->GetLikelihoodElectron();
+            evtStruct.LikelihoodPion = glx_event->GetLikelihoodPion();
+            evtStruct.LikelihoodKaon = glx_event->GetLikelihoodKaon();
+            evtStruct.LikelihoodProton = glx_event->GetLikelihoodProton();
+            cout << "EV: " << ev << "PDG: " << evtStruct.PDG << endl;
+
+            if (std::isnan(evtStruct.LikelihoodElectron)) evtStruct.LikelihoodElectron = -99999;
+            if (std::isnan(evtStruct.LikelihoodPion)) evtStruct.LikelihoodPion = -99999;
+            if (std::isnan(evtStruct.LikelihoodKaon)) evtStruct.LikelihoodKaon = -99999;
+            if (std::isnan(evtStruct.LikelihoodProton)) evtStruct.LikelihoodProton = -99999;
+
             for (int h = 0; h < evtStruct.NHits; h++)
             {
                 DrcHit hit = glx_event->GetHit(h);

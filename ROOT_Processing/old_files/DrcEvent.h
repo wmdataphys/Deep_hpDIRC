@@ -18,14 +18,14 @@ class DrcEvent: public TObject  {
 
 public:
 
-  DrcEvent(); 	//the default constructor
-  ~DrcEvent() {}; 
+  DrcEvent();     //the default constructor
+  ~DrcEvent() {};
 
   void AddHit(DrcHit hit);
   DrcHit GetHit(Int_t ind) { return fHitArray[ind]; }
   std::vector<DrcHit> GetHits() { return fHitArray; }
   
-  // Accessors 
+  // Accessors
   Int_t GetId() const { return fId; }
   Int_t GetType() const { return fType; }
   Double_t GetTime() const { return fTime; }
@@ -47,13 +47,7 @@ public:
   Int_t GetHitSize()      const { return fHitSize; }
   Double_t GetTest1()     const { return fTest1; }
   Double_t GetTest2()     const { return fTest2; }
-
-  Double_t GetLikelihoodElectron()  const { return fLikelihoodElectron; }
-  Double_t GetLikelihoodPion()  const { return fLikelihoodPion; }
-  Double_t GetLikelihoodKaon()  const { return fLikelihoodKaon; }
-  Double_t GetLikelihoodProton()  const { return fLikelihoodProton; }
-
-
+  
   // Mutators
   void SetId(Int_t val)         { fId=val; }
   void SetType(Int_t val)       { fType=val; }
@@ -75,13 +69,8 @@ public:
   void SetPosition_Truth(TVector3 val){ fPosition_Truth = val; }
   void SetTest1(Double_t val)   { fTest1 = val; }
   void SetTest2(Double_t val)   { fTest2 = val; }
-  void SetNPhotons(Int_t val)        { fNPhotons = val; }
-  void SetLikelihoodElectron(Double_t val)   { fLikelihoodElectron = val; }
-  void SetLikelihoodPion(Double_t val)   { fLikelihoodPion = val; }
-  void SetLikelihoodKaon(Double_t val)   { fLikelihoodKaon = val; }
-  void SetLikelihoodProton(Double_t val)   { fLikelihoodProton = val; }
 
-private: 
+private:
   Int_t fId;
   Int_t fType;
   Int_t fPdg;
@@ -95,11 +84,6 @@ private:
   Double_t fTofTrackDeltaT;
   Int_t fId_Truth;
   Double_t fTime_Truth;
-  Int_t fNPhotons;
-  Double_t fLikelihoodElectron;
-  Double_t fLikelihoodPion;
-  Double_t fLikelihoodKaon;
-  Double_t fLikelihoodProton;
 
   Int_t fHitSize;
   std::vector<DrcHit> fHitArray;
