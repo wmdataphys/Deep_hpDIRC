@@ -47,7 +47,7 @@ class InvertibleTanh(InvertibleModule):
 
 class FreiaNet(nn.Module):
     def __init__(self,input_shape,layers,context_shape,embedding=False,hidden_units=512,num_blocks=2,log_time=False
-    ,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0}):
+    ,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0},device='cuda'):
         super(FreiaNet, self).__init__()
         self.input_shape = input_shape
         self.layers = layers
@@ -56,26 +56,34 @@ class FreiaNet(nn.Module):
         self.hidden_units = hidden_units
         self.num_blocks = num_blocks
         self.burn_in = 1000
+        self.photons_generated = 0
+        self.photons_resampled = 0
+        self.device = device
 
-        self._allowed_x = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  53.,  59.,  65.,
-                                                    71.,  77.,  83.,  89.,  95., 103., 109., 115., 121., 127., 133.,
-                                                    139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
-                                                    209., 215., 221., 227., 233., 239., 245., 253., 259., 265., 271.,
-                                                    277., 283., 289., 295., 303., 309., 315., 321., 327., 333., 339.,
-                                                    345., 353., 359., 365., 371., 377., 383., 389., 395., 403., 409.,
-                                                    415., 421., 427., 433., 439., 445., 453., 459., 465., 471., 477.,
-                                                    483., 489., 495., 503., 509., 515., 521., 527., 533., 539., 545.,
-                                                    553., 559., 565., 571., 577., 583., 589., 595., 603., 609., 615.,
-                                                    621., 627., 633., 639., 645., 653., 659., 665., 671., 677., 683.,
-                                                    689., 695., 703., 709., 715., 721., 727., 733., 739., 745., 753.,
-                                                    759., 765., 771., 777., 783., 789., 795., 803., 809., 815., 821.,
-                                                    827., 833., 839., 845., 853., 859., 865., 871., 877., 883., 889.,
-                                                    895.]))
-        self._allowed_y = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  53.,  59.,  65.,
-                                                    71.,  77.,  83.,  89.,  95., 103., 109., 115., 121., 127., 133.,
-                                                    139., 145., 153., 159., 165., 171., 177., 183., 189., 195., 203.,
-                                                    209., 215., 221., 227., 233., 239., 245., 253., 259., 265., 271.,
-                                                    277., 283., 289., 295.]))
+        self._allowed_x = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,   # 0
+                                                    53.,  59.,  65., 71.,  77.,  83.,  89.,  95.,  # 1
+                                                    103., 109., 115., 121., 127., 133., 139., 145.,# 2
+                                                    153., 159., 165., 171., 177., 183., 189., 195.,# 3
+                                                    203., 209., 215., 221., 227., 233., 239., 245.,# 4 
+                                                    253., 259., 265., 271.,277., 283., 289.,  295.,# 5
+                                                    303., 309., 315., 321., 327., 333., 339., 345.,# 6
+                                                    353., 359., 365., 371., 377., 383., 389., 395.,# 7 
+                                                    403., 409., 415., 421., 427., 433., 439., 445.,# 8
+                                                    453., 459., 465., 471., 477., 483., 489., 495.,# 9 
+                                                    503., 509., 515., 521., 527., 533., 539., 545.,# 10
+                                                    553., 559., 565., 571., 577., 583., 589., 595.,# 11
+                                                    603., 609., 615., 621., 627., 633., 639., 645.,# 12 
+                                                    653., 659., 665., 671., 677., 683., 689., 695.,# 13
+                                                    703., 709., 715., 721., 727., 733., 739., 745.,# 14 
+                                                    753., 759., 765., 771., 777., 783., 789., 795.,# 15 
+                                                    803., 809., 815., 821., 827., 833., 839., 845.,# 16
+                                                    853., 859., 865., 871., 877., 883., 889., 895.])).to(self.device) # 17
+        self._allowed_y = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  # 0
+                                                   53.,  59.,  65.,71.,  77.,  83.,  89.,  95.,   # 1
+                                                   103., 109., 115., 121., 127., 133.,139., 145., # 2
+                                                   153., 159., 165., 171., 177., 183., 189., 195.,# 3  
+                                                   203., 209., 215., 221., 227., 233., 239., 245.,# 4 
+                                                   253., 259., 265., 271.,277., 283., 289., 295.])).to(self.device) # 5
         self.stats_ = stats
         self.log_time = log_time
         if self.log_time:
@@ -149,7 +157,7 @@ class FreiaNet(nn.Module):
 
     def set_to_closest(self, x, allowed):
         x = x.unsqueeze(1)  # Adding a dimension to x for broadcasting
-        diffs = torch.abs(x - allowed.to('cuda').float())
+        diffs = torch.abs(x - allowed.to(self.device).float())
         closest_indices = torch.argmin(diffs, dim=1)
         closest_values = allowed[closest_indices]
         return closest_values
@@ -159,15 +167,74 @@ class FreiaNet(nn.Module):
         if self.log_time:
             x = torch.exp(self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']))
             y = torch.exp(self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']))
-            t = torch.exp(self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])).detach().cpu()
+            t = torch.exp(self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']))
         else:
             x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
             y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
-            t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']).detach().cpu()
+            t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
 
         x = self.set_to_closest(x,self._allowed_x)
         y = self.set_to_closest(y,self._allowed_y)
-        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).numpy()
+        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).detach().cpu().numpy()
+
+    def __get_track(self,num_samples,context):
+        samples = self.__sample(num_samples,context)
+        if self.log_time:
+            x = torch.exp(self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']))
+            y = torch.exp(self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']))
+            t = torch.exp(self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']))
+        else:
+            x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
+            y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
+            t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
+
+        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+
+    def __apply_mask(self, hits):
+        mask = torch.where((hits[:, 0] > 0) & (hits[:, 0] < 898) & (hits[:, 1] > 0) & (hits[:, 1] < 298))[0] # Acceptance mask
+        hits = hits[mask]
+        
+        top_row_mask = torch.where(~((hits[:, 1] > 249) & (hits[:, 0] < 351)))[0] # rejection mask (keep everything not identified)
+        hits = hits[top_row_mask]
+        
+        bottom_row_mask = torch.where(~((hits[:, 1] < 51) & (hits[:, 0] < 551)))[0] # rejection mask (keep everything not identified)
+        hits = hits[bottom_row_mask]
+
+        return hits
+
+    def create_tracks(self,num_samples,context):
+        hits = self.__get_track(num_samples,context)
+        updated_hits = self.__apply_mask(hits)
+        n_resample = int(num_samples - len(updated_hits))
+        
+
+        self.photons_generated += len(hits)
+        self.photons_resampled += n_resample
+        while n_resample != 0:
+            resampled_hits = self.__get_track(n_resample,context)
+            updated_hits = torch.concat((updated_hits,resampled_hits),0)
+            updated_hits = self.__apply_mask(updated_hits)
+            n_resample = int(num_samples - len(updated_hits))
+            
+
+        x = self.set_to_closest(updated_hits[:,0],self._allowed_x).detach().cpu()
+        y = self.set_to_closest(updated_hits[:,1],self._allowed_y).detach().cpu()
+        t = updated_hits[:,2].detach().cpu()
+
+        pmtID = torch.div(x,torch.tensor(50,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(50,dtype=torch.int),rounding_mode='floor') * 18
+        row = (1.0/6.0) * ( y - 3 - 2* torch.div(pmtID,torch.tensor(18,dtype=torch.int),rounding_mode='floor'))
+        col = (1.0/6.0) * ( x - 3 - 2*(pmtID % 18))
+
+        assert(len(row) == num_samples)
+        assert(len(col) == num_samples)
+        assert(len(pmtID) == num_samples)
+
+        P = context[0][0].detach().cpu().numpy()
+        Theta = context[0][1].detach().cpu().numpy()
+        Phi = context[0][2].detach().cpu().numpy()
+        #data_dict = {"NHits: ",len(row),"P":,"Theta":Theta,"Phi":Phi,"row":row,"column":col,"leadTime":t}
+        return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"row":row.numpy(),"column":col.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
+        #return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
 
     def to_noise(self,inputs,context):
         if self.embedding:
@@ -251,7 +318,7 @@ class FreiaNet(nn.Module):
 
             transition_matrix = log_prob.unsqueeze(1) - log_prob.unsqueeze(0)
             # Only forward sampling, its stochastic so its fine
-            accept_ = torch.triu(torch.rand(transition_matrix.shape).to('cuda') < torch.min(torch.ones_like(transition_matrix),transition_matrix),diagonal=1)
+            accept_ = torch.triu(torch.rand(transition_matrix.shape).to(self.device) < torch.min(torch.ones_like(transition_matrix),transition_matrix),diagonal=1)
             
             chain = []
             current_state = 0

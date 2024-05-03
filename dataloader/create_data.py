@@ -4,6 +4,9 @@ import random
 from torch.utils.data import Dataset
 import torch
 
+def unscale(x,max_,min_):
+    return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
+
 def create_dataset(file_paths,stats):
     if len(file_paths) > 1:
         df1 = pd.read_csv(file_paths[0],sep=',',index_col=None)#,nrows=10000)
@@ -13,11 +16,14 @@ def create_dataset(file_paths,stats):
     else:
         df = pd.read_csv(file_paths[0],sep=',',index_col=None)
 
+    top_row = df[(df.y > 248) & (df.x > 348)]
+    middle = df[(df.y < 248) & (df.y > 48)]
+    bottom_row = df[(df.y < 48) & (df.x > 548)]
+    df = pd.concat([top_row,middle,bottom_row])
+
     df = df.to_numpy()
     print(len(df))
-    random.shuffle(df)
     hits = df[:,:3]
-    hits = scale_data(hits,stats)
     conds = df[:,3:6]
     unscaled_conds = conds.copy()
     metadata = df[:,6:]
@@ -61,15 +67,25 @@ class CherenkovPhotons(Dataset):
             columns=["x","y","time","P","theta","phi"]
             if not self.inference:
                 print('Using training mode.')
-                data = pd.read_csv(kaon_path,sep=',',index_col=None)
+                df = pd.read_csv(kaon_path,sep=',',index_col=None)
+                top_row = df[(df.y > 248) & (df.x > 348)]
+                middle = df[(df.y < 248) & (df.y > 48)]
+                bottom_row = df[(df.y < 48) & (df.x > 548)]
+                df = pd.concat([top_row,middle,bottom_row])
+                self.data = df.to_numpy()
                 #data = data[data.time < self.stats['time_max']]
                 print('Max Time: ',self.stats['time_max'])
-                self.data = self.modify_tails(data)
+                #self.data = self.modify_tails(data)
                 print(self.data[:,2].max())
             else:
                 print("Using inference mode.")
-                data = pd.read_csv(kaon_path,sep=',',index_col=None)
-                self.data = data[data.time < self.stats['time_max']].to_numpy()
+                df = pd.read_csv(kaon_path,sep=',',index_col=None)
+                #self.data = data[data.time < self.stats['time_max']].to_numpy()
+                top_row = df[(df.y > 248) & (df.x > 348)]
+                middle = df[(df.y < 248) & (df.y > 48)]
+                bottom_row = df[(df.y < 48) & (df.x > 548)]
+                df = pd.concat([top_row,middle,bottom_row])
+                self.data = df.to_numpy()
 
             if self.log_time:
                 self.data[:,0] = np.log(self.data[:,0])
@@ -86,15 +102,26 @@ class CherenkovPhotons(Dataset):
         elif mode == "Pion":
             if not self.inference:
                 print('Using training mode.')
-                data = pd.read_csv(pion_path,sep=',',index_col=None)
+                df = pd.read_csv(pion_path,sep=',',index_col=None)
+                top_row = df[(df.y > 248) & (df.x > 348)]
+                middle = df[(df.y < 248) & (df.y > 48)]
+                bottom_row = df[(df.y < 48) & (df.x > 548)]
+                df = pd.concat([top_row,middle,bottom_row])
+                self.data = df.to_numpy()
                 #data = data[data.time < self.stats['time_max']]
                 print('Max Time: ',self.stats['time_max'])
-                self.data = self.modify_tails(data)
+                #self.data = self.modify_tails(data)
                 print(self.data[:,2].max())
             else:
                 print("Using inference mode.")
-                data = pd.read_csv(pion_path,sep=',',index_col=None)
-                self.data = data[data.time < self.stats['time_max']].to_numpy()
+                df = pd.read_csv(pion_path,sep=',',index_col=None)
+                #self.data = data[data.time < self.stats['time_max']].to_numpy()
+                top_row = df[(df.y > 248) & (df.x > 348)]
+                middle = df[(df.y < 248) & (df.y > 48)]
+                bottom_row = df[(df.y < 48) & (df.x > 548)]
+                df = pd.concat([top_row,middle,bottom_row])
+                self.data = df.to_numpy()
+
             if self.log_time:
                 self.data[:,0] = np.log(self.data[:,0])
                 self.stats['x_max'] = 6.800170048114738

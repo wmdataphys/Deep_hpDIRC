@@ -11,7 +11,7 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.nn as nn
 from models.nflows_models import create_nflows,MAAF
-from dataloader.create_data import create_dataset,unscale
+from dataloader.create_data import create_dataset
 from datetime import datetime
 import itertools
 import matplotlib.pyplot as plt
@@ -49,9 +49,9 @@ def make_plot(generations,hits,stats,barID,x_high,x_low,method=None,samples=1,fo
     fig,ax = plt.subplots(4,2,figsize=(18,16))
     ax = ax.ravel()
     # We have a 2mm offset.
-    x_true = unscale(hits[:,0],stats['x_max'],stats['x_min']) - 2
-    y_true = unscale(hits[:,1],stats['y_max'],stats['y_min']) - 2
-    t_true = unscale(hits[:,2],stats['time_max'],stats['time_min'])
+    x_true = hits[:,0] - 2
+    y_true = hits[:,1]- 2
+    t_true = hits[:,2]
 
     ax[0].hist2d(x_true,y_true,density=True,bins=[bins_x,bins_y],norm=mcolors.LogNorm())
     ax[0].set_xlabel(r'X $(mm)$',fontsize=20)
@@ -196,7 +196,8 @@ def main(config,resume):
     combinations = list(itertools.product(xs,bars))
     print('Generating PDFs for {0} combinations of BarID and x ranges.'.format(len(combinations)))
 
-
+    count_outside = 0
+    total_generations = 0
     for j,combination in enumerate(combinations):
         x_low = combination[0][0]
         x_high = combination[0][1]
@@ -225,14 +226,15 @@ def main(config,resume):
 
             with torch.set_grad_enabled(False):
                 gen = net._sample(num_samples=n_samples,context=k)
-
+                #count_outside += n
             generations.append(gen)
 
             kbar.update(i)
         end = time.time()
         generations = np.concatenate(generations)
+        #total_generations += len(generations)
         print(" ")
-        print(generations.max(),generations.min())
+        print(generations.max(0),generations.min(0))
         print("Elapsed time:",end - start)
         print("Time / event:",(end - start)/len(generations))
         folder = os.path.join(config['Inference']['gen_dir'],"BarID_{0}".format(barID))
@@ -241,6 +243,8 @@ def main(config,resume):
 
         make_plot(generations,hits[mom_idx],stats,barID,x_high,x_low,config['method'],n_samples,folder)
         print(" ")
+    
+    #print("% Outside prior: ", count_outside / total_generations)
 
 
 

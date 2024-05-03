@@ -1,5 +1,5 @@
 {
-    "name": "Kaon_Affine_InvMassCuts_Simulation",
+    "name": "Pion_Affine_InvMassCuts_Simulation_Mask",
     "seed": 752022,
     "run_val":1,
     "method":"Kaon",
@@ -15,8 +15,8 @@
    },
     "dataset": {
         "mcmc":{
-            "pion_data_path":"C:\\Users\\James\\EIC\\Cherenkov_FastSim\\data\\UpdatedData\\TrackWise_Generation\\Simulated_Pions.pkl",
-            "kaon_data_path": "C:\\Users\\James\\EIC\\Cherenkov_FastSim\\data\\UpdatedData\\TrackWise_Generation\\Simulated_Kaons.pkl"
+            "pion_data_path":"/sciclone/data10/jgiroux/Cherenkov/InvMassCuts_Simulation/Generated_Data/Simulated_InvMassCuts_Pions.pkl",
+            "kaon_data_path": "/sciclone/data10/jgiroux/Cherenkov/InvMassCuts_Simulation/Generated_Data/Simulated_InvMassCuts_Kaons.pkl"
         },
         "training": {
             "smeared":{
@@ -72,12 +72,14 @@
     "Inference": {
             "gen_dir": "Figures/MCMC_Test",
             "samples": 1,
+            "kaon_model_path": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Kaon_Affine_InvMassCuts_Simulation_Mask___May-01-2024/Kaon_Affine_InvMassCuts_Simulation_Mask_epoch156_val_loss_-0.128438.pth",
             "kaon_model_path_Tanh": "C:\\Users\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\Kaon_Affine_300Epochs_Tanh___Apr-18-2024\\Kaon_Affine_300Epochs_Tanh_epoch103_val_loss_-0.072783.pth",
-            "pion_model_path": "C:\\Users\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\Pion_Affine300Epochs_8Layers_512Nodes_UpdatedData___Apr-04-2024\\Pion_Affine300Epochs_8Layers_512Nodes_UpdatedData_epoch215_val_loss_-0.153051.pth",
-            "kaon_model_path":"C:\\Users\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\Kaon_Affine300Epochs_8Layers_512Nodes_UpdatedData___Apr-04-2024\\Kaon_Affine300Epochs_8Layers_512Nodes_UpdatedData_epoch199_val_loss_-0.093521.pth",
+            "pion_model_path_GOOD": "C:\\Users\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\Pion_Affine300Epochs_8Layers_512Nodes_UpdatedData___Apr-04-2024\\Pion_Affine300Epochs_8Layers_512Nodes_UpdatedData_epoch215_val_loss_-0.153051.pth",
+            "kaon_model_path_GOOD":"C:\\Users\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\Kaon_Affine300Epochs_8Layers_512Nodes_UpdatedData___Apr-04-2024\\Kaon_Affine300Epochs_8Layers_512Nodes_UpdatedData_epoch199_val_loss_-0.093521.pth",
             "kaon_model_path_MAAF": "C:\\Users\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\Kaon_MAAF300Epochs_8Layers_2Blocks_256Nodes___Mar-31-2024\\Kaon_MAAF300Epochs_8Layers_2Blocks_256Nodes_epoch104_val_loss_-0.000076.pth",
             "kaon_model_path_original_affine":"C:\\Users\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\Kaon_Affine300Epochs_8Layers_2Blocks_256Nodes___Mar-26-2024\\Kaon_Affine300Epochs_8Layers_2Blocks_256Nodes_epoch111_val_loss_0.011295.pth",
             "pion_model_path_original_affine":"C:\\Users\\James\\EIC\\Cherenkov_FastSim\\Trained_Models\\Pion_Affine300Epochs_8Layers_2Blocks_256Nodes___Mar-27-2024\\Pion_Affine300Epochs_8Layers_2Blocks_256Nodes_epoch127_val_loss_0.029961.pth",
-            "out_dir": "Inference/Affine_Updated_Data"
+            "out_dir": "Inference/Affine_Updated_Data",
+            "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/InvMassCuts_Simulation/Generated_Data/NF_Generated"
         }
 }
