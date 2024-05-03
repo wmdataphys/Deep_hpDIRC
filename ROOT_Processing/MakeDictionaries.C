@@ -110,7 +110,7 @@ void MakeDictionaries(TString inFileName, TString outFileName = "Phi.json")
         }
         for (int p = 0; p < ps; p++)
         {
-            cout << "EV: " << ev << ": " << p << endl;
+            //cout << "EV: " << ev << ": " << p << endl;
             
             glx_nextEventc(ev,p,10);
 
@@ -131,7 +131,7 @@ void MakeDictionaries(TString inFileName, TString outFileName = "Phi.json")
             evtStruct.LikelihoodPion = glx_event->GetLikelihoodPion();
             evtStruct.LikelihoodKaon = glx_event->GetLikelihoodKaon();
             evtStruct.LikelihoodProton = glx_event->GetLikelihoodProton();
-            cout << "EV: " << ev << "PDG: " << evtStruct.PDG << endl;
+            //cout << "EV: " << ev << "PDG: " << evtStruct.PDG << endl;
 
             if (std::isnan(evtStruct.LikelihoodElectron)) evtStruct.LikelihoodElectron = -99999;
             if (std::isnan(evtStruct.LikelihoodPion)) evtStruct.LikelihoodPion = -99999;

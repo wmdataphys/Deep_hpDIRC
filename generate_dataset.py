@@ -80,51 +80,46 @@ def main(config,n_datasets):
     net.load_state_dict(dicte['net_state_dict'])
     n_samples = int(config['Inference']['samples'])
 
+    momentum_bins = [0.9,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5]
 
-    # Control what you want to generate pair wise here:
-    xs = [(-30,-20),(-20,-10),(-10,0),(0,10),(10,20),(20,30)]
-    bars = [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
-       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
-       34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]
-
-    stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":500.00,"time_min":0.0}
-    combinations = list(itertools.product(xs,bars))
-    print('Generating chunked dataset for {0} combinations of BarID and x ranges.'.format(len(combinations)))
+    print('Generating chunked dataset for {0} momentum bins.'.format(len(momentum_bins)))
     barIDs = np.array(data['BarID'])
     barX = np.array(data['X'])
-
+    P_ = np.array(data['P'])
     # Control how many times you want to generate the dataset, default is 2. See argparser.
     for n in range(n_datasets):
         print("Generating Dataset # {0}".format(n+1)+ "/" + "{0}".format(n_datasets))
-        for j,combination in enumerate(combinations):
-            x_low = combination[0][0]
-            x_high = combination[0][1]
-            barID = combination[1]
-            print('Generating Bar {0}, x ({1},{2})'.format(barID,x_low,x_high))
+        for j in range(len(momentum_bins)-1):
+            p_low = momentum_bins[j]
+            p_high = momentum_bins[j+1]
+            print('Generating with momentum in range ({0},{1}) GeV.'.format(p_low,p_high))
             print(" ")
             generations = []
-            mom_idx = np.where((barIDs == barID) & (barX > x_low) & (barX < x_high))[0]
+            mom_idx = np.where((P_ <= p_high) & (P_ > p_low))[0]
 
             if len(mom_idx) == 0:
                 print(" ")
-                print('No data at Bar {0}, x ({1},{2})'.format(barID,x_low,x_high))
+                print('No data in momentum range ({0},{1})'.format(p_low,p_high))
                 print(" ")
                 continue
 
             track_params = [data['conds'][l] for l in mom_idx]
             true_hits = np.concatenate([data['Hits'][l] for l in mom_idx])
             photon_yields = data['NHits'][mom_idx]
-
+            bars = barIDs[mom_idx]
+            xs = barX[mom_idx]
             kbar = pkbar.Kbar(target=len(photon_yields), width=20, always_stateful=False)
             start = time.time()
             for i in range(len(track_params)):
                 k = torch.tensor(track_params[i][:1]).to('cuda').float()
                 num_samples = int(photon_yields[i])
+                
 
                 with torch.set_grad_enabled(False):
                     #gen = net.probabalistic_sample(pre_compute_dist=3000,context=k,photon_yield=num_samples)
                     gen = net.create_tracks(num_samples=num_samples,context=k)
-
+                    gen['BarID'] = bars[i]
+                    gen['X'] = xs[i]
                 generations.append(gen)
 
                 kbar.update(i)
@@ -138,7 +133,7 @@ def main(config,n_datasets):
             #print(generations.shape)
             print("Elapsed time:",end - start)
             print("Time / event:",(end - start)/len(generations))
-            file_path = os.path.join(full_path,config['method'] + "_BardID_{0}_x({1},{2})_dataset{3}.pkl".format(barID,x_low,x_high,n))
+            file_path = os.path.join(full_path,config['method'] + "_p({0},{1})_dataset{2}.pkl".format(p_low,p_high,n))
             with open(file_path,"wb") as file:
                 pickle.dump(generations,file)
 
