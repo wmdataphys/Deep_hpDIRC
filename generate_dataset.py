@@ -95,6 +95,7 @@ def main(config,n_datasets):
 
     # Control how many times you want to generate the dataset, default is 2. See argparser.
     for n in range(n_datasets):
+        print("Generating Dataset # {0}".format(n+1)+ "/" + "{0}".format(n_datasets))
         for j,combination in enumerate(combinations):
             x_low = combination[0][0]
             x_high = combination[0][1]

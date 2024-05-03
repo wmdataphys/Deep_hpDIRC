@@ -47,7 +47,11 @@ class InvertibleTanh(InvertibleModule):
 
 class FreiaNet(nn.Module):
     def __init__(self,input_shape,layers,context_shape,embedding=False,hidden_units=512,num_blocks=2,log_time=False
-    ,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0},device='cuda'):
+    ,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0,
+            "P_max":8.5 ,"P_min":0.95 , "theta_max": 11.63,"theta_min": 0.90,"phi_max": 175.5, "phi_min":-176.0 }
+    ,device='cuda'):
+        #     conditional_maxes = np.array([8.5,11.63,175.5])
+        #     conditional_mins = np.array([0.95,0.90,-176.])
         super(FreiaNet, self).__init__()
         self.input_shape = input_shape
         self.layers = layers
@@ -86,6 +90,7 @@ class FreiaNet(nn.Module):
                                                    253., 259., 265., 271.,277., 283., 289., 295.])).to(self.device) # 5
         self.stats_ = stats
         self.log_time = log_time
+
         if self.log_time:
             self.stats_['time_max'] = 5.931767619849855
             self.stats_['time_min'] = -10.870140433500834
@@ -154,6 +159,9 @@ class FreiaNet(nn.Module):
 
     def unscale(self,x,max_,min_):
         return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
+
+    def unscale_conditions(self,x,max_,min_):
+        return x * (max_ - min_) + max_
 
     def set_to_closest(self, x, allowed):
         x = x.unsqueeze(1)  # Adding a dimension to x for broadcasting
@@ -229,9 +237,9 @@ class FreiaNet(nn.Module):
         assert(len(col) == num_samples)
         assert(len(pmtID) == num_samples)
 
-        P = context[0][0].detach().cpu().numpy()
-        Theta = context[0][1].detach().cpu().numpy()
-        Phi = context[0][2].detach().cpu().numpy()
+        P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats_['P_max'],self.stats_['P_min'])
+        Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
+        Phi = self.unscale_conditions(context[0][2].detach().cpu().numpy(),self.stats_['phi_max'],self.stats_['phi_min'])
         #data_dict = {"NHits: ",len(row),"P":,"Theta":Theta,"Phi":Phi,"row":row,"column":col,"leadTime":t}
         return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"row":row.numpy(),"column":col.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
         #return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
