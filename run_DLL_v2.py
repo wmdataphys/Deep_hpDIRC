@@ -262,7 +262,7 @@ def plot_DLL(kaons,pions,out_folder,datatype):
     #plt.show()
 
     # ROC as a function of momentum
-    mom_ranges = [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5]
+    mom_ranges = [2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5]
     centers = [mr+0.25 for mr in mom_ranges[:-1]]
     aucs = []
     lengths = []
@@ -273,7 +273,7 @@ def plot_DLL(kaons,pions,out_folder,datatype):
     for i in range(len(mom_ranges) - 1):
         mom_low = mom_ranges[i]
         mom_high = mom_ranges[i+1]
-        idx = np.where((total_conds > mom_low) & (total_conds < mom_high))[0]
+        idx = np.where((total_conds[:,0] > mom_low) & (total_conds[:,0] < mom_high))[0]
         p = np.array(delta_log_likelihood)[idx]
         t = np.array(true_labels)[idx]
         print("Momentum Range: ",mom_low,"-",mom_high)
