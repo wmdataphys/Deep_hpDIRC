@@ -1,11 +1,11 @@
 {
-    "name": "Pion_ExpTails_150ns",
+    "name": "Pion_RD_MAAF",
     "seed": 752022,
     "run_val":1,
     "method":"Pion",
     "datatype": "Real",
-    "log_time": 0,
-    "stats": {"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":150.00,"time_min":0.0,"P_max":8.5 ,"P_min":0.95 ,"theta_max": 11.63,"theta_min": 0.90,"phi_max": 175.5, "phi_min":-176.0},
+    "sim_type": "decays",
+    "stats": {"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":375.5,"time_min":0.0,"P_max":8.5 ,"P_min":0.97 ,"theta_max": 11.63,"theta_min": 0.96,"phi_max": 174.69, "phi_min":-174.72},
     "model": {
        "num_layers":8,
        "input_shape":3,
@@ -14,28 +14,32 @@
        "hidden_nodes": 512
    },
     "dataset": {
+        "mcmc":{
+            "pion_data_path": "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/TrackWiseGenerations_Pions.pkl",
+            "kaon_data_path":"/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/TrackWiseGenerations_Kaons.pkl"
+        },
         "training": {
 	    "smeared": {
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Pions_From_Data_Smeared.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Kaons_From_Data_Smeared.csv"
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Training_Pions_RealData_Smeared.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Training_Kaons_RealData_Smeared.csv"
         },
 	    "unsmeared": {
-	    "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Pions_From_Data.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Training_Hit_Level_Kaons_From_Data.csv"
+	    "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Training_Pions_RealData.csv",
+        "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Training_Kaons_RealData.csv"
 	    }
 	},
         "validation":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Validation_Hit_Level_Pions_From_Data.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Validation_Hit_Level_Kaons_From_Data.csv"
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Validation_Pions_RealData.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Validation_Kaons_RealData.csv"
         },
         "testing":{
 	    "DLL":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Testing_Hit_Level_Pions_From_Data.pkl",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Testing_Hit_Level_Kaons_From_Data.pkl"
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Testing_Pions_RealData.pkl",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Testing_Kaons_RealData.pkl"
 	    },
 	    "gen":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Testing_Hit_Level_Pions_From_Data.csv",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/Testing_Hit_Level_Kaons_From_Data.csv"
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Testing_Pions_RealData.csv",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Testing_Kaons_RealData.csv"
         }
 	}
     },
@@ -53,10 +57,10 @@
     "dataloader": {
         "split":[0.7,0.15,0.15],
         "train": {
-            "batch_size": 2048
+            "batch_size": 4095
     	},
         "val": {
-            "batch_size": 2048
+            "batch_size": 4096
         },
         "test": {
             "batch_size": 25
@@ -66,10 +70,17 @@
 	"dir": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models"
     },
     "Inference": {
-	    "gen_dir": "Figures/Affine",
-            "samples": 100,
-            "kaon_model_path":"/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Kaon_AffineTest___Mar-22-2024/Kaon_AffineTest_epoch99_val_loss_0.063166.pth",
-            "pion_model_path":"/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/GaussianSmear_Pions___Mar-06-2024/GaussianSmear_Pions_epoch22_val_loss_0.023239.pth",
-            "out_dir": "path\\to\\Inference"
+	    "gen_dir": "Figures/MAAF_Test",
+            "samples": 1,
+            "pion_model_path": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Pion_RD_MAAF___Jun-12-2024/Pion_RD_MAAF_epoch51_val_loss_0.674885.pth",
+            "kaon_model_path": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Kaon_RD_MAAF___Jun-12-2024/Kaon_RD_MAAF_epoch71_val_loss_0.850906.pth",
+            "pion_model_path_Curr": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Pion_RealData_NewData___Jun-06-2024/Pion_RealData_NewData_epoch216_val_loss_0.676301.pth",
+            "kaon_model_path_Curr": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Kaon_RealData_NewData___Jun-06-2024/Kaon_RealData_NewData_epoch195_val_loss_0.854214.pth",
+            "kaon_model_path_OLD": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Kaon_RealData_FullTime___May-31-2024/Kaon_RealData_FullTime_epoch299_val_loss_0.888611.pth",
+            "pion_model_path_OLD": "/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Pion_RealData_FullTime___May-31-2024/Pion_RealData_FullTime_epoch297_val_loss_0.586941.pth",
+            "kaon_model_path_RD":"/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Kaon_RealData___May-13-2024/Kaon_RealData_epoch299_val_loss_0.667883.pth",
+            "pion_model_path_RD":"/sciclone/data10/jgiroux/Cherenkov/FastSim_Models/Pion_RealData___May-13-2024/Pion_RealData_epoch208_val_loss_0.376905.pth",
+            "out_dir": "Inference/MAAF_Test",
+            "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/Real_Data/June5_2024/Generated/MAAF_Generated"
         }
 }

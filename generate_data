@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --export=ALL
-#SBATCH --job-name=GenP
+#SBATCH --job-name=GenK
 #SBATCH --nodes=1
 #SBATCH --tasks=8
 #SBATCH --gpus=1
@@ -11,5 +11,5 @@ cd $SLURM_SUBMIT_DIR
 module load anaconda3/2023.09
 source activate ptorch
 
-python /sciclone/home/jgiroux/Cherenkov_FastSim/generate_dataset.py --config /sciclone/home/jgiroux/Cherenkov_FastSim/config/inv_mass_config.json --n_datasets 1
+python /sciclone/home/jgiroux/Cherenkov_FastSim/generate_dataset.py --config /sciclone/home/jgiroux/Cherenkov_FastSim/config/real_config.json --n_datasets 2
 

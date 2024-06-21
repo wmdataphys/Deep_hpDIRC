@@ -3,13 +3,13 @@ from torch.utils.data import Dataset, DataLoader, random_split,Subset
 import numpy as np
 import torch
 
-
 def DIRC_collate(batch):
     hits = []
     conditions = []
     PIDs = []
     metadata = []
     unscaled = []
+
     for h,cond,PID,meta,u in batch:
         hits.append(torch.tensor(h))
         conditions.append(torch.tensor(cond))
@@ -26,14 +26,18 @@ def Inference_collate(batch):
     PIDs = []
     unscaled = []
     n_hits = []
-    for h,cond,PID,nh,u in batch:
+    LL_ks = []
+    LL_pis = []
+    for h,cond,PID,nh,u,LL_k,LL_pi in batch:
         hits.append(torch.tensor(h))
         conditions.append(torch.tensor(cond))
         PIDs.append(torch.tensor(PID))
         n_hits.append(torch.tensor(nh))
         unscaled.append(torch.tensor(u))
+        LL_ks.append(torch.tensor(LL_k))
+        LL_pis.append(torch.tensor(LL_pi))
 
-    return torch.stack(hits),torch.stack(conditions),torch.tensor(PIDs),torch.tensor(n_hits),torch.stack(unscaled)
+    return torch.stack(hits),torch.stack(conditions),torch.tensor(PIDs),torch.tensor(n_hits),torch.stack(unscaled),torch.tensor(LL_ks),torch.tensor(LL_pis)
 
 # Create dataloaders to iterate.
 def CreateLoaders(train_dataset,val_dataset,config):

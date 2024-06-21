@@ -12,9 +12,10 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 #from models.torch_mnf.layers import MNFLinear
 from nflows.distributions.normal import ConditionalDiagonalNormal
+from nflows.distributions.base import Distribution
 from nflows.utils import torchutils
 from typing import Union, Iterable, Tuple
-
+import scipy
 
 
 # Domain of inverse tangent is (-1,1) -> Careful
@@ -46,12 +47,8 @@ class InvertibleTanh(InvertibleModule):
         return ((result, ), logabsdet)
 
 class FreiaNet(nn.Module):
-    def __init__(self,input_shape,layers,context_shape,embedding=False,hidden_units=512,num_blocks=2,log_time=False
-    ,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0,
-            "P_max":8.5 ,"P_min":0.95 , "theta_max": 11.63,"theta_min": 0.90,"phi_max": 175.5, "phi_min":-176.0 }
-    ,device='cuda'):
-        #     conditional_maxes = np.array([8.5,11.63,175.5])
-        #     conditional_mins = np.array([0.95,0.90,-176.])
+    def __init__(self,input_shape,layers,context_shape,embedding=False,hidden_units=512,num_blocks=2,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0,
+            "P_max":8.5 ,"P_min":0.95 , "theta_max": 11.63,"theta_min": 0.90,"phi_max": 175.5, "phi_min":-176.0 },device='cuda'):
         super(FreiaNet, self).__init__()
         self.input_shape = input_shape
         self.layers = layers
@@ -59,7 +56,6 @@ class FreiaNet(nn.Module):
         self.embedding = embedding
         self.hidden_units = hidden_units
         self.num_blocks = num_blocks
-        self.burn_in = 1000
         self.photons_generated = 0
         self.photons_resampled = 0
         self.device = device
@@ -89,15 +85,6 @@ class FreiaNet(nn.Module):
                                                    203., 209., 215., 221., 227., 233., 239., 245.,# 4 
                                                    253., 259., 265., 271.,277., 283., 289., 295.])).to(self.device) # 5
         self.stats_ = stats
-        self.log_time = log_time
-
-        if self.log_time:
-            self.stats_['time_max'] = 5.931767619849855
-            self.stats_['time_min'] = -10.870140433500834
-            self.stats_['x_max'] = 6.800170048114738
-            self.stats_['x_min'] = -11.639826026001888
-            self.stats_['y_max'] = 5.697093360008697
-            self.stats_['y_min'] = -11.012369390162362
 
         if self.embedding:
             self.context_embedding = nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape)])
@@ -138,7 +125,6 @@ class FreiaNet(nn.Module):
 
         return log_prob + logabsdet
 
-
     def __sample(self,num_samples,context):
         if self.embedding:
             embedded_context = self.context_embedding(context)
@@ -172,14 +158,9 @@ class FreiaNet(nn.Module):
             
     def _sample(self,num_samples,context):
         samples = self.__sample(num_samples,context)
-        if self.log_time:
-            x = torch.exp(self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']))
-            y = torch.exp(self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']))
-            t = torch.exp(self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']))
-        else:
-            x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
-            y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
-            t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
+        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
+        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
+        t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
 
         x = self.set_to_closest(x,self._allowed_x)
         y = self.set_to_closest(y,self._allowed_y)
@@ -187,32 +168,31 @@ class FreiaNet(nn.Module):
 
     def __get_track(self,num_samples,context):
         samples = self.__sample(num_samples,context)
-        if self.log_time:
-            x = torch.exp(self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']))
-            y = torch.exp(self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']))
-            t = torch.exp(self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']))
-        else:
-            x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
-            y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
-            t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
+        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']).round()
+        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']).round()
+        t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
 
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
 
-    def __apply_mask(self, hits):
+    def _apply_mask(self, hits):
+        # Time > 0 
+        mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats_['time_max']))
+        hits = hits[mask]
+        # Outter bounds
         mask = torch.where((hits[:, 0] > 0) & (hits[:, 0] < 898) & (hits[:, 1] > 0) & (hits[:, 1] < 298))[0] # Acceptance mask
         hits = hits[mask]
-        
-        top_row_mask = torch.where(~((hits[:, 1] > 249) & (hits[:, 0] < 351)))[0] # rejection mask (keep everything not identified)
+        # PMTs OFF
+        top_row_mask = torch.where(~((hits[:, 1] > 249) & (hits[:, 0] < 350)))[0] # rejection mask (keep everything not identified)
         hits = hits[top_row_mask]
-        
-        bottom_row_mask = torch.where(~((hits[:, 1] < 51) & (hits[:, 0] < 551)))[0] # rejection mask (keep everything not identified)
+        # PMTs OFF
+        bottom_row_mask = torch.where(~((hits[:, 1] < 50) & (hits[:, 0] < 550)))[0] # rejection mask (keep everything not identified)
         hits = hits[bottom_row_mask]
 
         return hits
 
-    def create_tracks(self,num_samples,context):
+    def create_tracks(self,num_samples,context,plotting=False):
         hits = self.__get_track(num_samples,context)
-        updated_hits = self.__apply_mask(hits)
+        updated_hits = self._apply_mask(hits)
         n_resample = int(num_samples - len(updated_hits))
         
 
@@ -221,8 +201,10 @@ class FreiaNet(nn.Module):
         while n_resample != 0:
             resampled_hits = self.__get_track(n_resample,context)
             updated_hits = torch.concat((updated_hits,resampled_hits),0)
-            updated_hits = self.__apply_mask(updated_hits)
+            updated_hits = self._apply_mask(updated_hits)
             n_resample = int(num_samples - len(updated_hits))
+            self.photons_resampled += n_resample
+            self.photons_generated += len(resampled_hits)
             
 
         x = self.set_to_closest(updated_hits[:,0],self._allowed_x).detach().cpu()
@@ -240,9 +222,11 @@ class FreiaNet(nn.Module):
         P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats_['P_max'],self.stats_['P_min'])
         Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
         Phi = self.unscale_conditions(context[0][2].detach().cpu().numpy(),self.stats_['phi_max'],self.stats_['phi_min'])
-        #data_dict = {"NHits: ",len(row),"P":,"Theta":Theta,"Phi":Phi,"row":row,"column":col,"leadTime":t}
-        return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"row":row.numpy(),"column":col.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
-        #return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+
+        if not plotting:
+            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"row":row.numpy(),"column":col.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
+        else:
+            return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
 
     def to_noise(self,inputs,context):
         if self.embedding:
@@ -339,123 +323,90 @@ class FreiaNet(nn.Module):
             chain = torch.concat((x.unsqueeze(1),y.unsqueeze(1),chain_hits[:,2].unsqueeze(1).detach().cpu()),axis=1).numpy()
             return chain
 
-    # def prior(self,hits,ux=898,lx=0,uy=298,ly=0,pmt_off=None): # pmt_off is a list of turned off readout sections 
-    #     if (hits[:,0] < ux) and (hits[:,0] > lx):
-    #         if (hits[:,1] < uy) and (hits[:,1] > ly):
-    #             return torch.ones_like(hits[:,0])
-    #         else:
-    #             return torch.zeros_like(hits[:,0])
-    #     else:
-    #         return torch.zeros_like(hits[:,0])
-        
-        
-    # def probabalistic_sample(self,pre_compute_dist,context,photon_yield):
-    #     samples, log_prob = self.sample_and_log_prob(pre_compute_dist,context)
-    #     samples = samples.squeeze(0)
-    #     log_prob = log_prob.squeeze(0)
-    #     log_prob = torch.exp(log_prob) 
-
-    #     if self.log_time:
-    #         x = torch.exp(self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])).round()
-    #         y = torch.exp(self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])).round()
-    #         t = torch.exp(self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']))
-    #     else:
-    #         x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']).round()
-    #         y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']).round()
-    #         t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
-
-    #     h = torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
-    #     #print('h',h.shape)
-    #     start_idx = np.random.randint(0,h.shape[0])
-
-    #     init_prior = torch.tensor(0.0)
-    #     while init_prior == 0:
-    #         init_sample = h[start_idx]
-    #         init_prob = log_prob[start_idx]
-    #         init_prior = self.prior(init_sample)
-    #         start_idx = np.random.randint(0,h.shape[0])
-
-    #     chain = torch.zeros((photon_yield,3)).to('cuda')
-    #     probabilities = []
-    #     i = 0
-    #     c_len = 0
-    #     while (c_len < photon_yield):
-    #         proposed_idx = np.random.randint(0,h.shape[0])
-    #         proposed_sample = h[proposed_idx]
-    #         proposed_prob = log_prob[proposed_idx]
-    #         numerator = proposed_prob * self.prior(proposed_sample)
-    #         denominator = init_prob * self.prior(init_sample)
-
-    #         delta_log = torch.log(numerator+1e-50) - torch.log(denominator+1e-50)
-    #         acceptance_ratio = torch.min(torch.stack((torch.ones_like(delta_log), torch.exp(delta_log)), dim=0))
-    #         if torch.rand(1) < acceptance_ratio.detach().cpu():
-    #             init_sample = proposed_sample
-    #             init_prob = proposed_prob
-    #             if i > self.burn_in:
-    #                 chain[c_len] = proposed_sample
-    #                 c_len += 1
-    #         else:
-    #             if i > self.burn_in:
-    #                 chain[c_len] = init_sample
-    #                 c_len += 1
-
-    #         i += 1
-        
-    #     x = self.set_to_closest(chain[:,0],self._allowed_x)
-    #     y = self.set_to_closest(chain[:,1],self._allowed_y)
-    #     chain = torch.concat((x.unsqueeze(1),y.unsqueeze(1),chain[:,2].unsqueeze(1).detach().cpu()),axis=1).numpy()
-    #     return chain
 
 
-        # def probabalistic_sample(self,pre_compute_dist,context,photon_yield):
-        #     samples, log_prob = self.sample_and_log_prob(pre_compute_dist,context)
-        #     samples = samples.squeeze(0)
-        #     log_prob = log_prob.squeeze(0)
+class ConditionalTStudent(Distribution):
+    """A diagonal multivariate Normal whose parameters are functions of a context."""
 
-        #     if self.log_time:
-        #         x = torch.exp(self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])).round()
-        #         y = torch.exp(self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])).round()
-        #         t = torch.exp(self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']))
-        #     else:
-        #         x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']).round()
-        #         y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']).round()
-        #         t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
-            
-        #     h = torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
-        #     prior = self.prior(h)
-        #     # Restrict sampling from pior
-        #     non_zero_p = torch.where(prior != 0.0)
-        #     h = h[non_zero_p]
-        #     log_prob = log_prob[non_zero_p]
-        #     prior = prior[non_zero_p]
+    def __init__(self, shape, context_encoder=None,nu=1):
+        """Constructor.
 
-        #     chain = torch.zeros((photon_yield,3)).to('cuda')
-        #     probabilities = []
-        #     i = 0
-        #     c_len = 0
-        #     while (c_len < photon_yield):
-        #         proposed_idx = np.random.randint(0,h.shape[0])
-        #         proposed_sample = h[proposed_idx]
-        #         proposed_prob = log_prob[proposed_idx]
+        Args:
+            shape: list, tuple or torch.Size, the shape of the input variables.
+            context_encoder: callable or None, encodes the context to the distribution parameters.
+                If None, defaults to the identity function.
+        """
+        super().__init__()
+        self._shape = torch.Size(shape)
+        self._nu = nu
+        if context_encoder is None:
+            self._context_encoder = lambda x: x
+        else:
+            self._context_encoder = context_encoder
+        self._sample_dist = torch.distributions.studentT.StudentT(df=torch.tensor([self._nu]),loc=torch.zeros(self._shape),scale=torch.ones(self._shape))
 
-        #         delta_log  = proposed_prob - init_prob
-        #         acceptance_ratio = torch.min(torch.stack((torch.ones_like(delta_log), torch.exp(delta_log)), dim=0))
-        #         if torch.rand(1) < acceptance_ratio.detach().cpu():
-        #             init_sample = proposed_sample
-        #             init_prob = proposed_prob
-        #             if i > self.burn_in:
-        #                 chain[c_len] = proposed_sample
-        #                 c_len += 1
-        #         else:
-        #             if i > self.burn_in:
-        #                 chain[c_len] = init_sample
-        #                 c_len += 1
+        self.const_ = scipy.special.loggamma(0.5*(self._nu + self._shape[0])) - scipy.special.loggamma(0.5 * nu) - 0.5 * self._shape[0] * np.log(np.pi * self._nu)
 
-        #         i += 1
-            
-        #     x = self.set_to_closest(chain[:,0],self._allowed_x)
-        #     y = self.set_to_closest(chain[:,1],self._allowed_y)
-        #     chain = torch.concat((x.unsqueeze(1),y.unsqueeze(1),chain[:,2].unsqueeze(1).detach().cpu()),axis=1).numpy()
-        #     return chain
+    def _compute_params(self, context):
+        """Compute the means and log stds form the context."""
+        if context is None:
+            raise ValueError("Context can't be None.")
 
+        params = self._context_encoder(context)
+        if params.shape[-1] % 2 != 0:
+            raise RuntimeError(
+                "The context encoder must return a tensor whose last dimension is even."
+            )
+        if params.shape[0] != context.shape[0]:
+            raise RuntimeError(
+                "The batch dimension of the parameters is inconsistent with the input."
+            )
 
+        split = params.shape[-1] // 2
+        means = params[..., :split].reshape(params.shape[0], *self._shape)
+        log_stds = params[..., split:].reshape(params.shape[0], *self._shape)
+        return means, log_stds
+
+    def _log_prob(self, inputs, context):
+        if inputs.shape[1:] != self._shape:
+            raise ValueError(
+                "Expected input of shape {}, got {}".format(
+                    self._shape, inputs.shape[1:]
+                )
+            )
+
+        # Compute parameters.
+        means, log_stds = self._compute_params(context)
+        assert means.shape == inputs.shape and log_stds.shape == inputs.shape
+
+        # Compute log prob.
+        norm_inputs = torchutils.sum_except_batch((inputs - means)**2,num_batch_dims=1)
+        log_prob = self.const_ - 0.5 * (self._nu + self._shape[0])*torch.log(1.0 + (1.0/self._nu) * norm_inputs)
+        return log_prob
+        #norm_inputs = (inputs - means) * torch.exp(-log_stds)
+        #log_prob = -0.5 * torchutils.sum_except_batch(
+        #    norm_inputs ** 2, num_batch_dims=1
+        #)
+        # log_prob -= torchutils.sum_except_batch(log_stds, num_batch_dims=1)
+        # log_prob -= self._log_z
+
+        return log_prob
+
+    def _sample(self, num_samples, context):
+        # Compute parameters.
+        means, log_stds = self._compute_params(context)
+        stds = torch.exp(log_stds)
+        means = torchutils.repeat_rows(means, num_samples)
+        stds = torchutils.repeat_rows(stds, num_samples)
+
+        # Generate samples.
+        context_size = context.shape[0]
+        #noise = torch.randn(context_size * num_samples, *
+         #                   self._shape, device=means.device)
+        noise = self._sample_dist.sample((context_size * num_samples,)).to(means.device)
+        samples = means + stds * noise
+        return torchutils.split_leading_dim(samples, [context_size, num_samples])
+
+    def _mean(self, context):
+        means, _ = self._compute_params(context)
+        return means

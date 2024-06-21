@@ -2,12 +2,12 @@
 #SBATCH --export=ALL
 #SBATCH --job-name=processdata
 #SBATCH --nodes=1
-#SBATCH --tasks=1
+#SBATCH --tasks=4
 #SBATCH -t 72:00:00
 
 cd $SLURM_SUBMIT_DIR
 
 source ~/root/bin/thisroot.csh
 
-./process.tcsh
+./process_all.tcsh
 

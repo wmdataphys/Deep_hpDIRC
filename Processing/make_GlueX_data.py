@@ -102,22 +102,26 @@ def parse_data(data_dict):
     conditional_mins = np.array([0.95,0.90,-176.])
     kbar = pkbar.Kbar(target=len(np.unique(data_dict['EventID'])), width=20, always_stateful=False)
     l = 0
-    # For actual data
-    # rho_mass_upper = 0.9
-    # rho_mass_lower = 0.6
-    # phi_mass_lower = 1.0
-    # phi_mass_upper = 1.04
+    # For actual data or simulated decays of rho and phi
+    rho_mass_upper = 0.9
+    rho_mass_lower = 0.6
+    phi_mass_lower = 1.0
+    phi_mass_upper = 1.04
     # For particle gun -> Inv mass has no meaning here
-    rho_mass_upper = np.inf
-    rho_mass_lower = -np.inf
-    phi_mass_lower = -np.inf
-    phi_mass_upper = np.inf
+    #rho_mass_upper = np.inf
+    #rho_mass_lower = -np.inf
+    #phi_mass_lower = -np.inf
+    #phi_mass_upper = np.inf
     for j in np.unique(data_dict['EventID']):
         idx = np.where(data_dict['EventID'] == j)[0]
         ys = data_dict['Y'][idx]
         #print('PDG',data_dict['PDG'][idx])
         #print(j)
-        if len(idx) > 2:
+        #if len(idx) < 2:
+        #    print("Skipping event.")
+        #    continue
+            
+        if len(idx) != 2:
             print('Skipping event.')
             kbar.update(l)
             l+=1
@@ -139,6 +143,8 @@ def parse_data(data_dict):
                 hits_in_obox1 = np.where(temp_oboxes == 1)[0]
                 obox_0_idx = np.where(data_dict['Y'][idx] < 0)[0][0]
                 obox_1_idx = np.where(data_dict['Y'][idx] > 0)[0][0]
+
+                #print(obox_0_idx,obox_1_idx)
                 
                 pmt_obox_0 = np.array(data_dict['pmtID'][idx[0]])[hits_in_obox0]
                 pmt_obox_1 = np.array(data_dict['pmtID'][idx[0]])[hits_in_obox1]
@@ -202,9 +208,9 @@ def parse_data(data_dict):
                     event = {'EventID':idx,'invMass':data_dict['invMass'][idx], 'PDG':data_dict['PDG'][idx], 'NHits':data_dict['NHits'][idx], 'BarID':data_dict['BarID'][idx], 'P':data_dict['P'][idx], 'Theta':data_dict['Theta'][idx], 'Phi':data_dict['Phi'][idx], 'X':data_dict['X'][idx], 'Y':data_dict['Y'][idx], 'Z':data_dict['Z'][idx],
                             'pmtID':data_dict['pmtID'][idx], 'pixelID':data_dict['pixelID'][idx], 'channel':data_dict['channel'][idx], 'leadTime':data_dict['leadTime'][idx],'LikelihoodElectron':data_dict['LikelihoodElectron'][idx],'LikelihoodPion':data_dict['LikelihoodPion'][idx],'LikelihoodKaon':data_dict['LikelihoodKaon'][idx],'LikelihoodProton':data_dict['LikelihoodProton'][idx]}
                 
-                if (abs(event['PDG']) == 321) and (event['invMass'] > phi_mass_lower) and (event['invMass'] < phi_mass_upper):
+                if (abs(event['PDG']) == 321) and (event['invMass'] > phi_mass_lower) and (event['invMass'] < phi_mass_upper) and (event['NHits'] < 300):
                     kaons.append(event)
-                elif (abs(event['PDG']) == 211) and (event['invMass'] > rho_mass_lower) and (event['invMass'] < rho_mass_upper):
+                elif (abs(event['PDG']) == 211) and (event['invMass'] > rho_mass_lower) and (event['invMass'] < rho_mass_upper) and (event['NHits'] < 300):
                     pions.append(event) # Else its a pion
                 else:
                     #print('Skipped single track')
@@ -225,9 +231,9 @@ def main(args):
     file = str(args.file).split("/")[-1]
     out_dir = os.path.join(args.base_dir,"processed")
 
-    if not os.path.exists(out_dir):
-        print("Creating output directory: ",out_dir)
-        os.mkdir(out_dir)
+    #if not os.path.exists(out_dir):
+    #    print("Creating output directory: ",out_dir)
+    #    os.mkdir(out_dir)
 
     print(out_dir)
 

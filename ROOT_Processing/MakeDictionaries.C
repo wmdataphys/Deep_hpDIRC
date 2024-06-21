@@ -19,6 +19,7 @@ struct EventStruct{
     Double_t LikelihoodPion;
     Double_t LikelihoodKaon;
     Double_t LikelihoodProton;
+    Double_t chi2;
     vector <int> pmtID;
     vector <int> pixelID;
     vector <int> channel;
@@ -46,6 +47,7 @@ void WriteStructJson(EventStruct evtstruct, std::ofstream& out)
     Form("\"LikelihoodPion\" : %f, ", evtstruct.LikelihoodPion) <<
     Form("\"LikelihoodKaon\" : %f, ", evtstruct.LikelihoodKaon) <<
     Form("\"LikelihoodProton\" : %f, ", evtstruct.LikelihoodProton) <<
+    Form("\"Chi2\" : %f, ", evtstruct.chi2) <<
     Form("\"pmtID\" : [");
     for (int i = 0; i < evtstruct.NHits; i++)
     {
@@ -103,16 +105,21 @@ void MakeDictionaries(TString inFileName, TString outFileName = "Phi.json")
     {
         glx_ch->GetEntry(ev);
         const int ps = glx_events->GetEntriesFast();
-        if (ps > 2)
+        if (ps != 2)
         {
           //cout << "Skipping because p " << ps << endl;
           continue; // Why is this ??
         }
+
         for (int p = 0; p < ps; p++)
         {
             //cout << "EV: " << ev << ": " << p << endl;
             
             glx_nextEventc(ev,p,10);
+            if (glx_event->GetChiSq() > 5.0)
+            { 
+                continue;
+            }
 
             EventStruct evtStruct;
             evtStruct.EventID = ev;
@@ -131,6 +138,7 @@ void MakeDictionaries(TString inFileName, TString outFileName = "Phi.json")
             evtStruct.LikelihoodPion = glx_event->GetLikelihoodPion();
             evtStruct.LikelihoodKaon = glx_event->GetLikelihoodKaon();
             evtStruct.LikelihoodProton = glx_event->GetLikelihoodProton();
+            evtStruct.chi2 = glx_event->GetChiSq();
             //cout << "EV: " << ev << "PDG: " << evtStruct.PDG << endl;
 
             if (std::isnan(evtStruct.LikelihoodElectron)) evtStruct.LikelihoodElectron = -99999;

@@ -11,7 +11,6 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.nn as nn
 from models.nflows_models import create_nflows,MAAF
-from dataloader.create_data import create_dataset
 from datetime import datetime
 import itertools
 import matplotlib.pyplot as plt
@@ -54,7 +53,7 @@ def main(config,n_datasets):
     else:
         print("Specify particle to generate in config file")
         exit()
-    log_time = bool(config['log_time'])
+
     print(data.keys())
     # Create the model
     # This will map gen -> Reco
@@ -72,7 +71,7 @@ def main(config,n_datasets):
     num_blocks = int(config['model']['num_blocks'])
     hidden_nodes = int(config['model']['hidden_nodes'])
     stats = config['stats']
-    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,log_time=log_time,stats=stats)
+    net = MAAF(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
     device = torch.device('cuda')
@@ -80,12 +79,21 @@ def main(config,n_datasets):
     net.load_state_dict(dicte['net_state_dict'])
     n_samples = int(config['Inference']['samples'])
 
-    momentum_bins = [0.9,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5]
-
-    print('Generating chunked dataset for {0} momentum bins.'.format(len(momentum_bins)))
+    #momentum_bins = [0.9,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5]
+    #momentum_bins = [6.0,6.5,7.0,7.5,8.0,8.5]
+    
+    
     barIDs = np.array(data['BarID'])
     barX = np.array(data['X'])
     P_ = np.array(data['P'])
+    print("Momentum: ",np.min(P_),np.max(P_))
+    #momentum_bins = np.arange(np.min(P_),np.max(P_)+0.5,0.5) # 500 MeV bins
+    #momentum_bins = np.arange(3.98,np.max(P_)+0.5,0.5)
+    momentum_bins = [3.978703, 4.478703, 4.978703, 5.478703, 5.978703, 6.478703, 6.978703, 7.478703, 7.978703, 8.478703,
+                    8.978703]
+    print('Generating chunked dataset for {0} momentum bins.'.format(len(momentum_bins)))
+    print(momentum_bins)
+    print(" ")
     # Control how many times you want to generate the dataset, default is 2. See argparser.
     for n in range(n_datasets):
         print("Generating Dataset # {0}".format(n+1)+ "/" + "{0}".format(n_datasets))
@@ -120,6 +128,7 @@ def main(config,n_datasets):
                     gen = net.create_tracks(num_samples=num_samples,context=k)
                     gen['BarID'] = bars[i]
                     gen['X'] = xs[i]
+                    gen['PDG'] = PID
                 generations.append(gen)
 
                 kbar.update(i)
@@ -127,13 +136,10 @@ def main(config,n_datasets):
             print("Number of photons generated: ",net.photons_generated)
             print("Number of photons resampled: ",net.photons_resampled)
             end = time.time()
-            #generations = np.concatenate(generations)
-            #np.save(generations,'test.npy')
             print(" ")
-            #print(generations.shape)
             print("Elapsed time:",end - start)
             print("Time / event:",(end - start)/len(generations))
-            file_path = os.path.join(full_path,config['method'] + "_p({0},{1})_dataset{2}.pkl".format(p_low,p_high,n))
+            file_path = os.path.join(full_path,config['method'] + "_p({0:.2f},{1:.2f})_dataset{2}.pkl".format(p_low,p_high,n))
             with open(file_path,"wb") as file:
                 pickle.dump(generations,file)
 
@@ -144,7 +150,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='FastSim Generation')
     parser.add_argument('-c', '--config', default='config.json',type=str,
                         help='Path to the config file (default: config.json)')
-    parser.add_argument('-n', '--n_datasets', default=2, type=int,
+    parser.add_argument('-n', '--n_datasets', default=1, type=int,
                         help='Number of time to Fast Simulate the dataset.')
     args = parser.parse_args()
 

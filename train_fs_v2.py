@@ -40,12 +40,12 @@ def main(config,resume):
        # Load the dataset
     print('Creating Loaders.')
     stats = config['stats']
-
+    
     train_dataset = CherenkovPhotons(kaon_path=config['dataset']['training']['smeared']['kaon_data_path'],
-                    pion_path=config['dataset']['training']['smeared']['pion_data_path'],inference=False,mode=config['method'],log_time=config['log_time'],stats=stats)
+                    pion_path=config['dataset']['training']['smeared']['pion_data_path'],inference=False,mode=config['method'],stats=stats)
     # Evaluate on center of pixels
     val_dataset = CherenkovPhotons(kaon_path=config['dataset']['validation']['kaon_data_path'],
-                    pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'],log_time=config['log_time'],stats=stats)
+                    pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'],stats=stats)
 
 
     history = {'train_loss':[],'val_loss':[],'lr':[]}
@@ -63,16 +63,11 @@ def main(config,resume):
     cond_shape = int(config['model']['cond_shape'])
     num_blocks = int(config['model']['num_blocks'])
     hidden_nodes = int(config['model']['hidden_nodes'])
-    log_time = bool(config['log_time'])
-    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,log_time=log_time,stats=stats)
-    #net = MAAF(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks)
-    #net = create_nflows(input_shape,cond_shape,num_layers)
+    net = MAAF(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
     device = torch.device('cuda')
     net.to('cuda')
-    #for p in net.parameters():
-    #    p.register_hook(lambda grad: torch.clamp(grad,-0.9,0.9).to(grad.device))
 
     # Optimizer
     num_epochs=int(config['num_epochs'])
@@ -104,7 +99,7 @@ def main(config,resume):
     print('      LR:', lr)
     print('      num_epochs:', num_epochs)
     print('')
-
+    loss_fn = nn.HuberLoss()
     for epoch in range(startEpoch,num_epochs):
 
         kbar = pkbar.Kbar(target=len(train_loader), epoch=epoch, num_epochs=num_epochs, width=20, always_stateful=False)

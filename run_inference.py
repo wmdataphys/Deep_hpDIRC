@@ -226,7 +226,7 @@ def main(config,resume):
 
             with torch.set_grad_enabled(False):
                 gen = net._sample(num_samples=n_samples,context=k)
-                #count_outside += n
+
             generations.append(gen)
 
             kbar.update(i)
