@@ -19,7 +19,7 @@ Note: The generations will not be performed bar-by-bar, but at fixed regions of 
 
 ---
 
-### **Training Resources **
+### **Training Resources**
 
 Below Im including the resources you will need for training (in terms of what to request from the cluster):
 
