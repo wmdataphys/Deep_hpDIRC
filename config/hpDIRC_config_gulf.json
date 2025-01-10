@@ -1,0 +1,116 @@
+{
+    "name": "Kaon_hpDIRC_MoG_25L_128Node_k20",
+    "seed": 752022,
+    "run_val":1,
+    "method":"Kaon",
+    "datatype": "Simulation",
+    "sim_type": "pgun",
+    "log_time":0,
+    "warm_start": 0,
+    "stats": {"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},
+    "model_CNF": {
+       "num_layers":6,
+       "input_shape":3,
+       "cond_shape":2,
+       "num_blocks":1,
+       "hidden_nodes": 128,
+       "alph": [1.0,10.0,1.5]
+   },
+   "model": {
+    "num_layers":25,
+    "input_shape":3,
+    "cond_shape":2,
+    "num_blocks":2,
+    "hidden_nodes": 128
+    },
+    "dataset": {
+        "fixed_point":{
+            "pion_data_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl",
+            "pion_data_path_6GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/6GeV/mixed_pik_all_theta_Pions.pkl",
+            "kaon_data_path_6GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/6GeV/mixed_pik_all_theta_Kaons.pkl",
+            "pion_data_path_9GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/9GeV/merged_pik_9GeV_Pions.pkl",
+            "kaon_data_path_9GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/9GeV/merged_pik_9GeV_Kaons.pkl",
+            "pion_data_path_3GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/3GeV/merged_pik_3GeV_Pions.pkl",
+            "kaon_data_path_3GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/3GeV/merged_pik_3GeV_Kaons.pkl"
+        },
+        "mcmc":{
+            "pion_data_path":"/sciclone/data10/jgiroux/Cherenkov/hpDIRC/TrackWiseGeneration_Pions.pkl",
+            "kaon_data_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/TrackWiseGeneration_Kaons.pkl"
+        },
+        "training": {
+            "smeared":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC_Smeared.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC_Smeared.feather"
+            },
+            "unsmeared":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC.feather"              
+            }
+        },
+        "validation":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Validation_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Validation_Kaons_hpDIRC.feather"
+        },
+        "testing":{
+	    "DLL":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl"
+	    }, 
+	    "gen":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.feather"
+        }
+    }
+    },
+    "lr_scheduler": {
+        "step_size":25,
+        "gamma": 0.1
+    },
+    "optimizer": {
+        "lr":1e-4,
+        "weight_decay": 0,
+        "alpha": 1e-3
+    },
+    "num_epochs": 100,
+    "dataloader": {
+        "split":[0.7,0.15,0.15],
+        "train": {
+            "batch_size": 2048
+    	},
+        "val": {
+            "batch_size": 2048
+        },
+        "test": {
+            "batch_size": 25
+        }
+    },
+    "output": {
+	"dir": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models"
+    },
+    "Inference": {
+            "gen_dir": "Figures/hpDIRC_CNF_KaonTest_Small",
+            "samples": 1,
+            "kaon_model_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_OT_Flow_FullDataset_v3_ReverseCondScale_DecreaseRange_RESUME___Dec-15-2024/Kaon_OT_Flow_FullDataset_v3_ReverseCondScale_DecreaseRange_RESUME_epoch05_val_loss_-21.819084.pth",
+            "pion_model_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_OT_Flow_FullDataset_v3_ReverseCondScale_DecreaseRange_RESUME___Dec-15-2024/Pion_OT_Flow_FullDataset_v3_ReverseCondScale_DecreaseRange_RESUME_epoch04_val_loss_-24.117643.pth",
+            "kaon_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_OT_Flow_FullDataset_v2_RESUME___Dec-12-2024/Kaon_OT_Flow_FullDataset_v2_RESUME_epoch08_val_loss_-24.729573.pth",
+            "pion_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_OT_Flow_FullDataset_v2_RESUME___Dec-12-2024/Pion_OT_Flow_FullDataset_v2_RESUME_epoch05_val_loss_-24.005458.pth",
+            "pion_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_OTFlow_FullTrain_Corrected_NLL___Dec-04-2024/Pion_OTFlow_FullTrain_Corrected_NLL_epoch54_val_loss_-24.480004.pth",
+            "kaon_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_OTFlow_FullTrain_Corrected_NLL_JupyterHub___Dec-04-2024/Kaon_OTFlow_FullTrain_Corrected_NLL_JupyterHub_epoch60_val_loss_-24.007295.pth",
+            "pion_model_path_6L": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_OTFlow_L6_Node128___Dec-03-2024/Pion_OTFlow_L6_Node128_epoch72_val_loss_-24.290056.pth",
+            "kaon_model_path_NotWorth": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_Test_OTFLOW_v11_nt20_128Node_8Layers___Dec-02-2024/Kaon_Test_OTFLOW_v11_nt20_128Node_8Layers_epoch41_val_loss_-24.259140.pth",
+            "kaon_model_path_not_bad6L" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_Test_OTFLOW_v11_nt20_L6_128Node___Dec-02-2024/Kaon_Test_OTFLOW_v11_nt20_L6_128Node_epoch29_val_loss_-22.777996.pth",
+            "kaon_model_path_6L" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_Test_OTFLOW_v11_nt20_L6_128Node___Dec-02-2024/Kaon_Test_OTFLOW_v11_nt20_L6_128Node_epoch28_val_loss_-22.791930.pth",
+            "kaon_model_path_32Node_T=1": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Test_Kaon_CNF_SMALL___Nov-26-2024/Test_Kaon_CNF_SMALL_epoch01_save_iter_20000.pth",
+            "kaon_model_path_1000Node_T=2": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Test_Kaon_CNF___Nov-25-2024/Test_Kaon_CNF_epoch00_save_iter_23000.pth",
+            "pion_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_hpDIRC_10L_8192_Batch_ExtraTracks___Oct-15-2024/Pion_hpDIRC_10L_8192_Batch_ExtraTracks_epoch60_val_loss_-2.462260.pth",
+            "kaon_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_hpDIRC_10L_8192_Batch_ExtraTracks___Oct-15-2024/Kaon_hpDIRC_10L_8192_Batch_ExtraTracks_epoch64_val_loss_-2.364556.pth",
+            "pion_model_path_12L_extratracks": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch___Oct-18-2024/Kaon_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch_epoch49_val_loss_-2.491220.pth",
+            "kaon_model_path_12L_extratracks": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch___Oct-18-2024/Pion_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch_epoch49_val_loss_-2.499985.pth",
+            "pion_model_path_decent": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_hpDIRC_10L_8192_Batch___Oct-09-2024/Pion_hpDIRC_10L_8192_Batch_epoch49_val_loss_-2.758101.pth",
+            "kaon_model_path_decent": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_hpDIRC_10L_8192_Batch___Oct-09-2024/Kaon_hpDIRC_10L_8192_Batch_epoch49_val_loss_-2.604963.pth",
+            "out_dir": "Inference/OTFlow_FullTrain_v2_6GeV_TestRevKinScale",
+            "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/ParticleGun/Generated_Data/NF_Generated",
+            "fixed_point_dir": "test"
+        }
+}

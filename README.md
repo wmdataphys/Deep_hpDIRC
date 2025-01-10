@@ -7,7 +7,7 @@ Note: The generations will not be performed bar-by-bar, but at fixed regions of 
 ### **What You Will Need:**
 
 1. **The Config File**  
-   The config file contains crucial information such as scalings, data paths, and other settings. I will provide access to this file on the cluster.
+   The config file contains crucial information such as scalings, data paths, and other settings. I will provide access to this file on the cluster. The hpDIRC_config_gulf.json file should give you all the paths you need.
 
 2. **The Models (Freia)**  
    The models contain variables such as `allowed_x`, `allowed_y`, etc., that are used for masking and resampling operations.
@@ -19,15 +19,30 @@ Note: The generations will not be performed bar-by-bar, but at fixed regions of 
 
 ---
 
+### **Training Resources **
+
+Below Im including the resources you will need for training (in terms of what to request from the cluster):
+
+```bash
+#!/bin/bash
+#SBATCH --export=ALL
+#SBATCH --job-name=SDE
+#SBATCH --nodes=1
+#SBATCH --tasks=16
+#SBATCH --mem-per-cpu=4000
+#SBATCH --gpus=1
+#SBATCH -t 72:00:00
+```
+
 ### **Using the `.sh` / `.tcsh` Files for Generation**
 
-An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values. These will index specific files and generate the full theta range at that momentum:
+An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values.
 
 ```bash
 chmod +x gen_thetas_hpDIRC.sh
 ```
 
-Then you can simply do:
+The momentum will index specific files (in the fixed_point datasets field) and generate the full theta range at that momentum. Then you can simply do:
 
 ```bash
 ./gen_thetas_hpDIRC.sh 
