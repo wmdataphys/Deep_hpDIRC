@@ -1,0 +1,171 @@
+import os
+import json
+import argparse
+import torch
+import random
+import numpy as np
+from torch.utils.data import TensorDataset, DataLoader
+from dataloader.dataloader import CreateLoaders
+import pkbar
+import torch.optim as optim
+from torch.optim import lr_scheduler
+import torch.nn as nn
+from models.nflows_models import create_nflows,MAAF
+from datetime import datetime
+import itertools
+import matplotlib.pyplot as plt
+import time
+from matplotlib.colors import LogNorm
+from models.freia_models import FreiaNet
+import matplotlib.colors as mcolors
+import pickle
+import time
+
+
+def main(config,args):
+
+    # Setup random seed
+    torch.manual_seed(config['seed'])
+    np.random.seed(config['seed'])
+    random.seed(config['seed'])
+    torch.cuda.manual_seed(config['seed'])
+
+    config['method'] = args.method
+
+    if config['method'] == "Pion":
+        print("Generating for pions.")
+        dicte = torch.load(config['Inference']['pion_model_path'])
+
+    elif config['method'] == 'Kaon':
+        print("Generation for kaons.")
+        dicte = torch.load(config['Inference']['kaon_model_path'])
+    else:
+        print("Specify particle to generate in config file")
+        exit()
+
+    log_time = bool(config['log_time'])
+    # Create the model
+    # This will map gen -> Reco
+    if config['method'] == 'Pion':
+        num_layers = int(config['model']['num_layers'])
+        PID = 211
+    elif config['method'] == 'Kaon':
+        num_layers = int(config['model']['num_layers'])
+        PID = 321
+    else:
+        num_layers = int(config['model']['num_layers'])
+
+    input_shape = int(config['model']['input_shape'])
+    cond_shape = int(config['model']['cond_shape'])
+    num_blocks = int(config['model']['num_blocks'])
+    hidden_nodes = int(config['model']['hidden_nodes'])
+    stats = config['stats']
+    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
+    t_params = sum(p.numel() for p in net.parameters())
+    print("Network Parameters: ",t_params)
+    device = torch.device('cuda')
+    net.to('cuda')
+    net.load_state_dict(dicte['net_state_dict'])
+    n_samples = int(config['Inference']['samples'])
+
+    if config['method'] == 'Pion':
+        print("Generating pions with momentum of {0} GeV/c".format(args.momentum))
+        if args.momentum == 1.0:
+            datapoints = np.load(config['dataset']['fixed_point']["pion_data_path_1GeV"],allow_pickle=True)
+        elif args.momentum == 3.0:
+            datapoints = np.load(config['dataset']['fixed_point']["pion_data_path_3GeV"],allow_pickle=True)
+        elif args.momentum == 6.0:
+            datapoints = np.load(config['dataset']['fixed_point']["pion_data_path_6GeV"],allow_pickle=True)
+        elif args.momentum == 9.0:
+            datapoints = np.load(config['dataset']['fixed_point']["pion_data_path_9GeV"],allow_pickle=True)
+        else:
+            raise ValueError("Value of momentum does correspond to a dataset. Check if the path is correct, or simulate and processes.")
+
+    elif config['method'] == 'Kaon':
+        print("Generating kaons with momentum of {0} GeV/c".format(args.momentum))
+        if args.momentum == 1.0:
+            datapoints = np.load(config['dataset']['fixed_point']["kaon_data_path_1GeV"],allow_pickle=True)
+        elif args.momentum == 3.0:
+            datapoints = np.load(config['dataset']['fixed_point']["kaon_data_path_3GeV"],allow_pickle=True)
+        elif args.momentum == 6.0:
+            datapoints = np.load(config['dataset']['fixed_point']["kaon_data_path_6GeV"],allow_pickle=True)
+        elif args.momentum == 9.0:
+            datapoints = np.load(config['dataset']['fixed_point']["kaon_data_path_9GeV"],allow_pickle=True)
+        else:
+            raise ValueError("Value of momentum does correspond to a dataset. Check if the path is correct, or simulate and processes.")       
+        
+    else:
+        raise ValueError("Method not found.")
+
+
+    list_to_gen = []
+
+    for i in range(len(datapoints)):
+        if (datapoints[i]['Theta'] == args.theta) and (datapoints[i]['P'] == args.momentum):
+            list_to_gen.append(datapoints[i])
+
+    print("Generating {0} tracks, with p={1} and theta={2}.".format(len(list_to_gen),args.momentum,args.theta))
+       
+    generations = []
+    kbar = pkbar.Kbar(target=len(list_to_gen), width=20, always_stateful=False)
+    start = time.time()
+    for i in range(len(list_to_gen)):   
+        with torch.set_grad_enabled(False):
+            p = (list_to_gen[i]['P'] - stats['P_max'])  / (stats['P_max'] - stats['P_min'])
+            theta = (list_to_gen[i]['Theta'] - stats['theta_max']) / (stats['theta_max'] - stats['theta_min'])
+            k = torch.tensor(np.array([p,theta])).to('cuda').float()
+            #gen = net.probabalistic_sample(pre_compute_dist=3000,context=k,photon_yield=num_samples)
+            if list_to_gen[i]['NHits'] > 0:
+                gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0))
+            else:
+                print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
+                continue
+        
+        generations.append(gen)
+        kbar.update(i)
+    end = time.time()
+
+    n_photons = 0
+
+    for i in range(len(list_to_gen)):
+        n_photons += list_to_gen[i]['NHits']
+
+    print(" ")
+    print("Number of tracks generated: ",len(generations))
+    print("Number of photons generated: ",net.photons_generated)
+    print("Number of photons resampled: ",net.photons_resampled)
+    print('Percentage effect: ',net.photons_resampled * 100 / net.photons_generated)
+    print("Elapsed Time: ", end - start)
+    print("Time / photon: ",(end - start) / n_photons)
+    print("Average time / track: ",(end - start) / len(list_to_gen))
+    print(" ")
+    gen_dict = {}
+    gen_dict['fast_sim'] = generations
+    gen_dict['truth'] = list_to_gen
+
+    os.makedirs("Generations",exist_ok=True)
+    out_folder = os.path.join("Generations",config['Inference']['fixed_point_dir'])
+    os.makedirs(out_folder,exist_ok=True)
+    print("Outputs can be found in " + str(out_folder))
+
+    out_path_ = os.path.join(out_folder,str(config['method'])+f"_p_{args.momentum}_theta_{args.theta}_PID_{config['method']}_ntracks_{len(list_to_gen)}.pkl")
+    
+    with open(out_path_,"wb") as file:
+        pickle.dump(gen_dict,file)
+
+
+
+
+if __name__=='__main__':
+    # PARSE THE ARGS
+    parser = argparse.ArgumentParser(description='FastSim Generation')
+    parser.add_argument('-c', '--config', default='config.json',type=str,
+                        help='Path to the config file (default: config.json)')
+    parser.add_argument('-p', '--momentum', default=6.0,type=float,help='Particle Momentum.')
+    parser.add_argument('-t','--theta',default=30.0,type=float,help='Particle theta.')
+    parser.add_argument('-m', '--method',default="Kaon",type=str,help='Generated particle type, Kaon or Pion.')
+    args = parser.parse_args()
+
+    config = json.load(open(args.config))
+
+    main(config,args)

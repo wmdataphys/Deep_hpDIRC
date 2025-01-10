@@ -1,0 +1,123 @@
+{
+    "name": "Kaon_hpDIRC_8L_8192_Batch_ExtraTracks_50Epoch",
+    "seed": 752022,
+    "run_val":1,
+    "method":"Kaon",
+    "datatype": "Simulation",
+    "sim_type": "pgun",
+    "log_time":0,
+    "stats": {"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},
+    "model_fc": {
+       "num_layers":10,
+       "input_shape":3,
+       "cond_shape":2,
+       "num_blocks":2,
+       "hidden_nodes": 512
+   },
+   "model": {
+    "num_layers":20,
+    "input_shape":3,
+    "cond_shape":2,
+    "num_blocks":2,
+    "hidden_nodes": 128
+},
+    "dataset": {
+        "fixed_point":{
+            "pion_data_path": "data/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path": "data/Testing_Kaons_hpDIRC.pkl",
+            "pion_data_path_6GeV": "data/mix_piK_all_theta/mixed_pik_all_theta_Pions.pkl",
+            "kaon_data_path_6GeV": "data/mix_piK_all_theta/mixed_pik_all_theta_Kaons.pkl",
+            "pion_data_path_9GeV": "data/9GeV/merged_pik_9GeV_Pions.pkl",
+            "kaon_data_path_9GeV": "data/9GeV/merged_pik_9GeV_Kaons.pkl",
+            "pion_data_path_3GeV": "data/3GeV/merged_pik_3GeV_Pions.pkl",
+            "kaon_data_path_3GeV": "data/3GeV/merged_pik_3GeV_Kaons.pkl",
+            "pion_data_path_1GeV": "data/1GeV/merged_pions_1GeV_Pions.pkl",
+            "kaon_data_path_1GeV": "data/1GeV/merged_kaons_1GeV_Kaons.pkl",
+            "pion_data_path_": "../Cherenkov_Transformer/data/merged_pions_6GeV_Pions.pkl",
+            "kaon_data_path_": "../Cherenkov_Transformer/data/merged_kaons_6GeV_Kaons.pkl",
+            "pion_data_path_": "/sciclone/home/jgiroux/EIC/eicdirc/build/data/processed/sim_Pions.pkl",
+            "kaon_data_path_": "/sciclone/home/jgiroux/EIC/eicdirc/build/data/processed/sim_Kaons.pkl"
+        },
+        "mcmc":{
+            "pion_data_path":"/sciclone/data10/jgiroux/Cherenkov/hpDIRC/TrackWiseGeneration_Pions.pkl",
+            "kaon_data_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/TrackWiseGeneration_Kaons.pkl"
+        },
+        "training": {
+            "smeared":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC_Smeared.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC_Smeared.feather"
+            },
+            "unsmeared":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC.feather"              
+            }
+        },
+        "validation":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Validation_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Validation_Kaons_hpDIRC.feather"
+        },
+        "testing":{
+	    "DLL":{
+            "pion_data_path" : "../Cherenkov_Transformer/data/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path" : "../Cherenkov_Transformer/data/Testing_Kaons_hpDIRC.pkl"
+	    }, 
+	    "gen":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.feather"
+        }
+    }
+    },
+    "lr_scheduler": {
+        "step_size":25,
+        "gamma": 0.1
+    },
+    "optimizer": {
+        "lr": 7e-4,
+    	"KL_scale":0.0005,
+        "cost_scale":1e-4,
+        "mmd_scale":1.2
+    },
+    "num_epochs": 50,
+    "dataloader": {
+        "split":[0.7,0.15,0.15],
+        "train": {
+            "batch_size": 8192
+    	},
+        "val": {
+            "batch_size": 8192
+        },
+        "test": {
+            "batch_size": 25
+        }
+    },
+    "output": {
+	"dir": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models"
+    },
+    "Inference": {
+            "gen_dir": "Figures/hpDIRC_theta90_p6",
+            "samples": 1,
+            "pion_model_path_k20": "Trained_Models/MOG/k20/Pion_hpDIRC_MoG_20L_128Node_k20_RESUME_v3_epoch99_val_loss_-2.928708.pth",
+            "kaon_model_path_k20": "Trained_Models/MOG/k20/Kaon_hpDIRC_MoG_20L_128Node_k20_RESUME_v3_epoch99_val_loss_-2.838698.pth",
+            "pion_model_path_k80": "Trained_Models/MOG/k80/Pion_hpDIRC_MoG_20L_128Node_k80_RESUME_epoch72_val_loss_-2.919669.pth",
+            "kaon_model_path_k80": "Trained_Models/MOG/k80/Kaon_hpDIRC_MoG_20L_128Node_k80_RESUME_epoch76_val_loss_-2.839526.pth",
+            "pion_model_path": "Trained_Models/MOG/k40/Pion_hpDIRC_MoG_20L_128Node_k40_RESUME_v3_epoch95_val_loss_-2.932614.pth",
+            "kaon_model_path": "Trained_Models/MOG/k40/Kaon_hpDIRC_MoG_20L_128Node_k40_RESUME_v3_epoch99_val_loss_-2.844851.pth",
+            "pion_model_path_" : "Trained_Models/Pion_hpDIRC_10L_2048_Batch_ExtraTracks_50Epoch_2LBlocks_512Node_CondNetTest_RESUME_epoch49_val_loss_-2.676242.pth",
+            "kaon_model_path_" : "Trained_Models/Kaon_hpDIRC_10L_2048_Batch_ExtraTracks_50Epoch_2LBlocks_512Node_CondNetTest_RESUME_epoch49_val_loss_-2.585905.pth",
+            "pion_model_path_2.52": "Trained_Models/Pion_hpDIRC_10L_2048_Batch_ExtraTracks_50Epoch_2LBlocks_512Node_RESUME___Nov-04-2024/Pion_hpDIRC_10L_2048_Batch_ExtraTracks_50Epoch_2LBlocks_512Node_RESUME_epoch49_val_loss_-2.682248.pth",
+            "kaon_model_path_2.52": "Trained_Models/Kaon_hpDIRC_10L_2048_Batch_ExtraTracks_50Epoch_2LBlocks_512Node_RESUME___Nov-04-2024/Kaon_hpDIRC_10L_2048_Batch_ExtraTracks_50Epoch_2LBlocks_512Node_RESUME_epoch49_val_loss_-2.651836.pth",
+            "pion_model_path_": "Trained_Models/Pion_hpDIRC_10L_16384_Batch_ExtraTracks_50Epoch_2LBlocks_512Node___Oct-30-2024/Pion_hpDIRC_10L_16384_Batch_ExtraTracks_50Epoch_2LBlocks_512Node_epoch49_val_loss_-2.624955.pth",
+            "kaon_model_path_": "Trained_Models/Kaon_hpDIRC_10L_16384_Batch_ExtraTracks_50Epoch_2LBlocks_512Node___Oct-30-2024/Kaon_hpDIRC_10L_16384_Batch_ExtraTracks_50Epoch_2LBlocks_512Node_epoch49_val_loss_-2.621334.pth",
+            "pion_model_path_": "Trained_Models/Pion_hpDIRC_20L_8192_Batch_ExtraTracks_50Epoch_2LBlocks_128Node_ResumeTraining_epoch44_val_loss_-2.659910.pth",
+            "kaon_model_path_": "Trained_Models/Kaon_hpDIRC_20L_8192_Batch_ExtraTracks_50Epoch_2LBlocks_128Node_ResumeTraining_epoch46_val_loss_-2.643767.pth",
+            "pion_model_path_": "Trained_Models/Pion_hpDIRC_10L_8192_Batch_ExtraTracks_50Epoch___Oct-20-2024/Pion_hpDIRC_10L_8192_Batch_ExtraTracks_50Epoch_epoch49_val_loss_-2.694524.pth",
+            "kaon_model_path_": "Trained_Models/Kaon_hpDIRC_10L_8192_Batch_ExtraTracks_50Epoch___Oct-20-2024/Kaon_hpDIRC_10L_8192_Batch_ExtraTracks_50Epoch_epoch49_val_loss_-2.602673.pth",
+            "pion_model_path_12L_extratracks": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch___Oct-18-2024/Kaon_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch_epoch49_val_loss_-2.491220.pth",
+            "kaon_model_path_12L_extratracks": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch___Oct-18-2024/Pion_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch_epoch49_val_loss_-2.499985.pth",
+            "pion_model_path_": "Trained_Models/Pion_hpDIRC_10L_8192_Batch___Oct-09-2024/Pion_hpDIRC_10L_8192_Batch_epoch49_val_loss_-2.758101.pth",
+            "kaon_model_path_": "Trained_Models/Kaon_hpDIRC_10L_8192_Batch___Oct-09-2024/Kaon_hpDIRC_10L_8192_Batch_epoch49_val_loss_-2.604963.pth",
+            "out_dir": "Inference/MOG_k40_FullPhaseSpace_FullTrain100Epochs",
+            "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/ParticleGun/Generated_Data/NF_Generated",
+            "fixed_point_dir": "test"
+        }
+}

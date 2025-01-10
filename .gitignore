@@ -1,11 +1,7 @@
-*log*
-*.out
-*Figures*
-*oldfiles*
+*checkpoints*
 *pycache*
-*.pcm*
-*.so*
-*.d*
-*scripts*
-*Untitled*
-*slurm*
+*Inference*
+*Generations*
+*oldfiles*
+*Trained_Models*
+data

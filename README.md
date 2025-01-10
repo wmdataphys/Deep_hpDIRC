@@ -1,33 +1,41 @@
-# If you're submitting this on the new cluster you will need to do the following:
+# Fast Simulation for the hpDIRC
 
-1. module load anaconda3/2023.09
-2. conda activate ptorch (note you will need to install normflows into this original ptorch env I created)
-3. sbatch slurm_sub (make whatever changes inside here to the file names, path to config, etc.)
+This repository contains all the necessary files for running the hpDIRC fast simulation. I've organized them in a way that should be easy to modify and generate new simulations based on your needs.
 
-You need to have your conda env activated before submitting the job. The submission script will export all current system states (i.e., python packages) to the node.
-This was just the first way I could get slurm to not complain. Probably a better way for this.
+Note: The generations will not be performed bar-by-bar, but at fixed regions of momentum and theta. We are using two conditionals for the simulation, as it is set up with φ = 0. This setup should be fine for now, and we can make use of symmetry arguments..
 
-# Import Notes:
+### **What You Will Need:**
 
-April 2022 - I included code to run tests with tail modification on real data in the CherenkovPhotons dataset. If you do not want this you can simply comment it out and include .to_numpy() on the reading of the .csv file. Have not implemented this on a config level basis yet. Not sure if it will stay.
+1. **The Config File**  
+   The config file contains crucial information such as scalings, data paths, and other settings. I will provide access to this file on the cluster.
 
-If you are running on real data or simulation make sure to check the create_data.py folder and implement the correct maximum time!!!
+2. **The Models (Freia)**  
+   The models contain variables such as `allowed_x`, `allowed_y`, etc., that are used for masking and resampling operations.
 
-To run an interactive job: salloc -N -n 8 --gpus=1 --time=01:00:00
+3. **The `gen_thetas_hpDIRC` Shell Command**  
+   I have provided three versions of the `gen_thetas_hpDIRC` shell command:
+   - On the cluster, use the `.csh` or `.sh` file depending on whether you're using `tcsh` or `bash`.
+   - On Windows, use the `.bat` file.
 
-To submit a job with the submit_slurm script: sbatch slurm_sub
-This is similar to torque
+---
 
-Also, something very important I forgot. We are working on linux, we can use multiple workers. I have modified the dataloader scripts to use 8 workers, so request 8 cores. This seems to be about perfect before we degrade performance due to bottlenecking.
-This will give you training times on the order of 15 minutes / epoch with a batch size of 2048 (30 minutes if using both pions and kaons)
+### **Using the `.sh` / `.tcsh` Files for Generation**
 
-I have made the dataloader so you can utilize both classes more easily. There are new fields in the config file (i.e., different data paths for the new files) Update these as you need.
-You can control which dataset is loaded within the config file through the "method" field, which can be Pion, Kaon or combined.
+An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values. These will index specific files and generate the full theta range at that momentum:
 
-All scaling is also handled in the dataset now as well. Take a look over these files to see the changes and how things tie together. But in general this is a more sound method.
+```bash
+chmod +x gen_thetas_hpDIRC.sh
+```
 
-Updated the generation (run_inference.py) and DLL files (run_DLL_v2.py). These should work with new data pipeline. Also changed the statistics we are using slightly, specifically the min and max values for the x,y position. These should increased/decreased by 3 from what we had prior.
+Then you can simply do:
 
-# TODO:
+```bash
+./gen_thetas_hpDIRC.sh 
+```
 
-Need to rewrite DIRC DLL file.
+In the config file (also please feel free to remove all the model paths I have in there) you will see the Inference/fixed_point_dir field. You will need to change this to whatever you want. I recommend having something that gives information of the model, and also the momentum range, e.g., SDE_V1_6GeV. This will create a folder called Generations (only once), along with another folder with the name you have given in that fixed_point_dir field. Here it will dump the generations and ground truth into .pkl files, loop over these .pkl files and create individual .png images, and then combine these into a single .pdf. These images will be inside a folder called 2DPlots.
+
+### **Creating your own simulation**
+This is more complicated. I don't think you should need to do it so I am going to save myself from detailing this but we can talk about it if you wish. Probably easier for me to run it for you.
+
+

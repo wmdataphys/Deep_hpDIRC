@@ -12,39 +12,29 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 #from models.torch_mnf.layers import MNFLinear
 from nflows.distributions.normal import ConditionalDiagonalNormal
+from models.distributions import ConditionalDiagonalStudentT
 from nflows.distributions.base import Distribution
 from nflows.utils import torchutils
 from typing import Union, Iterable, Tuple
 import scipy
+#from nflows.nn.nde.made import MixtureOfGaussiansMADE
+from models.MADE import MixtureOfGaussiansMADE
 
+class ResNetBlock(nn.Module):
+    def __init__(self, hidden_units):
+        super().__init__()
+        self.linear1 = nn.Linear(hidden_units, hidden_units)
+        self.linear2 = nn.Linear(hidden_units, hidden_units)
+        self.activation = nn.ReLU()
 
-# Domain of inverse tangent is (-1,1) -> Careful
-class InvertibleTanh(InvertibleModule):
-    def __init__(self, dims_in, **kwargs):
-        super().__init__(dims_in, **kwargs)
+    def forward(self, x):
+        #x = self.activation(self.linear1(x) + x)
+        #x = self.activation(self.linear2(x) + x)
+        inputs = x
+        x = self.activation(self.linear1(x))
+        x = self.activation(self.linear2(x) + inputs)
+        return x
 
-    def output_dims(self, dims_in):
-        return dims_in
-
-    def forward(self, x_or_z: Iterable[torch.Tensor], c: Iterable[torch.Tensor] = None,
-                rev: bool = False, jac: bool = True) \
-            -> Tuple[Tuple[torch.Tensor], torch.Tensor]:
-        x_or_z = x_or_z[0]
-        if not rev:
-            # S(x)
-            result = torch.tanh(x_or_z)
-            logabsdet = torch.log(1 - result ** 2)
-            logabsdet = torchutils.sum_except_batch(logabsdet, num_batch_dims=1)
-        else:
-            # S^-1(z)
-            result = 0.5 * torch.log((1 + x_or_z) / (1.0 - x_or_z))
-            logabsdet = -torch.log(1 - x_or_z ** 2)
-            logabsdet = torchutils.sum_except_batch(logabsdet, num_batch_dims=1)
-        if not jac:
-            return (result, )
-
-
-        return ((result, ), logabsdet)
 
 class FreiaNet(nn.Module):
     def __init__(self,input_shape,layers,context_shape,embedding=False,hidden_units=512,num_blocks=2,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0,
@@ -59,31 +49,51 @@ class FreiaNet(nn.Module):
         self.photons_generated = 0
         self.photons_resampled = 0
         self.device = device
+        self.gapx =  1.89216111455965 + 4.
+        self.gapy = 1.3571428571428572 + 4.
+        self.pixel_width = 3.3125
+        self.pixel_height = 3.3125
 
-        self._allowed_x = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,   # 0
-                                                    53.,  59.,  65., 71.,  77.,  83.,  89.,  95.,  # 1
-                                                    103., 109., 115., 121., 127., 133., 139., 145.,# 2
-                                                    153., 159., 165., 171., 177., 183., 189., 195.,# 3
-                                                    203., 209., 215., 221., 227., 233., 239., 245.,# 4 
-                                                    253., 259., 265., 271.,277., 283., 289.,  295.,# 5
-                                                    303., 309., 315., 321., 327., 333., 339., 345.,# 6
-                                                    353., 359., 365., 371., 377., 383., 389., 395.,# 7 
-                                                    403., 409., 415., 421., 427., 433., 439., 445.,# 8
-                                                    453., 459., 465., 471., 477., 483., 489., 495.,# 9 
-                                                    503., 509., 515., 521., 527., 533., 539., 545.,# 10
-                                                    553., 559., 565., 571., 577., 583., 589., 595.,# 11
-                                                    603., 609., 615., 621., 627., 633., 639., 645.,# 12 
-                                                    653., 659., 665., 671., 677., 683., 689., 695.,# 13
-                                                    703., 709., 715., 721., 727., 733., 739., 745.,# 14 
-                                                    753., 759., 765., 771., 777., 783., 789., 795.,# 15 
-                                                    803., 809., 815., 821., 827., 833., 839., 845.,# 16
-                                                    853., 859., 865., 871., 877., 883., 889., 895.])).to(self.device) # 17
-        self._allowed_y = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  # 0
-                                                   53.,  59.,  65.,71.,  77.,  83.,  89.,  95.,   # 1
-                                                   103., 109., 115., 121., 127., 133.,139., 145., # 2
-                                                   153., 159., 165., 171., 177., 183., 189., 195.,# 3  
-                                                   203., 209., 215., 221., 227., 233., 239., 245.,# 4 
-                                                   253., 259., 265., 271.,277., 283., 289., 295.])).to(self.device) # 5
+        self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
+                                                   16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
+                                                   30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
+                                                   43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
+                                                   62.54841111,  65.86091111,  69.17341111,  72.48591111,
+                                                   75.79841111,  79.11091111,  82.42341111,  85.73591111,
+                                                   89.04841111,  92.36091111,  95.67341111,  98.98591111,
+                                                   102.29841111, 105.61091111, 108.92341111, 112.23591111,
+                                                   121.44057223, 124.75307223, 128.06557223, 131.37807223,
+                                                   134.69057223, 138.00307223, 141.31557223, 144.62807223,
+                                                   147.94057223, 151.25307223, 154.56557223, 157.87807223,
+                                                   161.19057223, 164.50307223, 167.81557223, 171.12807223,
+                                                   180.33273334, 183.64523334, 186.95773334, 190.27023334,
+                                                   193.58273334, 196.89523334, 200.20773334, 203.52023334,
+                                                   206.83273334, 210.14523334, 213.45773334, 216.77023334,
+                                                   220.08273334, 223.39523334, 226.70773334, 230.02023334,
+                                                   239.22489446, 242.53739446, 245.84989446, 249.16239446,
+                                                   252.47489446, 255.78739446, 259.09989446, 262.41239446,
+                                                   265.72489446, 269.03739446, 272.34989446, 275.66239446,
+                                                   278.97489446, 282.28739446, 285.59989446, 288.91239446,
+                                                   298.11705557, 301.42955557, 304.74205557, 308.05455557,
+                                                   311.36705557, 314.67955557, 317.99205557, 321.30455557,
+                                                   324.61705557, 327.92955557, 331.24205557, 334.55455557,
+                                                   337.86705557, 341.17955557, 344.49205557, 347.80455557])).to(self.device)
+        self._allowed_y = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
+                                                   16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
+                                                   30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
+                                                   43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
+                                                   62.01339286,  65.32589286,  68.63839286,  71.95089286,
+                                                   75.26339286,  78.57589286,  81.88839286,  85.20089286,
+                                                   88.51339286,  91.82589286,  95.13839286,  98.45089286,
+                                                   101.76339286, 105.07589286, 108.38839286, 111.70089286,
+                                                   120.37053571, 123.68303571, 126.99553571, 130.30803571,
+                                                   133.62053571, 136.93303571, 140.24553571, 143.55803571,
+                                                   146.87053571, 150.18303571, 153.49553571, 156.80803571,
+                                                   160.12053571, 163.43303571, 166.74553571, 170.05803571,
+                                                   178.72767857, 182.04017857, 185.35267857, 188.66517857,
+                                                   191.97767857, 195.29017857, 198.60267857, 201.91517857,
+                                                   205.22767857, 208.54017857, 211.85267857, 215.16517857,
+                                                   218.47767857, 221.79017857, 225.10267857, 228.41517857])).to(self.device) 
         self.stats_ = stats
 
         if self.embedding:
@@ -91,18 +101,35 @@ class FreiaNet(nn.Module):
 
         context_encoder =  nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape*2)])
 
-        self.distribution = ConditionalDiagonalNormal(shape=[input_shape],context_encoder=context_encoder)
+        #self.distribution = ConditionalDiagonalNormal(shape=[input_shape],context_encoder=context_encoder)
+        #self.distribution = ConditionalDiagonalStudentT(shape=[input_shape],context_encoder=context_encoder)
+        self.distribution = MixtureOfGaussiansMADE(
+                                features=input_shape,
+                                hidden_features=128,
+                                context_features=context_shape,
+                                num_blocks=2,
+                                num_mixture_components=40,
+                                use_residual_blocks=True,
+                                random_mask=False,
+                                activation=F.relu,
+                                dropout_probability=0.0,
+                                use_batch_norm=False,
+                                epsilon=1e-2,
+                                custom_initialization=True,
+                                ).to(self.device)
+
 
         def create_freai(input_shape,layer,cond_shape):
             inn = Ff.SequenceINN(input_shape)
             #inn.append(InvertibleTanh)
             for k in range(layers):
-                inn.append(Fm.AllInOneBlock,cond=0,cond_shape=(cond_shape,),subnet_constructor=subnet_fc, permute_soft=True)
+                inn.append(Fm.AllInOneBlock,cond=0,cond_shape=(cond_shape,),subnet_constructor=resnet_subnet, permute_soft=True)
 
             return inn
 
         def block(hidden_units):
-            return [nn.Linear(hidden_units,hidden_units),nn.ReLU(),nn.Linear(hidden_units,hidden_units),nn.ReLU()]
+            return [nn.Linear(hidden_units,hidden_units),nn.BatchNorm1d(hidden_units),nn.ReLU(),
+                    nn.Linear(hidden_units,hidden_units),nn.BatchNorm1d(hidden_units),nn.ReLU()]
 
         def subnet_fc(c_in, c_out):
             blks = [nn.Linear(c_in,hidden_units)]
@@ -111,6 +138,16 @@ class FreiaNet(nn.Module):
 
             blks += [nn.Linear(hidden_units,c_out)]
             return nn.Sequential(*blks)
+
+        def resnet_subnet(c_in, c_out):
+            layers = [nn.Linear(c_in,hidden_units)]
+            
+            # Stack residual blocks
+            for _ in range(num_blocks):
+                layers.append(ResNetBlock(hidden_units))
+            
+            layers += [nn.Linear(hidden_units, c_out)]
+            return nn.Sequential(*layers)
 
         self.sequence = create_freai(self.input_shape,self.layers,self.context_shape)
 
@@ -125,11 +162,38 @@ class FreiaNet(nn.Module):
 
         return log_prob + logabsdet
 
+    def loss_function(self,inputs,context):
+        if self.embedding:
+            embedded_context = self.context_embedding(context)
+        else:
+            embedded_context = context
+
+        inputs.requires_grad_(True)
+        embedded_context.requires_grad_(True)
+
+        noise,logabsdet = self.sequence.forward(inputs,rev=False,c=[embedded_context])
+        log_prob = self.distribution.log_prob(noise,context=embedded_context)
+
+        grad_log_prob = torch.autograd.grad(
+            outputs=log_prob, 
+            inputs=inputs, 
+            grad_outputs=torch.ones_like(log_prob), 
+            create_graph=True)[0]
+
+        grad_log_prob = grad_log_prob.view(grad_log_prob.size(0), -1)
+
+        grad_log_prob = torch.norm(grad_log_prob, dim=1, p=1) 
+
+        return log_prob + logabsdet, grad_log_prob
+
     def __sample(self,num_samples,context):
         if self.embedding:
             embedded_context = self.context_embedding(context)
         else:
             embedded_context = context
+
+        #print(embedded_context)
+        #print(self.distribution)
 
         noise = self.distribution.sample(num_samples,context=embedded_context)
 
@@ -138,7 +202,7 @@ class FreiaNet(nn.Module):
             embedded_context = torchutils.repeat_rows(
                 embedded_context, num_reps=num_samples
             )
-
+    
         samples, _ = self.sequence.forward(noise,rev=True,c=[embedded_context])
 
         return samples
@@ -179,14 +243,8 @@ class FreiaNet(nn.Module):
         mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats_['time_max']))
         hits = hits[mask]
         # Outter bounds
-        mask = torch.where((hits[:, 0] > 0) & (hits[:, 0] < 898) & (hits[:, 1] > 0) & (hits[:, 1] < 298))[0] # Acceptance mask
+        mask = torch.where((hits[:, 0] > self.stats_['x_min']) & (hits[:, 0] < self.stats_['x_max']) & (hits[:, 1] > self.stats_['y_min']) & (hits[:, 1] < self.stats_['y_max']))[0] # Acceptance mask
         hits = hits[mask]
-        # PMTs OFF
-        top_row_mask = torch.where(~((hits[:, 1] > 249) & (hits[:, 0] < 350)))[0] # rejection mask (keep everything not identified)
-        hits = hits[top_row_mask]
-        # PMTs OFF
-        bottom_row_mask = torch.where(~((hits[:, 1] < 50) & (hits[:, 0] < 550)))[0] # rejection mask (keep everything not identified)
-        hits = hits[bottom_row_mask]
 
         return hits
 
@@ -211,9 +269,12 @@ class FreiaNet(nn.Module):
         y = self.set_to_closest(updated_hits[:,1],self._allowed_y).detach().cpu()
         t = updated_hits[:,2].detach().cpu()
 
-        pmtID = torch.div(x,torch.tensor(50,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(50,dtype=torch.int),rounding_mode='floor') * 18
-        row = (1.0/6.0) * ( y - 3 - 2* torch.div(pmtID,torch.tensor(18,dtype=torch.int),rounding_mode='floor'))
-        col = (1.0/6.0) * ( x - 3 - 2*(pmtID % 18))
+        #pmtID = torch.div(x,torch.tensor(50,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(50,dtype=torch.int),rounding_mode='floor') * 18
+        #row = (1.0/6.0) * ( y - 3 - 2* torch.div(pmtID,torch.tensor(18,dtype=torch.int),rounding_mode='floor'))
+        #col = (1.0/6.0) * ( x - 3 - 2*(pmtID % 18))
+        pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
+        col = (1.0/self.pixel_width) * (x - 2 - self.pixel_width/2. - (pmtID%6)*self.gapx)
+        row = (1.0/self.pixel_height) * (y - 2 - self.pixel_height/2. - self.gapy * torch.div(pmtID,torch.tensor(6,dtype=torch.int),rounding_mode='floor'))
 
         assert(len(row) == num_samples)
         assert(len(col) == num_samples)
@@ -221,10 +282,12 @@ class FreiaNet(nn.Module):
 
         P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats_['P_max'],self.stats_['P_min'])
         Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
-        Phi = self.unscale_conditions(context[0][2].detach().cpu().numpy(),self.stats_['phi_max'],self.stats_['phi_min'])
+        #Theta = self.unscale_conditions(context[0].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
+        #Phi = self.unscale_conditions(context[0][2].detach().cpu().numpy(),self.stats_['phi_max'],self.stats_['phi_min'])
+        Phi = 0.0
 
         if not plotting:
-            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"row":row.numpy(),"column":col.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
+            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
         else:
             return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
 
