@@ -1,5 +1,5 @@
 {
-    "name": "Kaon_hpDIRC_8L_8192_Batch_ExtraTracks_50Epoch",
+    "name": "FlowMatchingTest",
     "seed": 752022,
     "run_val":1,
     "method":"Kaon",
@@ -7,15 +7,15 @@
     "sim_type": "pgun",
     "log_time":0,
     "stats": {"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},
-    "model_fc": {
-       "num_layers":10,
+    "model": {
+       "num_layers":20,
        "input_shape":3,
        "cond_shape":2,
        "num_blocks":2,
-       "hidden_nodes": 512
+       "hidden_nodes": 128
    },
-   "model": {
-    "num_layers":20,
+   "model_CNF": {
+    "num_layers":6,
     "input_shape":3,
     "cond_shape":2,
     "num_blocks":2,

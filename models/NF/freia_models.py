@@ -10,14 +10,10 @@ import torch.nn.functional as F
 from scipy.stats import special_ortho_group
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
-#from models.torch_mnf.layers import MNFLinear
-from nflows.distributions.normal import ConditionalDiagonalNormal
-from models.distributions import ConditionalDiagonalStudentT
 from nflows.distributions.base import Distribution
 from nflows.utils import torchutils
 from typing import Union, Iterable, Tuple
 import scipy
-#from nflows.nn.nde.made import MixtureOfGaussiansMADE
 from models.MADE import MixtureOfGaussiansMADE
 
 class ResNetBlock(nn.Module):
@@ -99,10 +95,6 @@ class FreiaNet(nn.Module):
         if self.embedding:
             self.context_embedding = nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape)])
 
-        context_encoder =  nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape*2)])
-
-        #self.distribution = ConditionalDiagonalNormal(shape=[input_shape],context_encoder=context_encoder)
-        #self.distribution = ConditionalDiagonalStudentT(shape=[input_shape],context_encoder=context_encoder)
         self.distribution = MixtureOfGaussiansMADE(
                                 features=input_shape,
                                 hidden_features=128,
@@ -192,9 +184,6 @@ class FreiaNet(nn.Module):
         else:
             embedded_context = context
 
-        #print(embedded_context)
-        #print(self.distribution)
-
         noise = self.distribution.sample(num_samples,context=embedded_context)
 
         if embedded_context is not None:
@@ -269,9 +258,6 @@ class FreiaNet(nn.Module):
         y = self.set_to_closest(updated_hits[:,1],self._allowed_y).detach().cpu()
         t = updated_hits[:,2].detach().cpu()
 
-        #pmtID = torch.div(x,torch.tensor(50,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(50,dtype=torch.int),rounding_mode='floor') * 18
-        #row = (1.0/6.0) * ( y - 3 - 2* torch.div(pmtID,torch.tensor(18,dtype=torch.int),rounding_mode='floor'))
-        #col = (1.0/6.0) * ( x - 3 - 2*(pmtID % 18))
         pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
         col = (1.0/self.pixel_width) * (x - 2 - self.pixel_width/2. - (pmtID%6)*self.gapx)
         row = (1.0/self.pixel_height) * (y - 2 - self.pixel_height/2. - self.gapy * torch.div(pmtID,torch.tensor(6,dtype=torch.int),rounding_mode='floor'))
@@ -282,8 +268,6 @@ class FreiaNet(nn.Module):
 
         P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats_['P_max'],self.stats_['P_min'])
         Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
-        #Theta = self.unscale_conditions(context[0].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
-        #Phi = self.unscale_conditions(context[0][2].detach().cpu().numpy(),self.stats_['phi_max'],self.stats_['phi_min'])
         Phi = 0.0
 
         if not plotting:
@@ -325,151 +309,5 @@ class FreiaNet(nn.Module):
 
         return samples, log_prob - logabsdet
 
-    def prior(self,hits,ux=898,lx=0,uy=298,ly=0,pmt_off=None): # pmt_off is a list of turned off readout sections 
-        prior = torch.ones_like(hits[:,0])
-        prior = prior * (hits[:,0] > lx).float() * (hits[:,0] < ux).float() * (hits[:,1] > ly).float() * (hits[:,1] < uy) * (hits[:,2] > 0.0).float()
-        return prior
         
-    def trace_path(self,matrix, current_state, chain,photon_yield):
-        if len(chain) < photon_yield:
-            if current_state < matrix.size(0):
-                idx = (matrix[current_state] == True).nonzero()
-                if idx.numel() == 0:
-                    if len(chain) > 0:
-                        chain[-1] = current_state
-                    return
-                #print(current_state)
-                elif idx.numel() > 0:
-                    #print(current_state)
-                    idx = idx[0].item()
-                    n_stays = idx - 1  # Number of times current state remains the same
-                    chain.extend([current_state] * n_stays)  # Append the current state to the chain multiple times
-                    self.trace_path(matrix, idx, chain,photon_yield)  # Continue tracing from the next state
-                elif current_state != len(chain):
-                    # If no transitions are found from the current state and it's not the last state in the chain, terminate the recursion
-                    return
-
-        
-    def probabalistic_sample(self,pre_compute_dist,context,photon_yield):
-            samples, log_prob = self.sample_and_log_prob(pre_compute_dist,context)
-            samples = samples.squeeze(0)
-            log_prob = log_prob.squeeze(0)
-
-            if self.log_time:
-                x = torch.exp(self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])).round()
-                y = torch.exp(self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])).round()
-                t = torch.exp(self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min']))
-            else:
-                x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']).round()
-                y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']).round()
-                t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
-            
-            h = torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
-            prior = self.prior(h)
-            # Restrict sampling from pior
-            non_zero_p = torch.where(prior != 0.0)
-            h = h[non_zero_p]
-            log_prob = log_prob[non_zero_p]
-
-            transition_matrix = log_prob.unsqueeze(1) - log_prob.unsqueeze(0)
-            # Only forward sampling, its stochastic so its fine
-            accept_ = torch.triu(torch.rand(transition_matrix.shape).to(self.device) < torch.min(torch.ones_like(transition_matrix),transition_matrix),diagonal=1)
-            
-            chain = []
-            current_state = 0
-            self.trace_path(accept_, current_state, chain,photon_yield)
-            #print(chain)
-            chain_hits = h[np.array(chain)]
-            
-            x = self.set_to_closest(chain_hits[:,0],self._allowed_x)
-            y = self.set_to_closest(chain_hits[:,1],self._allowed_y)
-            chain = torch.concat((x.unsqueeze(1),y.unsqueeze(1),chain_hits[:,2].unsqueeze(1).detach().cpu()),axis=1).numpy()
-            return chain
-
-
-
-class ConditionalTStudent(Distribution):
-    """A diagonal multivariate Normal whose parameters are functions of a context."""
-
-    def __init__(self, shape, context_encoder=None,nu=1):
-        """Constructor.
-
-        Args:
-            shape: list, tuple or torch.Size, the shape of the input variables.
-            context_encoder: callable or None, encodes the context to the distribution parameters.
-                If None, defaults to the identity function.
-        """
-        super().__init__()
-        self._shape = torch.Size(shape)
-        self._nu = nu
-        if context_encoder is None:
-            self._context_encoder = lambda x: x
-        else:
-            self._context_encoder = context_encoder
-        self._sample_dist = torch.distributions.studentT.StudentT(df=torch.tensor([self._nu]),loc=torch.zeros(self._shape),scale=torch.ones(self._shape))
-
-        self.const_ = scipy.special.loggamma(0.5*(self._nu + self._shape[0])) - scipy.special.loggamma(0.5 * nu) - 0.5 * self._shape[0] * np.log(np.pi * self._nu)
-
-    def _compute_params(self, context):
-        """Compute the means and log stds form the context."""
-        if context is None:
-            raise ValueError("Context can't be None.")
-
-        params = self._context_encoder(context)
-        if params.shape[-1] % 2 != 0:
-            raise RuntimeError(
-                "The context encoder must return a tensor whose last dimension is even."
-            )
-        if params.shape[0] != context.shape[0]:
-            raise RuntimeError(
-                "The batch dimension of the parameters is inconsistent with the input."
-            )
-
-        split = params.shape[-1] // 2
-        means = params[..., :split].reshape(params.shape[0], *self._shape)
-        log_stds = params[..., split:].reshape(params.shape[0], *self._shape)
-        return means, log_stds
-
-    def _log_prob(self, inputs, context):
-        if inputs.shape[1:] != self._shape:
-            raise ValueError(
-                "Expected input of shape {}, got {}".format(
-                    self._shape, inputs.shape[1:]
-                )
-            )
-
-        # Compute parameters.
-        means, log_stds = self._compute_params(context)
-        assert means.shape == inputs.shape and log_stds.shape == inputs.shape
-
-        # Compute log prob.
-        norm_inputs = torchutils.sum_except_batch((inputs - means)**2,num_batch_dims=1)
-        log_prob = self.const_ - 0.5 * (self._nu + self._shape[0])*torch.log(1.0 + (1.0/self._nu) * norm_inputs)
-        return log_prob
-        #norm_inputs = (inputs - means) * torch.exp(-log_stds)
-        #log_prob = -0.5 * torchutils.sum_except_batch(
-        #    norm_inputs ** 2, num_batch_dims=1
-        #)
-        # log_prob -= torchutils.sum_except_batch(log_stds, num_batch_dims=1)
-        # log_prob -= self._log_z
-
-        return log_prob
-
-    def _sample(self, num_samples, context):
-        # Compute parameters.
-        means, log_stds = self._compute_params(context)
-        stds = torch.exp(log_stds)
-        means = torchutils.repeat_rows(means, num_samples)
-        stds = torchutils.repeat_rows(stds, num_samples)
-
-        # Generate samples.
-        context_size = context.shape[0]
-        #noise = torch.randn(context_size * num_samples, *
-         #                   self._shape, device=means.device)
-        noise = self._sample_dist.sample((context_size * num_samples,)).to(means.device)
-        samples = means + stds * noise
-        return torchutils.split_leading_dim(samples, [context_size, num_samples])
-
-    def _mean(self, context):
-        means, _ = self._compute_params(context)
-        return means
+ 

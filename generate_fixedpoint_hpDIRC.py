@@ -7,24 +7,26 @@ import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 from dataloader.dataloader import CreateLoaders
 import pkbar
-import torch.optim as optim
-from torch.optim import lr_scheduler
 import torch.nn as nn
-from models.nflows_models import create_nflows,MAAF
 from datetime import datetime
 import itertools
 import matplotlib.pyplot as plt
 import time
 from matplotlib.colors import LogNorm
-from models.freia_models import FreiaNet
+from models.NF.freia_models import FreiaNet
+from models.OT_Flow.ot_flow import OT_Flow
+from models.FlowMatching.flow_matching import FlowMatching
 import matplotlib.colors as mcolors
 import pickle
-import time
+import warnings
+
+warnings.filterwarnings("ignore", message=".*weights_only.*")
 
 
 def main(config,args):
 
     # Setup random seed
+    print("Using model type: ",str(args.model_type))
     torch.manual_seed(config['seed'])
     np.random.seed(config['seed'])
     random.seed(config['seed'])
@@ -34,33 +36,35 @@ def main(config,args):
 
     if config['method'] == "Pion":
         print("Generating for pions.")
-        dicte = torch.load(config['Inference']['pion_model_path'])
-
+        dicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)])
+        PID = 211
     elif config['method'] == 'Kaon':
         print("Generation for kaons.")
-        dicte = torch.load(config['Inference']['kaon_model_path'])
+        dicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
+        PID = 321
     else:
         print("Specify particle to generate in config file")
         exit()
+        
 
-    log_time = bool(config['log_time'])
-    # Create the model
-    # This will map gen -> Reco
-    if config['method'] == 'Pion':
-        num_layers = int(config['model']['num_layers'])
-        PID = 211
-    elif config['method'] == 'Kaon':
-        num_layers = int(config['model']['num_layers'])
-        PID = 321
-    else:
-        num_layers = int(config['model']['num_layers'])
-
-    input_shape = int(config['model']['input_shape'])
-    cond_shape = int(config['model']['cond_shape'])
-    num_blocks = int(config['model']['num_blocks'])
-    hidden_nodes = int(config['model']['hidden_nodes'])
+    num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
+    input_shape = int(config['model_'+str(args.model_type)]['input_shape'])
+    cond_shape = int(config['model_'+str(args.model_type)]['cond_shape'])
+    num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
+    hidden_nodes = int(config['model_'+str(args.model_type)]['hidden_nodes'])
     stats = config['stats']
-    net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
+    
+    if args.model_type == "NF":
+        net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
+    elif args.model_type == "CNF":
+        alph = config['model_'+str(args.model_type)]['alph']
+        train_T = bool(config['model_'+str(args.model_type)]['train_T'])
+        net = net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=True,alph=alph)
+    elif args.model_type == "FlowMatching":
+        net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
+    else:
+        raise ValueError("Model type not found.")
+
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
     device = torch.device('cuda')
@@ -114,7 +118,7 @@ def main(config,args):
             p = (list_to_gen[i]['P'] - stats['P_max'])  / (stats['P_max'] - stats['P_min'])
             theta = (list_to_gen[i]['Theta'] - stats['theta_max']) / (stats['theta_max'] - stats['theta_min'])
             k = torch.tensor(np.array([p,theta])).to('cuda').float()
-            #gen = net.probabalistic_sample(pre_compute_dist=3000,context=k,photon_yield=num_samples)
+            
             if list_to_gen[i]['NHits'] > 0:
                 gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0))
             else:
@@ -164,6 +168,7 @@ if __name__=='__main__':
     parser.add_argument('-p', '--momentum', default=6.0,type=float,help='Particle Momentum.')
     parser.add_argument('-t','--theta',default=30.0,type=float,help='Particle theta.')
     parser.add_argument('-m', '--method',default="Kaon",type=str,help='Generated particle type, Kaon or Pion.')
+    parser.add_argument('-mt','--model_type',default="NF",type=str,help='Which model to use.')
     args = parser.parse_args()
 
     config = json.load(open(args.config))

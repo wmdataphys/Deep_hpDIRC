@@ -28,6 +28,9 @@ from scipy.stats import norm
 from matplotlib.colors import LogNorm
 from scipy.interpolate import interp1d
 from scipy.special import expit
+import warnings
+
+warnings.filterwarnings("ignore", message=".*weights_only.*")
 
 def sigmoid(x):
     x = np.float64(x)
@@ -344,7 +347,7 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
     plt.ylabel(r"$\sigma$",fontsize=20)
     plt.xticks(fontsize=18)  # adjust fontsize as needed
     plt.yticks(fontsize=18)  # adjust fontsize as needed
-    plt.title("$\sigma_{sep.}$ as a function of Momentum",fontsize=20)
+    plt.title(r"$\sigma_{sep.}$ as a function of Momentum",fontsize=20)
     plt.savefig(os.path.join(out_folder,'Seperation_Average.pdf'),bbox_inches='tight')
     plt.close()
 
@@ -697,8 +700,8 @@ def main(config,resume):
     else:
         #test_pions = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['pion_data_path'],time_cuts=args.time,stats=stats)
         #test_kaons = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['kaon_data_path'],time_cuts=args.time,stats=stats)
-        test_pions = hpDIRC_DLL_Dataset(file_path=config['dataset']['fixed_point']['pion_data_path'],time_cuts=args.time,stats=stats)
-        test_kaons = hpDIRC_DLL_Dataset(file_path=config['dataset']['fixed_point']['kaon_data_path'],time_cuts=args.time,stats=stats)
+        test_pions = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['pion_data_path'],time_cuts=args.time,stats=stats)
+        test_kaons = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['kaon_data_path'],time_cuts=args.time,stats=stats)
 
         print("# of Pions: ",len(test_pions))
         print("# of Kaons: ",len(test_kaons))
@@ -749,5 +752,9 @@ if __name__=='__main__':
     args = parser.parse_args()
 
     config = json.load(open(args.config))
+
+    if not os.path.exists("Inference"):
+        print("Making Inference Directory.")
+        os.makedirs("Inference",exist_ok=True)
 
     main(config,args.resume)

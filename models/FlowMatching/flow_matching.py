@@ -1,23 +1,72 @@
-import torch.nn as nn
-import warnings
-from typing import Callable
-import math
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from nflows.distributions.base import Distribution
+import math
+import warnings
+from typing import Callable
+import numpy as np
+import copy 
 from nflows.utils import torchutils
-from typing import Union, Iterable, Tuple
-import scipy
-from models.OT_Flow.OTFlowProblem import *
-from models.OT_Flow.Phi import Phi
-from models.MADE import MixtureOfGaussiansMADE
 
-class OT_Flow(nn.Module):
+def antiderivTanh(x): # activation function aka the antiderivative of tanh
+    return torch.abs(x) + torch.log(1+torch.exp(-2.0*torch.abs(x)))
+
+def derivTanh(x): # act'' aka the second derivative of the activation function antiderivTanh
+    return 1 - torch.pow( torch.tanh(x) , 2 )
+
+class ResNN(nn.Module):
+    def __init__(self, d, m, nTh=2,conditional_dim=2):
+        """
+            ResNet N portion of Phi
+        :param d:   int, dimension of space input (expect inputs to be d+1 for space-time)
+        :param m:   int, hidden dimension
+        :param nTh: int, number of resNet layers , (number of theta layers)
+        """
+        super().__init__()
+
+        if nTh < 2:
+            print("nTh must be an integer >= 2")
+            exit(1)
+
+        self.d = d
+        self.m = m
+        self.nTh = nTh
+        self.layers = nn.ModuleList([])
+        self.layers.append(nn.Linear(d + 1 + conditional_dim, m, bias=True)) # opening layer
+        self.layers.append(nn.Linear(m,m, bias=True)) # resnet layers
+        for i in range(nTh-2):
+            self.layers.append(copy.deepcopy(self.layers[1]))
+        self.act = antiderivTanh
+        self.h = 1.0 / (self.nTh-1) # step size for the ResNet
+        self.output_layer = nn.Linear(m,d)
+
+    def forward(self, x,t, c=None):
+        """
+            N(s;theta). the forward propogation of the ResNet
+        :param x: tensor nex-by-d+1, inputs
+        :return:  tensor nex-by-m,   outputs
+        """
+        if c is None:
+            x = self.act(self.layers[0].forward(torch.concat([x,t],-1)))
+        else:
+            x = self.act(self.layers[0].forward(torch.concat([x,c,t],dim=-1)))
+
+        for i in range(1,self.nTh):
+            x = x + self.h * self.act(self.layers[i](x))
+
+        return self.output_layer(x)
+
+    def step(self,z_t,t0,t1,c=None):
+        t0 = t0.view(1,1).expand(z_t.shape[0],1).to(z_t.device)
+        int_z =  z_t + self(x=z_t, t=t0,c=c) * (t1 - t0) / 2
+        int_t = t0 + (t1 - t0) / 2
+        return z_t + (t1 - t0) * self(t=int_t, x=int_z,c=c)
+
+
+class FlowMatching(nn.Module):
     def __init__(self,input_shape,layers,context_shape,embedding=False,hidden_units=512,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0,
-            "P_max":8.5 ,"P_min":0.95 , "theta_max": 11.63,"theta_min": 0.90,"phi_max": 175.5, "phi_min":-176.0 },stepper='rk4',nt=6,nt_val=10,alph=[1.0,10.0,1.50],device='cuda',train_T=False):
-        super(OT_Flow, self).__init__()
+            "P_max":8.5 ,"P_min":0.95 , "theta_max": 11.63,"theta_min": 0.90,"phi_max": 175.5, "phi_min":-176.0 },device='cuda'):
+        super(FlowMatching, self).__init__()
         self.input_shape = input_shape
         self.layers = layers
         self.context_shape = context_shape
@@ -30,17 +79,8 @@ class OT_Flow(nn.Module):
         self.gapy = 1.3571428571428572 + 4.
         self.pixel_width = 3.3125
         self.pixel_height = 3.3125
-        self.stepper = stepper
-        self.nt = nt
-        self.nt_val = nt_val
-        self.alph = alph
-        self.train_T = train_T
-        print("Using alph: ",self.alph)
-        if train_T:
-            T = 1.0
-            self.register_parameter("end_time", nn.Parameter(torch.tensor(T),requires_grad=True))
 
-        self.Phi = Phi(nTh=self.layers,m=self.hidden_units,d=self.input_shape,alph=self.alph,conditional_dim=self.context_shape).to(self.device)
+        self.NN = ResNN(nTh=self.layers,m=self.hidden_units,d=self.input_shape,conditional_dim=self.context_shape)
 
         self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
                                                    16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
@@ -84,78 +124,39 @@ class OT_Flow(nn.Module):
                                                    218.47767857, 221.79017857, 225.10267857, 228.41517857])).to(self.device)
         self.stats_ = stats
 
-        if self.embedding:
-            self.context_embedding = nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape)])
 
-        context_encoder =  nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape*2)])
-
-        self.distribution = MixtureOfGaussiansMADE(
-                                features=input_shape,
-                                hidden_features=128,
-                                context_features=context_shape,
-                                num_blocks=2,
-                                num_mixture_components=40,
-                                use_residual_blocks=True,
-                                random_mask=False,
-                                activation=F.relu,
-                                dropout_probability=0.0,
-                                use_batch_norm=False,
-                                epsilon=1e-2,
-                                custom_initialization=True,
-                                ).to(self.device)
-
-       
-
-    def log_prob(self, inputs, context,nt=20, tspan=[0,1],alpha=[1.0,1.0,1.0]):
+    def compute_loss(self, x_1, context):
         if self.embedding:
             embedded_context = self.context_embedding(context)
         else:
             embedded_context = context
 
-        if self.train_T:
-            tspan = [0,self.end_time]
+        x_0 = torch.randn_like(x_1).to(x_1.device)
+        t = torch.rand(len(x_1), 1).to(x_1.device)
 
-        _,costs = OTFlowProblem(inputs,self.Phi,tspan,nt,alph=self.alph,conds=embedded_context,dist_func=self.distribution,training=False)
+        x_t = (1.0 - t) * x_0 + t * x_1  
+        dx_t = x_1 - x_0                 
 
-        return -1*costs[1],costs[0],costs[2]
-
-
-    def compute_loss(self,inputs,context,nt,tspan=[0,1],alpha=[1.0,1.0,1.0]):
-        if self.embedding:
-            embedded_context = self.context_embedding(context)
-        else:
-            embedded_context = context
-
-        if self.train_T:
-            tspan = [0,self.end_time]
-
-        cs,costs = OTFlowProblem(inputs,self.Phi,tspan,nt,alph=self.alph,conds=embedded_context,dist_func=self.distribution)
-
-        return cs,costs
-
+        predicted_dx_t = self.NN(x=x_t, t=t, c=embedded_context)
+        loss = torch.mean((predicted_dx_t - dx_t) ** 2)
+        
+        return loss
         
 
-    def __sample(self, num_samples, context, tspan=[1.0,0.0],nt=20):
+    def __sample(self, num_samples, context=None,nt=20):
         if self.embedding:
             embedded_context = self.context_embedding(context)
         else:
             embedded_context = context
 
-        z = self.distribution.sample(num_samples,context=embedded_context)
-
-        if embedded_context is not None:
-            z = torchutils.merge_leading_dims(z, num_dims=2)
-            embedded_context = torchutils.repeat_rows(
-                embedded_context, num_reps=num_samples
-            )
-
-        if self.train_T:
-            tspan = [self.end_time.detach().item(),0]
+        tspan = torch.linspace(0.0,1.0,nt + 1)
+        z = torch.rand(num_samples,self.input_shape).to(self.device)
+        embedded_context = torchutils.repeat_rows(embedded_context, num_reps=num_samples)
         
-        d = 3
-        samples = integrate(z[:, 0:d],net=self.Phi,tspan=tspan,nt=nt,intermediates=False,conds=embedded_context,alph=self.alph)
+        for i in range(nt):
+            z = self.NN.step(z,c=embedded_context,t0=tspan[i],t1=tspan[i+1])
 
-        return samples
+        return z
 
     def unscale(self,x,max_,min_):
         return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
@@ -172,13 +173,14 @@ class OT_Flow(nn.Module):
             
     def _sample(self,num_samples,context,nt=40):
         samples = self.__sample(num_samples,context,nt=nt)
+
         x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
         y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
         t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
 
-
         x = self.set_to_closest(x,self._allowed_x)
         y = self.set_to_closest(y,self._allowed_y)
+
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).detach().cpu().numpy()
 
     def __get_track(self,num_samples,context):
@@ -221,7 +223,6 @@ class OT_Flow(nn.Module):
         y = self.set_to_closest(updated_hits[:,1],self._allowed_y).detach().cpu()
         t = updated_hits[:,2].detach().cpu()
 
-
         pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
         col = (1.0/self.pixel_width) * (x - 2 - self.pixel_width/2. - (pmtID%6)*self.gapx)
         row = (1.0/self.pixel_height) * (y - 2 - self.pixel_height/2. - self.gapy * torch.div(pmtID,torch.tensor(6,dtype=torch.int),rounding_mode='floor'))
@@ -238,38 +239,4 @@ class OT_Flow(nn.Module):
             return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
         else:
             return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
-
-    def to_noise(self,inputs,context):
-        if self.embedding:
-            embedded_context = self.context_embedding(context)
-        else:
-            embedded_context = context
-        noise,_ = self.sequence.forward(inputs,rev=False,c=[embedded_context])
-
-        return noise
-
-    def sample_and_log_prob(self,num_samples,context):
-        if self.embedding:
-            embedded_context = self._embedding_net(context)
-        else:
-            embedded_context = context
-
-        noise, log_prob = self.distribution.sample_and_log_prob(
-            num_samples, context=embedded_context
-        )
- 
-        if embedded_context is not None:
-            # Merge the context dimension with sample dimension in order to apply the transform.
-            noise = torchutils.merge_leading_dims(noise, num_dims=2)
-            embedded_context = torchutils.repeat_rows(
-                embedded_context, num_reps=num_samples
-            )
-        samples, logabsdet = self.sequence.forward(noise,rev=True,c=[embedded_context])
-
-        if embedded_context is not None:
-            # Split the context dimension from sample dimension.
-            samples = torchutils.split_leading_dim(samples, shape=[-1, num_samples])
-            logabsdet = torchutils.split_leading_dim(logabsdet, shape=[-1, num_samples])
-
-        return samples, log_prob - logabsdet
 

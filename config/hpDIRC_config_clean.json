@@ -1,0 +1,111 @@
+{
+    "name": "NFTest",
+    "seed": 752022,
+    "run_val":1,
+    "method":"Kaon",
+    "datatype": "Simulation",
+    "sim_type": "pgun",
+    "stats": {"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},
+    "model_NF": {
+       "num_layers":20,
+       "input_shape":3,
+       "cond_shape":2,
+       "num_blocks":2,
+       "hidden_nodes": 128
+   },
+   "model_CNF": {
+    "num_layers":6,
+    "input_shape":3,
+    "cond_shape":2,
+    "num_blocks":2,
+    "hidden_nodes": 128,
+    "train_T": 1,
+    "alph": [1.0,10.0,1.5]
+    },
+    "model_FlowMatching": {
+        "num_layers":6,
+        "input_shape":3,
+        "cond_shape":2,
+        "num_blocks":2,
+        "hidden_nodes": 128
+    },
+    "dataset": {
+        "fixed_point":{
+            "pion_data_path_FullPhasSpace": "data/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path_FullPhaseSpace": "data/Testing_Kaons_hpDIRC.pkl",
+            "pion_data_path_6GeV": "data/6GeV/mixed_pik_all_theta_Pions.pkl",
+            "kaon_data_path_6GeV": "data/6GeV/mixed_pik_all_theta_Kaons.pkl",
+            "pion_data_path_9GeV": "data/9GeV/merged_pik_9GeV_Pions.pkl",
+            "kaon_data_path_9GeV": "data/9GeV/merged_pik_9GeV_Kaons.pkl",
+            "pion_data_path_3GeV": "data/3GeV/merged_pik_3GeV_Pions.pkl",
+            "kaon_data_path_3GeV": "data/3GeV/merged_pik_3GeV_Kaons.pkl",
+            "pion_data_path_1GeV": "data/1GeV/merged_pions_1GeV_Pions.pkl",
+            "kaon_data_path_1GeV": "data/1GeV/merged_kaons_1GeV_Kaons.pkl"
+        },
+        "training": {
+            "smeared":{
+            "pion_data_path" : "data/Training_Pions_hpDIRC_Smeared.feather",
+            "kaon_data_path" : "data/Training_Kaons_hpDIRC_Smeared.feather"
+            },
+            "unsmeared":{
+            "pion_data_path" : "data/Training_Pions_hpDIRC.feather",
+            "kaon_data_path" : "data/Training_Kaons_hpDIRC.feather"              
+            }
+        },
+        "validation":{
+            "pion_data_path" : "data/Validation_Pions_hpDIRC.feather",
+            "kaon_data_path" : "data/Validation_Kaons_hpDIRC.feather"
+        },
+        "testing":{
+	    "DLL":{
+            "pion_data_path": "data/6GeV/mixed_pik_all_theta_Pions.pkl",
+            "kaon_data_path": "data/6GeV/mixed_pik_all_theta_Kaons.pkl"
+	    }, 
+	    "gen":{
+            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.feather"
+        }
+    }
+    },
+    "lr_scheduler": {
+        "step_size":25,
+        "gamma": 0.1
+    },
+    "optimizer": {
+        "lr": 7e-4,
+        "weight_decay": 0.0,
+        "alpha": 1e-3
+    },
+    "num_epochs": 100,
+    "dataloader": {
+        "split":[0.7,0.15,0.15],
+        "train": {
+            "batch_size_NF": 2048,
+            "batch_size_CNF": 10000,
+            "batch_size_FlowMatching": 2048
+    	},
+        "val": {
+            "batch_size_NF": 2048,
+            "batch_size_CNF": 10000,
+            "batch_size_FlowMatching": 2048
+        },
+        "test": {
+            "batch_size": 25
+        }
+    },
+    "output": {
+	"dir": "Trained_Models"
+    },
+    "Inference": {
+            "gen_dir": "Figures/hpDIRC_theta90_p6",
+            "samples": 1,
+            "pion_model_path_NF": "Trained_Models/MOG/k40/Pion_hpDIRC_MoG_20L_128Node_k40_RESUME_v3_epoch95_val_loss_-2.932614.pth",
+            "kaon_model_path_NF": "Trained_Models/MOG/k40/Kaon_hpDIRC_MoG_20L_128Node_k40_RESUME_v3_epoch99_val_loss_-2.844851.pth",
+            "pion_model_path_CNF": "Trained_Models/CNF/Pion_hpDIRC_CNF_MOG40_epoch04_val_loss_-26.291540.pth",
+            "kaon_model_path_CNF": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_epoch05_val_loss_-24.785789.pth",
+            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Test_FlowMatching_epoch36_val_loss_0.572773.pth",
+            "kaon_model_path_FlowMatching": "Trained_Models/FlowMatching/Test_FlowMatching_epoch36_val_loss_0.572773.pth",
+            "out_dir": "Inference/TEST_CNF_Jan17",
+            "fixed_point_dir": "FlowMatchTesting_Jan17"
+        }
+}

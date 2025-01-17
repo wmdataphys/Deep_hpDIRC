@@ -12,7 +12,7 @@ from torch.optim import lr_scheduler
 import torch.nn as nn
 from dataloader.create_data import hpDIRCCherenkovPhotons
 from datetime import datetime
-from models.OT_Flow.ot_flow import OT_Flow
+from models.FlowMatching.flow_matching import FlowMatching
 import warnings
 
 warnings.filterwarnings("ignore", message=".*weights_only.*")
@@ -51,20 +51,19 @@ def main(config,resume):
 
     history = {'train_loss':[],'val_loss':[],'lr':[]}
 
-    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config,model_type="CNF")
+    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config,model_type="FlowMatching")
 
     print("Training Size: {0}".format(len(train_loader.dataset)))
     print("Validation Size: {0}".format(len(val_loader.dataset)))
 
     # Create the model
     dtype_ = torch.float32
-    num_layers = int(config['model_CNF']['num_layers'])
-    input_shape = int(config['model_CNF']['input_shape'])
-    cond_shape = int(config['model_CNF']['cond_shape'])
-    num_blocks = int(config['model_CNF']['num_blocks'])
-    hidden_nodes = int(config['model_CNF']['hidden_nodes'])
-    alph = config['model_CNF']['alph']
-    net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=True,alph=alph)
+    num_layers = int(config['model_FlowMatching']['num_layers'])
+    input_shape = int(config['model_FlowMatching']['input_shape'])
+    cond_shape = int(config['model_FlowMatching']['cond_shape'])
+    num_blocks = int(config['model_FlowMatching']['num_blocks'])
+    hidden_nodes = int(config['model_FlowMatching']['hidden_nodes'])
+    net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
     device = torch.device('cuda')
@@ -84,8 +83,6 @@ def main(config,resume):
 
     startEpoch = 0
     global_step = 0
-
-    save_itter = 10000
 
     if resume:
         print('===========  Resume training  ==================:')
@@ -122,11 +119,12 @@ def main(config,resume):
 
             optimizer.zero_grad()
 
-            for p in net.parameters():
-                p.data = torch.clamp(p.data, clampMin, clampMax)
+            #for p in net.parameters():
+                #p.data = torch.clamp(p.data, clampMin, clampMax)
 
             with torch.set_grad_enabled(True):
-                loss,costs = net.compute_loss(inputs=input,nt=6,context=k)
+                #loss,costs = net.compute_loss(inputs=input,nt=6,context=k)
+                loss = net.compute_loss(x_1=input,context=k)
 
 
 
@@ -137,21 +135,10 @@ def main(config,resume):
 
 
             running_loss += loss.item() * input.shape[0]
-            kbar.update(i, values=[("loss", loss.item()),("costC",costs[0].item()),("costL", costs[1].item()),("costR",costs[-1].item()),("T:",net.end_time.item())])
+            kbar.update(i, values=[("loss", loss.item())])
             global_step += 1
-
-            if i % save_itter == 0 and i > 0:
-                name_output_file = config['name']+'_epoch{:02d}_save_iter_{:02d}.pth'.format(epoch, i)
-                filename = os.path.join(output_folder , exp_name , name_output_file)
-                checkpoint={}
-                checkpoint['net_state_dict'] = net.state_dict()
-                checkpoint['optimizer'] = optimizer.state_dict()
-                checkpoint['scheduler'] = scheduler.state_dict()
-                checkpoint['epoch'] = epoch
-                checkpoint['history'] = history
-                checkpoint['global_step'] = global_step
-
-                torch.save(checkpoint,filename)
+            #if i == 100:
+            #    break
 
 
         history['train_loss'].append(running_loss / len(train_loader.dataset))
@@ -164,27 +151,18 @@ def main(config,resume):
         if bool(config['run_val']):
             net.eval()
             val_loss = 0.0
-            val_costC = 0.0
-            val_costL = 0.0
-            val_costR = 0.0
             with torch.no_grad():
                 for i, data in enumerate(val_loader):
                     input  = data[0].to('cuda', non_blocking=True).to(dtype_)
                     k = data[1].to('cuda', non_blocking=True).to(dtype_)
-                    loss,costs = net.compute_loss(inputs=input,nt=6,context=k)
-                    val_costC += costs[0]
-                    val_costL += costs[1]
-                    val_costR += costs[-1]
+                    loss = net.compute_loss(x_1=input,context=k)
                     val_loss += loss
 
             val_loss = val_loss.cpu().numpy() / len(val_loader)
-            val_costC = val_costC.cpu().numpy() / len(val_loader)
-            val_costL = val_costL.cpu().numpy() / len(val_loader)
-            val_costR = val_costR.cpu().numpy() / len(val_loader)
 
             history['val_loss'].append(val_loss)
 
-            kbar.add(1, values=[("val_loss", val_loss.item()),("valC",val_costC.item()),("valL",val_costL.item()),("valR",val_costR.item())])
+            kbar.add(1, values=[("val_loss", val_loss.item())])
 
             name_output_file = config['name']+'_epoch{:02d}_val_loss_{:.6f}.pth'.format(epoch, val_loss)
 

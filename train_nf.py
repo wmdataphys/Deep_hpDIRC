@@ -10,42 +10,12 @@ import pkbar
 import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.nn as nn
-from models.nflows_models import create_nflows
 from dataloader.create_data import hpDIRCCherenkovPhotons
 from datetime import datetime
-from models.freia_models import FreiaNet
-from models.nflows_models import MAAF
-from models.cnf import CNF
-from models.cnf import CNFOdeFunc
-from models.cnf import get_regularization
+from models.NF.freia_models import FreiaNet
+import warnings
 
-def run_warmup(net,loader,num_warmup_batches=10000):
-    optimizer = optim.Adam(list(filter(lambda p: p.requires_grad, net.parameters())), lr=1e-4,weight_decay=0)
-
-    kbar = pkbar.Kbar(target=num_warmup_batches, width=20, always_stateful=False)
-
-    net.train()
-
-    for i, data in enumerate(loader):
-        input  = data[0].to('cuda').float()
-        k = data[1].to('cuda').float()
-
-        optimizer.zero_grad()
-
-        with torch.set_grad_enabled(True):
-            loss = -net.log_prob(inputs=input,context=k).mean()
-
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=0.5,error_if_nonfinite=True)
-        optimizer.step()
-
-        kbar.update(i, values=[("loss", loss.item())])
-
-        if i == num_warmup_batches:
-            break
-
-    return net
-
+warnings.filterwarnings("ignore", message=".*weights_only.*")
 
 def main(config,resume):
 
@@ -84,30 +54,22 @@ def main(config,resume):
     reg_coeffs = [1.0]
 
 
-    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config)
+    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config,model_type="NF")
 
     print("Training Size: {0}".format(len(train_loader.dataset)))
     print("Validation Size: {0}".format(len(val_loader.dataset)))
 
     # Create the model
-    num_layers = int(config['model']['num_layers'])
-    input_shape = int(config['model']['input_shape'])
-    cond_shape = int(config['model']['cond_shape'])
-    num_blocks = int(config['model']['num_blocks'])
-    hidden_nodes = int(config['model']['hidden_nodes'])
+    num_layers = int(config['model_NF']['num_layers'])
+    input_shape = int(config['model_NF']['input_shape'])
+    cond_shape = int(config['model_NF']['cond_shape'])
+    num_blocks = int(config['model_NF']['num_blocks'])
+    hidden_nodes = int(config['model_NF']['hidden_nodes'])
     net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
-    #net = CNF(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,train_T=True,T=1.0)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
     device = torch.device('cuda')
     net.to('cuda')
-
-    # Kaons
-    #dicte = torch.load("/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_hpDIRC_20L_8192_Batch_ExtraTracks_50Epoch_2LBlocks_128Node___Oct-26-2024/Kaon_hpDIRC_20L_8192_Batch_ExtraTracks_50Epoch_2LBlocks_128Node_epoch49_val_loss_-2.640291.pth")
-
-    # Pions
-    #dicte = torch.load("/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_hpDIRC_20L_8192_Batch_ExtraTracks_50Epoch_2LBlocks_128Node___Oct-26-2024/Pion_hpDIRC_20L_8192_Batch_ExtraTracks_50Epoch_2LBlocks_128Node_epoch49_val_loss_-2.646162.pth")
-    #net.load_state_dict(dicte['net_state_dict'])
 
     # Optimizer
     num_epochs=int(config['num_epochs'])
@@ -122,10 +84,6 @@ def main(config,resume):
     startEpoch = 0
     global_step = 0
 
-    warm_start = bool(config['warm_start'])
-
-    save_itter = 1000
-    alpha = config['optimizer']['alpha']
 
     if resume:
         print('===========  Resume training  ==================:')
@@ -144,13 +102,6 @@ def main(config,resume):
     print('      LR:', lr)
     print('      num_epochs:', num_epochs)
     print('')
-
-
-    if warm_start:
-        print("Running warmup.")
-        net = run_warmup(net,train_loader)
-        print("Finished warmup. Starting training.")
-        print(" ")
     
     for epoch in range(startEpoch,num_epochs):
 
@@ -167,8 +118,6 @@ def main(config,resume):
 
             with torch.set_grad_enabled(True):
                 loss = -net.log_prob(inputs=input,context=k).mean()
-                #logp,grad_log_p = net.loss_function(inputs=input,context=k)
-                #loss = (-logp + alpha*grad_log_p).mean()
 
 
             loss.backward()
@@ -177,7 +126,7 @@ def main(config,resume):
             scheduler.step()
 
             running_loss += loss.item() * input.shape[0]
-            kbar.update(i, values=[("loss", loss.item())])#,("logp",-logp.mean().item()),("grad_logp",alpha*grad_log_p.mean().item())])
+            kbar.update(i, values=[("loss", loss.item())])
             global_step += 1
 
 
@@ -198,22 +147,15 @@ def main(config,resume):
                     input  = data[0].to('cuda').float()
                     k = data[1].to('cuda').float()
                     loss = -net.log_prob(inputs=input,context=k).mean()
-                    #logp,grad_log_p = net.loss_function(inputs=input,context=k)
-
-                    #loss = (-logp + alpha*grad_log_p).mean()
 
                     val_loss += loss
-                    #val_logp += -logp.mean()
-                    #val_grad_logp += alpha*grad_log_p.mean()
 
             val_loss = val_loss.cpu().numpy() / len(val_loader)
-            #val_logp = val_logp.cpu().numpy() / len(val_loader)
-            #val_grad_logp = val_grad_logp.cpu().numpy() / len(val_loader)
 
 
             history['val_loss'].append(val_loss)
 
-            kbar.add(1, values=[("val_loss", val_loss.item())])#,("val_logp",val_logp.item()),("val_grad",val_grad_logp.item())])
+            kbar.add(1, values=[("val_loss", val_loss.item())])
 
             name_output_file = config['name']+'_epoch{:02d}_val_loss_{:.6f}.pth'.format(epoch, val_loss)
 

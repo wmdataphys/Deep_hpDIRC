@@ -40,13 +40,17 @@ def Inference_collate(batch):
     return torch.stack(hits),torch.stack(conditions),torch.tensor(PIDs),torch.tensor(n_hits),torch.stack(unscaled),torch.tensor(LL_ks),torch.tensor(LL_pis)
 
 # Create dataloaders to iterate.
-def CreateLoaders(train_dataset,val_dataset,config):
+# Remember if training on linux you can use multiple workers.
+def CreateLoaders(train_dataset,val_dataset,config,model_type=None):
+    if model_type is None:
+        raise ValueError("Model Type is None. Specify.")
+
     train_loader = DataLoader(train_dataset,
-                            batch_size=config['dataloader']['train']['batch_size'],
-                            shuffle=True,collate_fn=DIRC_collate,num_workers=8)
+                            batch_size=config['dataloader']['train']['batch_size_'+str(model_type)],
+                            shuffle=True,collate_fn=DIRC_collate,num_workers=0)
     val_loader =  DataLoader(val_dataset,
-                            batch_size=config['dataloader']['val']['batch_size'],
-                            shuffle=False,collate_fn=DIRC_collate,num_workers=8)
+                            batch_size=config['dataloader']['val']['batch_size_'+str(model_type)],
+                            shuffle=False,collate_fn=DIRC_collate,num_workers=0)
 
     return train_loader,val_loader
 
