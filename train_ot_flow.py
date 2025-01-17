@@ -220,4 +220,8 @@ if __name__=='__main__':
 
     config = json.load(open(args.config))
 
+    if not os.path.exists("Trained_Models"):
+        print("Creating trained models folder. This will only occur once.")
+        os.makedirs("Trained_Models")
+
     main(config,args.resume)
