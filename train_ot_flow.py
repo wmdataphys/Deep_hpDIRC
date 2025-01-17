@@ -13,7 +13,7 @@ import torch.nn as nn
 from dataloader.create_data import hpDIRCCherenkovPhotons
 from datetime import datetime
 from models.OT_Flow.ot_flow import OT_Flow
-import warnings
+from models.gsgm import GSGM 
 
 warnings.filterwarnings("ignore", message=".*weights_only.*")
 
@@ -65,6 +65,7 @@ def main(config,resume):
     hidden_nodes = int(config['model_CNF']['hidden_nodes'])
     alph = config['model_CNF']['alph']
     net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=True,alph=alph)
+    #net = GSGM(input_shape, cond_shape, device, num_layers, timesteps, num_embed, hidden_nodes, nonlinear_noise_schedule, learned_variance)
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
     device = torch.device('cuda')
@@ -126,9 +127,7 @@ def main(config,resume):
                 p.data = torch.clamp(p.data, clampMin, clampMax)
 
             with torch.set_grad_enabled(True):
-                loss,costs = net.compute_loss(inputs=input,nt=6,context=k)
-
-
+                loss, costs = net.compute_loss(inputs=input,nt=6,context=k)
 
             loss.backward()
             #torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=1.0,error_if_nonfinite=True)

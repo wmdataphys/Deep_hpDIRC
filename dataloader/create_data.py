@@ -158,6 +158,7 @@ class hpDIRCCherenkovPhotons(Dataset):
                 df = df[(df.time < self.stats['time_max']) & (df.theta > self.stats['theta_min']) & (df.theta < self.stats['theta_max']) & (df.P > self.stats['P_min']) & (df.P < self.stats['P_max'])]
                 self.data = df[columns].to_numpy()
                 del df
+                del df
                 print('Max Time: ',self.stats['time_max'])
                 print(self.data.max(0))
                 print(self.data.min(0))
@@ -179,6 +180,7 @@ class hpDIRCCherenkovPhotons(Dataset):
                 df = df[(df.time < self.stats['time_max']) & (df.theta > self.stats['theta_min']) & (df.theta < self.stats['theta_max']) & (df.P > self.stats['P_min']) & (df.P < self.stats['P_max']) & (df.phi == 0)]
                 self.data = df[columns].to_numpy()
                 del df
+                del df
                 print('Max Time: ',self.stats['time_max'])
                 print(self.data.max(0))
                 print(self.data.min(0))
@@ -189,7 +191,7 @@ class hpDIRCCherenkovPhotons(Dataset):
                 self.data = df[columns].to_numpy()
 
             self.data = np.concatenate([self.data,np.c_[np.zeros_like(self.data[:,0])]],axis=1)
-
+            
         elif mode == "Combined":
             pions = pd.read_csv(pion_path,sep=',',index_col=None)
             pions['PID'] = np.zeros(len(pions))

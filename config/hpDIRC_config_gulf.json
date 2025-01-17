@@ -1,8 +1,8 @@
 {
-    "name": "Kaon_hpDIRC_MoG_25L_128Node_k20",
+    "name": "Pion_hpDIRC_SB_3L_128Node_T50",
     "seed": 752022,
-    "run_val":1,
-    "method":"Kaon",
+    "run_val":0,
+    "method":"Pion",
     "datatype": "Simulation",
     "sim_type": "pgun",
     "log_time":0,
@@ -17,11 +17,15 @@
        "alph": [1.0,10.0,1.5]
    },
    "model": {
-    "num_layers":25,
+    "num_layers":3,
     "input_shape":3,
     "cond_shape":2,
+    "num_steps":50,
+    "num_embed":32,
     "num_blocks":2,
-    "hidden_nodes": 128
+    "hidden_nodes": 128,
+    "nonlinear_noise_schedule":0,
+    "learned_variance":0
     },
     "dataset": {
         "fixed_point":{
@@ -68,11 +72,12 @@
         "gamma": 0.1
     },
     "optimizer": {
-        "lr":1e-4,
+        "lr":3e-4,
+        "lr_noise":3e-3,
         "weight_decay": 0,
         "alpha": 1e-3
     },
-    "num_epochs": 100,
+    "num_epochs": 300,
     "dataloader": {
         "split":[0.7,0.15,0.15],
         "train": {
@@ -86,7 +91,7 @@
         }
     },
     "output": {
-	"dir": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models"
+	"dir": "/sciclone/data10/mcmartinez/hpDIRC_Models"
     },
     "Inference": {
             "gen_dir": "Figures/hpDIRC_CNF_KaonTest_Small",
