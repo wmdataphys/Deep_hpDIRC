@@ -75,7 +75,7 @@ def main(config,resume):
 
     # Optimizer
     num_epochs=int(config['num_epochs'])
-    lr = float(config['optimizer']['lr'])
+    lr = float(config['optimizer']['lr_CNF'])
     weight_decay = float(config['optimizer']['weight_decay'])
     optimizer = optim.Adam(list(filter(lambda p: p.requires_grad, net.parameters())), lr=lr,weight_decay=weight_decay)
     num_steps = len(train_loader) * num_epochs

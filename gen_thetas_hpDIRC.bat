@@ -7,7 +7,7 @@ set model_type="CNF"
 
 REM Loop over theta values from 30 to 150 in steps of 5
 :loop
-if %theta% LEQ 30 (
+if %theta% LEQ 150 (
     REM Run the Python script for "Pion"
     python generate_fixedpoint_hpDIRC.py ^
         --config config/hpDIRC_config_clean.json ^

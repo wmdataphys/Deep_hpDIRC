@@ -47,10 +47,10 @@ def CreateLoaders(train_dataset,val_dataset,config,model_type=None):
 
     train_loader = DataLoader(train_dataset,
                             batch_size=config['dataloader']['train']['batch_size_'+str(model_type)],
-                            shuffle=True,collate_fn=DIRC_collate,num_workers=0)
+                            shuffle=True,collate_fn=DIRC_collate,num_workers=8)
     val_loader =  DataLoader(val_dataset,
                             batch_size=config['dataloader']['val']['batch_size_'+str(model_type)],
-                            shuffle=False,collate_fn=DIRC_collate,num_workers=0)
+                            shuffle=False,collate_fn=DIRC_collate,num_workers=8)
 
     return train_loader,val_loader
 

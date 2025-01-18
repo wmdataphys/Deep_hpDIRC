@@ -6,7 +6,7 @@ This repository contains all the necessary files for running the hpDIRC fast sim
 
 Note: The generations will not be performed bar-by-bar, but at fixed regions of momentum and theta. We are using two conditionals for the simulation, as it is set up with $\phi = 0$. This setup should be fine for now, and we can make use of symmetry arguments..
 
-### **What You Will Need (Updated Jan 17, 2025):**
+### **What You Will Need (Updated Jan 18, 2025):**
 
 1. **The Config File**  
    The config file contains crucial information such as scalings, data paths, and other settings. I will provide access to this file on the cluster. The hpDIRC_config_gulf.json file should give you all the paths you need. You should structure your config file like the hpDIRC_config_clean.json file. You will see how each model has different parameters / fields.
@@ -25,6 +25,13 @@ Note: The generations will not be performed bar-by-bar, but at fixed regions of 
 5. **Generation python script**
    I have made it so that you can dynamically index the model type through the .sh or .tcsh scripts. Within the generate_fixedpoint_hpDIRC.py file, you will need to import your models (put them in a folder in the models folder), and then add an elif statement to check. See how I am currently doing this and match the scheme.
 
+6. **torch_linux.yml**
+   You can replicate this env by doing:
+   ```bash
+   conda env create -f torch_linux.yml 
+   ```
+   Build needed packages into this. Its running with latest cuda, pytorch etc.
+
 
 <div style="display: flex; justify-content: space-between;">
     <img src="assets/Pion_p_6.0_theta_90.0_PID_Pion_ntracks_1483..png" alt="Plot 1" width="45%" />
@@ -33,19 +40,29 @@ Note: The generations will not be performed bar-by-bar, but at fixed regions of 
 
 ---
 
-### **Training Resources**
+### **Training Resources (Updated Jan 18, 2025)**
 
-Below Im including the resources you will need for training (in terms of what to request from the cluster):
+Below Im including the resources you will need for training (in terms of what to request from the cluster). Note as you install things in your miniforge env you may need to increase cpu by 1 or 2:
 
 ```bash
 #!/bin/bash
 #SBATCH --export=ALL
-#SBATCH --job-name=SDE
+#SBATCH --job-name=FlowMatch
 #SBATCH --nodes=1
-#SBATCH --tasks=16
+#SBATCH --tasks=20
 #SBATCH --mem-per-cpu=4000
 #SBATCH --gpus=1
-#SBATCH -t 72:00:00
+#SBATCH -t 65:00:00
+
+
+cd $SLURM_SUBMIT_DIR
+
+module load miniforge3/24.9.2-0
+module load cuda/12.4
+source activate torch_linux
+
+python /sciclone/home/jgiroux/Cherenkov_FastSim/train_flow_matching.py --config /sciclone/home/jgiroux/Cherenkov_FastSim/config/hpDIRC_config.json 
+
 ```
 
 ### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 17, 2025)**
