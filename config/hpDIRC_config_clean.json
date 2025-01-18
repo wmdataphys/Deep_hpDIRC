@@ -1,5 +1,5 @@
 {
-    "name": "NFTest",
+    "name": "FlowMatchingAffineTest",
     "seed": 752022,
     "run_val":1,
     "method":"Kaon",
@@ -72,7 +72,9 @@
         "gamma": 0.1
     },
     "optimizer": {
-        "lr": 7e-4,
+        "lr_NF": 1e-4,
+        "lr_CNF": 1e-3,
+        "lr_FlowMatching": 1e-3,
         "weight_decay": 0.0,
         "alpha": 1e-3
     },
@@ -82,12 +84,12 @@
         "train": {
             "batch_size_NF": 2048,
             "batch_size_CNF": 10000,
-            "batch_size_FlowMatching": 2048
+            "batch_size_FlowMatching": 10000
     	},
         "val": {
             "batch_size_NF": 2048,
             "batch_size_CNF": 10000,
-            "batch_size_FlowMatching": 2048
+            "batch_size_FlowMatching": 10000
         },
         "test": {
             "batch_size": 25

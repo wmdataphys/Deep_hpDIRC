@@ -7,6 +7,11 @@ from typing import Callable
 import numpy as np
 import copy 
 from nflows.utils import torchutils
+from flow_matching.path.scheduler import CondOTScheduler
+from flow_matching.path import AffineProbPath
+from flow_matching.solver import Solver, ODESolver
+from flow_matching.utils import ModelWrapper
+
 
 def antiderivTanh(x): # activation function aka the antiderivative of tanh
     return torch.abs(x) + torch.log(1+torch.exp(-2.0*torch.abs(x)))
@@ -46,6 +51,8 @@ class ResNN(nn.Module):
         :param x: tensor nex-by-d+1, inputs
         :return:  tensor nex-by-m,   outputs
         """
+        t = t.reshape(-1,1).float()
+
         if c is None:
             x = self.act(self.layers[0].forward(torch.concat([x,t],-1)))
         else:
@@ -81,6 +88,7 @@ class FlowMatching(nn.Module):
         self.pixel_height = 3.3125
 
         self.NN = ResNN(nTh=self.layers,m=self.hidden_units,d=self.input_shape,conditional_dim=self.context_shape)
+        self.path = AffineProbPath(scheduler=CondOTScheduler())
 
         self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
                                                    16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
@@ -131,14 +139,22 @@ class FlowMatching(nn.Module):
         else:
             embedded_context = context
 
+        # x_0 = torch.randn_like(x_1).to(x_1.device)
+        # t = torch.rand(len(x_1), 1).to(x_1.device)
+
+        # x_t = (1.0 - t) * x_0 + t * x_1  
+        # dx_t = x_1 - x_0                 
+
+        # predicted_dx_t = self.NN(x=x_t, t=t, c=embedded_context)
+        # loss = torch.mean((predicted_dx_t - dx_t) ** 2)
+
         x_0 = torch.randn_like(x_1).to(x_1.device)
-        t = torch.rand(len(x_1), 1).to(x_1.device)
 
-        x_t = (1.0 - t) * x_0 + t * x_1  
-        dx_t = x_1 - x_0                 
+        t = torch.rand(x_1.shape[0]).to(x_1.device) 
 
-        predicted_dx_t = self.NN(x=x_t, t=t, c=embedded_context)
-        loss = torch.mean((predicted_dx_t - dx_t) ** 2)
+        path_sample = self.path.sample(t=t, x_0=x_0, x_1=x_1)
+
+        loss = torch.pow( self.NN(x=path_sample.x_t,t=path_sample.t,c=embedded_context) - path_sample.dx_t, 2).mean() 
         
         return loss
         
