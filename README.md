@@ -26,7 +26,11 @@ Note: The generations will not be performed bar-by-bar, but at fixed regions of 
    I have made it so that you can dynamically index the model type through the .sh or .tcsh scripts. Within the generate_fixedpoint_hpDIRC.py file, you will need to import your models (put them in a folder in the models folder), and then add an elif statement to check. See how I am currently doing this and match the scheme.
 
 6. **torch_linux.yml**
-   You can replicate this env by doing conda create -f torch_linux.yml - build needed packages into this. Its running with latest cuda, pytorch etc.
+   You can replicate this env by doing:
+   ```bash
+   conda env create -f torch_linux.yml 
+   ```
+   Build needed packages into this. Its running with latest cuda, pytorch etc.
 
 
 <div style="display: flex; justify-content: space-between;">
