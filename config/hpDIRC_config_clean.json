@@ -108,6 +108,6 @@
             "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Test_FlowMatching_epoch36_val_loss_0.572773.pth",
             "kaon_model_path_FlowMatching": "Trained_Models/FlowMatching/Test_FlowMatching_epoch36_val_loss_0.572773.pth",
             "out_dir": "Inference/TEST_CNF_Jan17",
-            "fixed_point_dir": "FlowMatchTesting_Jan17"
+            "fixed_point_dir": "TEST_LINUX"
         }
 }
