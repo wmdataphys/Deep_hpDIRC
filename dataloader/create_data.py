@@ -180,7 +180,6 @@ class hpDIRCCherenkovPhotons(Dataset):
                 df = df[(df.time < self.stats['time_max']) & (df.theta > self.stats['theta_min']) & (df.theta < self.stats['theta_max']) & (df.P > self.stats['P_min']) & (df.P < self.stats['P_max']) & (df.phi == 0)]
                 self.data = df[columns].to_numpy()
                 del df
-                del df
                 print('Max Time: ',self.stats['time_max'])
                 print(self.data.max(0))
                 print(self.data.min(0))

@@ -1,5 +1,5 @@
 {
-    "name": "Pion_hpDIRC_SB_3L_128Node_T50",
+    "name": "PScore_6L_T100_cosine",
     "seed": 752022,
     "run_val":0,
     "method":"Pion",
@@ -15,7 +15,36 @@
        "num_blocks":1,
        "hidden_nodes": 128,
        "alph": [1.0,10.0,1.5]
-   },
+    },
+    "model_Score":{
+        "num_layers":6,
+        "input_shape":3,
+        "cond_shape":2,
+        "num_embed":32,
+        "hidden_dim": 128,
+        "num_steps":100,
+        "noise_schedule":"cosine",
+        "learned_schedule_net_hidden_dim":512,
+        "gamma":0
+        },
+    "model_DDPM":{
+        "num_layers":12,
+        "input_shape":3,
+        "cond_shape":2,
+        "num_embed":32,
+        "num_steps":100,
+        "hidden_dim": 128
+    },
+    "model_GSGM":{
+        "num_layers":6,
+        "input_shape":3,
+        "cond_shape":3,
+        "num_steps":75,
+        "num_embed":32,
+        "hidden_dim": 128,
+        "learned_variance":0,
+        "nonlinear_noise_schedule":0
+    },
    "model": {
     "num_layers":3,
     "input_shape":3,
@@ -73,6 +102,7 @@
     },
     "optimizer": {
         "lr":3e-4,
+        "lr_Score":3e-4,
         "lr_noise":3e-3,
         "weight_decay": 0,
         "alpha": 1e-3
@@ -81,10 +111,12 @@
     "dataloader": {
         "split":[0.7,0.15,0.15],
         "train": {
-            "batch_size": 2048
+            "batch_size": 2048,
+            "batch_size_Score":2048
     	},
         "val": {
-            "batch_size": 2048
+            "batch_size": 2048,
+            "batch_size_Score":2048
         },
         "test": {
             "batch_size": 25

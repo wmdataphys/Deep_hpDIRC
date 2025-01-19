@@ -13,7 +13,8 @@ import torch.nn as nn
 from dataloader.create_data import hpDIRCCherenkovPhotons
 from datetime import datetime
 from models.OT_Flow.ot_flow import OT_Flow
-from models.gsgm import GSGM 
+
+import warnings
 
 warnings.filterwarnings("ignore", message=".*weights_only.*")
 
