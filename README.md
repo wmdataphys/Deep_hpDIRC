@@ -65,7 +65,7 @@ python /sciclone/home/jgiroux/Cherenkov_FastSim/train_flow_matching.py --config 
 
 ```
 
-### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 17, 2025)**
+### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 22, 2025)**
 
 An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values. You will also need to specifcy which model type you want to generate (currently have NF, CNF, FlowMatching - this is WIP.)
 
@@ -79,7 +79,45 @@ The momentum will index specific files (in the fixed_point datasets field) and g
 ./gen_thetas_hpDIRC.sh 
 ```
 
-In the config file (also please feel free to remove all the model paths I have in there) you will see the Inference/fixed_point_dir field. You will need to change this to whatever you want. I recommend having something that gives information of the model, and also the momentum range, e.g., SDE_V1_6GeV. This will create a folder called Generations (only once), along with another folder with the name you have given in that fixed_point_dir field. Here it will dump the generations and ground truth into .pkl files, loop over these .pkl files and create individual .png images, and then combine these into a single .pdf. These images will be inside a folder called 2DPlots.
+In the config file (also please feel free to remove all the model paths I have in there) you will see the Inference/fixed_point_dir field. You will need to change this to whatever you want. I recommend having something that gives information of the model, and also the momentum range, e.g., SDE_V1_6GeV. This will create a folder called Generations (only once), along with another folder with the name you have given in that fixed_point_dir field. Here it will dump the generations and ground truth into .pkl files, loop over these .pkl files and create individual .png images, and then combine these into a single .pdf. These images will be inside a folder called Plots.
+
+I have included code for quantitative assessment of the fast simulations. This is included in the make_plots.py file and will run when you execture one of the batch scripts. It will produce the ratio plots below, along with printing you some metrics, i.e., the weighted average ratio and the weighted devation from 1 (RMS). These can be beautified later on, but give us a measure of performance. Note these run at a specific momentum, and integrate over theta.
+
+
+<div align="center">
+  <img src="assets/Ratios_Pion.png" alt="Figure 1: Pion Ratios" width="80%">
+</div>
+
+---
+
+<div align="center">
+  <img src="assets/Ratios_Kaon.png" alt="Figure 2: Kaon Ratios" width="80%">
+</div>
+
+## Pions
+**Ratios:**
+- **X:** 1.0197396402854462  
+- **Y:** 1.0186972537101524  
+- **Time:** 1.0004018114406121  
+
+**RMS:**
+- **RMS X:** 0.14630745458616642  
+- **RMS Y:** 0.14238202323044372  
+- **RMS Time:** 0.02029495644844653  
+
+---
+
+## Kaons
+**Ratios:**
+- **X:** 1.0208054115024188  
+- **Y:** 1.0196786662200525  
+- **Time:** 1.0004422737339618  
+
+**RMS:**
+- **RMS X:** 0.14981686869362465  
+- **RMS Y:** 0.14590069612117637  
+- **RMS Time:** 0.022045840144454147
+
 
 ### **Creating your own simulation**
 This is more complicated. I don't think you should need to do it so I am going to save myself from detailing this but we can talk about it if you wish. Probably easier for me to run it for you.

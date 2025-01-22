@@ -3,7 +3,7 @@
 # Initialize theta value
 theta=30
 momentum=6
-model_type="FlowMatching"
+model_type="NF"
 
 # Loop over theta values from 30 to 150 in steps of 5
 while [ $theta -le 150 ]
@@ -18,5 +18,5 @@ do
     theta=$((theta + 5))
 done
 
-# Make plots
+# Make 2D plots
 python make_plots.py --config config/hpDIRC_config_clean.json --momentum $momentum

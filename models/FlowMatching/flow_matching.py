@@ -11,7 +11,8 @@ from flow_matching.path.scheduler import CondOTScheduler
 from flow_matching.path import AffineProbPath
 from flow_matching.solver import Solver, ODESolver
 from flow_matching.utils import ModelWrapper
-
+from nflows.utils import torchutils
+from models.MADE import MixtureOfGaussiansMADE
 
 def antiderivTanh(x): # activation function aka the antiderivative of tanh
     return torch.abs(x) + torch.log(1+torch.exp(-2.0*torch.abs(x)))
@@ -46,11 +47,6 @@ class ResNN(nn.Module):
         self.output_layer = nn.Linear(m,d)
 
     def forward(self, x,t, c=None):
-        """
-            N(s;theta). the forward propogation of the ResNet
-        :param x: tensor nex-by-d+1, inputs
-        :return:  tensor nex-by-m,   outputs
-        """
         t = t.reshape(-1,1).float()
 
         if c is None:
@@ -63,11 +59,23 @@ class ResNN(nn.Module):
 
         return self.output_layer(x)
 
-    def step(self,z_t,t0,t1,c=None):
-        t0 = t0.view(1,1).expand(z_t.shape[0],1).to(z_t.device)
-        int_z =  z_t + self(x=z_t, t=t0,c=c) * (t1 - t0) / 2
-        int_t = t0 + (t1 - t0) / 2
-        return z_t + (t1 - t0) * self(t=int_t, x=int_z,c=c)
+    def step(self, x,t,c=None):
+        t = t.reshape(-1, 1).expand(x.shape[0], 1)
+
+        if c is None:
+            x = self.act(self.layers[0].forward(torch.concat([x,t],-1)))
+        else:
+            x = self.act(self.layers[0].forward(torch.concat([x,c,t],dim=-1)))
+
+        for i in range(1,self.nTh):
+            x = x + self.h * self.act(self.layers[i](x))
+
+        return self.output_layer(x)
+
+class WrappedModel(ModelWrapper):
+    def forward(self, x: torch.Tensor, t: torch.Tensor, **extras):
+        c = extras.get("model_extras", {}).get("c", None)
+        return self.model.step(x, t, c=c)
 
 
 class FlowMatching(nn.Module):
@@ -89,6 +97,21 @@ class FlowMatching(nn.Module):
 
         self.NN = ResNN(nTh=self.layers,m=self.hidden_units,d=self.input_shape,conditional_dim=self.context_shape)
         self.path = AffineProbPath(scheduler=CondOTScheduler())
+        # self.distribution = MixtureOfGaussiansMADE(
+        #                 features=input_shape,
+        #                 hidden_features=128,
+        #                 context_features=context_shape,
+        #                 num_blocks=2,
+        #                 num_mixture_components=40,
+        #                 use_residual_blocks=True,
+        #                 random_mask=False,
+        #                 activation=F.relu,
+        #                 dropout_probability=0.0,
+        #                 use_batch_norm=False,
+        #                 epsilon=1e-2,
+        #                 custom_initialization=True,
+        #                 ).to(self.device)
+        
 
         self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
                                                    16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
@@ -139,16 +162,8 @@ class FlowMatching(nn.Module):
         else:
             embedded_context = context
 
-        # x_0 = torch.randn_like(x_1).to(x_1.device)
-        # t = torch.rand(len(x_1), 1).to(x_1.device)
-
-        # x_t = (1.0 - t) * x_0 + t * x_1  
-        # dx_t = x_1 - x_0                 
-
-        # predicted_dx_t = self.NN(x=x_t, t=t, c=embedded_context)
-        # loss = torch.mean((predicted_dx_t - dx_t) ** 2)
-
         x_0 = torch.randn_like(x_1).to(x_1.device)
+        #x_0 = self.distribution.sample(x_1.shape[0],context=embedded_context,inference=False).squeeze(0)
 
         t = torch.rand(x_1.shape[0]).to(x_1.device) 
 
@@ -159,20 +174,28 @@ class FlowMatching(nn.Module):
         return loss
         
 
-    def __sample(self, num_samples, context=None,nt=20):
+    def __sample(self, num_samples,nt, context=None):
         if self.embedding:
             embedded_context = self.context_embedding(context)
         else:
             embedded_context = context
 
-        tspan = torch.linspace(0.0,1.0,nt + 1)
-        z = torch.rand(num_samples,self.input_shape).to(self.device)
-        embedded_context = torchutils.repeat_rows(embedded_context, num_reps=num_samples)
-        
-        for i in range(nt):
-            z = self.NN.step(z,c=embedded_context,t0=tspan[i],t1=tspan[i+1])
+        step_size = 1.0 / (2*nt) 
+        eps_time = step_size / 5.
+        wrapped_vf = WrappedModel(self.NN)
+        T = torch.linspace(0,1,nt).to(self.device)
+        #x_init = self.distribution.sample(num_samples,context=embedded_context,inference=True)
 
-        return z
+        if embedded_context is not None:
+        #     x_init = torchutils.merge_leading_dims(x_init, num_dims=2)
+            embedded_context = torchutils.repeat_rows(
+                embedded_context, num_reps=num_samples
+            )
+        x_init = torch.randn((num_samples, self.input_shape), dtype=torch.float32, device=self.device)
+        solver = ODESolver(velocity_model=wrapped_vf) 
+        sol = solver.sample(time_grid=T, x_init=x_init, method='midpoint', step_size=step_size, return_intermediates=False,model_extras={"c": embedded_context})
+
+        return sol
 
     def unscale(self,x,max_,min_):
         return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
@@ -187,7 +210,7 @@ class FlowMatching(nn.Module):
         closest_values = allowed[closest_indices]
         return closest_values
             
-    def _sample(self,num_samples,context,nt=40):
+    def _sample(self,num_samples,context,nt):
         samples = self.__sample(num_samples,context,nt=nt)
 
         x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
@@ -199,8 +222,8 @@ class FlowMatching(nn.Module):
 
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).detach().cpu().numpy()
 
-    def __get_track(self,num_samples,context):
-        samples = self.__sample(num_samples,context,nt=20)
+    def __get_track(self,num_samples,context,nt):
+        samples = self.__sample(num_samples,nt=nt,context=context)
         x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']).round()
         y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']).round()
         t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
@@ -217,9 +240,9 @@ class FlowMatching(nn.Module):
 
         return hits
 
-    def create_tracks(self,num_samples,context,plotting=False):
+    def create_tracks(self,num_samples,context,plotting=False,nt=20):
         counter = 0
-        hits = self.__get_track(num_samples,context)
+        hits = self.__get_track(num_samples,context,nt=nt)
         updated_hits = self._apply_mask(hits)
         n_resample = int(num_samples - len(updated_hits))
 
@@ -227,7 +250,7 @@ class FlowMatching(nn.Module):
         self.photons_resampled += n_resample
         while n_resample != 0:
             counter += 1
-            resampled_hits = self.__get_track(n_resample,context)
+            resampled_hits = self.__get_track(n_resample,context,nt=nt)
             updated_hits = torch.concat((updated_hits,resampled_hits),0)
             updated_hits = self._apply_mask(updated_hits)
             n_resample = int(num_samples - len(updated_hits))

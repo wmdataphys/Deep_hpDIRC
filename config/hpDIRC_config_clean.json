@@ -1,5 +1,5 @@
 {
-    "name": "FlowMatchingAffineTest",
+    "name": "FlowMatchingAffine",
     "seed": 752022,
     "run_val":1,
     "method":"Kaon",
@@ -23,7 +23,7 @@
     "alph": [1.0,10.0,1.5]
     },
     "model_FlowMatching": {
-        "num_layers":6,
+        "num_layers":10,
         "input_shape":3,
         "cond_shape":2,
         "num_blocks":2,
@@ -84,12 +84,12 @@
         "train": {
             "batch_size_NF": 2048,
             "batch_size_CNF": 10000,
-            "batch_size_FlowMatching": 10000
+            "batch_size_FlowMatching": 5000
     	},
         "val": {
             "batch_size_NF": 2048,
             "batch_size_CNF": 10000,
-            "batch_size_FlowMatching": 10000
+            "batch_size_FlowMatching": 5000
         },
         "test": {
             "batch_size": 25
@@ -103,11 +103,13 @@
             "samples": 1,
             "pion_model_path_NF": "Trained_Models/MOG/k40/Pion_hpDIRC_MoG_20L_128Node_k40_RESUME_v3_epoch95_val_loss_-2.932614.pth",
             "kaon_model_path_NF": "Trained_Models/MOG/k40/Kaon_hpDIRC_MoG_20L_128Node_k40_RESUME_v3_epoch99_val_loss_-2.844851.pth",
-            "pion_model_path_CNF": "Trained_Models/CNF/Pion_hpDIRC_CNF_MOG40_epoch04_val_loss_-26.291540.pth",
-            "kaon_model_path_CNF": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_epoch05_val_loss_-24.785789.pth",
-            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Test_FlowMatching_epoch36_val_loss_0.572773.pth",
-            "kaon_model_path_FlowMatching": "Trained_Models/FlowMatching/Test_FlowMatching_epoch36_val_loss_0.572773.pth",
-            "out_dir": "Inference/TEST_CNF_Jan17",
-            "fixed_point_dir": "TEST_LINUX"
+            "pion_model_path_CNF_": "Trained_Models/CNF/Pion_hpDIRC_CNF_MOG40_epoch04_val_loss_-26.291540.pth",
+            "pion_model_path_CNF": "Trained_Models/CNF/Pion_hpDIRC_CNF_MOG40_RESUME___Jan-19-2025/Pion_hpDIRC_CNF_MOG40_RESUME_epoch17_val_loss_-27.163671.pth",
+            "kaon_model_path_CNF": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_RESUME___Jan-19-2025/Kaon_hpDIRC_CNF_MOG40_RESUME_epoch22_val_loss_-26.639817.pth",
+            "kaon_model_path_CNF_": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_epoch05_val_loss_-24.785789.pth",
+            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_OriginalDistSampling_10L___Jan-21-2025/Kaon_FlowMatch_Affine_OriginalDistSampling_10L_epoch15_val_loss_0.573955.pth",
+            "kaon_model_path_FlowMatching": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_OriginalDistSampling_10L___Jan-21-2025/Kaon_FlowMatch_Affine_OriginalDistSampling_10L_epoch15_val_loss_0.573955.pth",
+            "out_dir": "Inference/TEST_10L_FlowMatch",
+            "fixed_point_dir": "TEST_Ratios"
         }
 }

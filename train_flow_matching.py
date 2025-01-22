@@ -93,7 +93,6 @@ def main(config,resume):
         startEpoch = dict['epoch']+1
         history = dict['history']
         global_step = dict['global_step']
-        print("Utilizing grad clipping.")
         print('       ... Start at epoch:',startEpoch)
 
 
@@ -101,10 +100,6 @@ def main(config,resume):
     print('      LR:', lr)
     print('      num_epochs:', num_epochs)
     print('')
-    loss_fn = nn.HuberLoss()
-
-    clampMax = 1.5
-    clampMin = -1.5
 
     for epoch in range(startEpoch,num_epochs):
 
@@ -119,11 +114,7 @@ def main(config,resume):
 
             optimizer.zero_grad()
 
-            #for p in net.parameters():
-                #p.data = torch.clamp(p.data, clampMin, clampMax)
-
             with torch.set_grad_enabled(True):
-                #loss,costs = net.compute_loss(inputs=input,nt=6,context=k)
                 loss = net.compute_loss(x_1=input,context=k)
 
 
