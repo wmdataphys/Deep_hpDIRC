@@ -20,15 +20,16 @@ def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_ma
     return np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
 
 class hpDIRC_DLL_Dataset(Dataset):
-    def __init__(self,file_path,stats={"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},time_cuts=None):
-        data = np.load(file_path,allow_pickle=True)[:400000] # Useful for testing
+    def __init__(self,file_path,stats={"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},time_cuts=None,n_particle=400000):
+        data = np.load(file_path,allow_pickle=True)[:n_particles] # Useful for testing
         self.data = []
         print(len(data))
         self.stats = stats
         for i in range(len(data)):
             theta__ = data[i]['Theta']
             p__ = data[i]['P']
-            if ((theta__ > self.stats['theta_min']) and (theta__ < self.stats['theta_max']) and (p__ > self.stats['P_min']) and (p__ < self.stats['P_max'])):# and (p__ < self.stats['P_max'])):
+            n_hits = data[i]['NHits']
+            if ((theta__ > self.stats['theta_min']) and (theta__ < self.stats['theta_max']) and (p__ > self.stats['P_min']) and (p__ < self.stats['P_max']) and (n_hits > 0)):
                 self.data.append(data[i])
 
 

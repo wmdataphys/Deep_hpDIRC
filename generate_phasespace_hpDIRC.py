@@ -92,16 +92,16 @@ def main(config,args):
     n_photons = 0
     for i in range(len(datapoints)):   
         with torch.set_grad_enabled(False):
+            if datapoints[i]['Phi'] != 0 or datapoints[i]['P'] > stats['P_max'] or datapoints[i]['P'] < stats['P_min'] or datapoints[i]['Theta'] > stats['theta_max'] or datapoints[i]['Theta'] < stats['theta_min'] or datapoints[i]['Phi'] != 0.0 or datapoints[i]['NHits'] <= 0:
+                continue
+
             p = (datapoints[i]['P'] - stats['P_max'])  / (stats['P_max'] - stats['P_min'])
             theta = (datapoints[i]['Theta'] - stats['theta_max']) / (stats['theta_max'] - stats['theta_min'])
             k = torch.tensor(np.array([p,theta])).to('cuda').float()
             
-            if datapoints[i]['NHits'] > 0:
-                gen = net.create_tracks(num_samples=datapoints[i]['NHits'],context=k.unsqueeze(0))
-                n_photons += datapoints[i]['NHits']
-            else:
-                print("Error with number of hits to generate: ",datapoints[i]['NHits'])
-                continue
+            gen = net.create_tracks(num_samples=datapoints[i]['NHits'],context=k.unsqueeze(0))
+            n_photons += datapoints[i]['NHits']
+  
         
         generations.append(gen)
         kbar.update(i)

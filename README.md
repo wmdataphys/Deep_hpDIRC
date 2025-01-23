@@ -126,7 +126,7 @@ I added additional code for ratio plots over the full phase space, you can run i
 ```bash 
 python generate_phasespace_hpDIRC.py --method "Pion" --model_type "NF" --config config/hpDIRC_config_clean.json 
 ```
-There is a n_particles flag that defaults to 200k, which is probably fine. Set it to -1 if you want to use all the data, this depends on how much RAM you have available. I have not made this super memory efficient. Currently in the ratio plots there seems to be an error with tracks that have zero hits, this is likely an artifact of not trimming phi != 0. Will investigate and correct this.
+There is a n_particles flag that defaults to 200k, which is probably fine. Set it to -1 if you want to use all the data, this depends on how much RAM you have available. I have not made this super memory efficient. We may want to introduce some different time cuts, Im not sure whats going on at low t. Need to look into this more.
 
 ---
 <div align="center">
