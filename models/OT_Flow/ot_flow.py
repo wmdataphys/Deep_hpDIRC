@@ -169,6 +169,17 @@ class OT_Flow(nn.Module):
         closest_indices = torch.argmin(diffs, dim=1)
         closest_values = allowed[closest_indices]
         return closest_values
+
+    def set_to_closest_2d(self,hits):
+        allowed_pairs = torch.cartesian_prod(self._allowed_x.to(self.device).float(), self._allowed_y.to(self.device).float()) 
+
+        diffs = hits.unsqueeze(1) - allowed_pairs 
+        distances = torch.norm(diffs, dim=2) 
+
+        closest_indices = torch.argmin(distances, dim=1)
+        closest_values = allowed_pairs[closest_indices]
+
+        return closest_values[:,0].detach().cpu(),closest_values[:,1].detach().cpu()
             
     def _sample(self,num_samples,context,nt=40):
         samples = self.__sample(num_samples,context,nt=nt)
@@ -183,8 +194,8 @@ class OT_Flow(nn.Module):
 
     def __get_track(self,num_samples,context,nt):
         samples = self.__sample(num_samples,context,nt=nt)
-        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']).round()
-        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']).round()
+        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])#.round()
+        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])#.round()
         t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
 
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
@@ -217,8 +228,8 @@ class OT_Flow(nn.Module):
             self.photons_generated += len(resampled_hits)
             
 
-        x = self.set_to_closest(updated_hits[:,0],self._allowed_x).detach().cpu()
-        y = self.set_to_closest(updated_hits[:,1],self._allowed_y).detach().cpu()
+        # Use euclidean distance
+        x,y = self.set_to_closest_2d(updated_hits[:,:-1])
         t = updated_hits[:,2].detach().cpu()
 
 

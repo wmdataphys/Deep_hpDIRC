@@ -87,11 +87,11 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
         true_ys.append(y_)
         true_time.append(data['truth'][i]['leadTime'])
     
-    xs = np.concatenate(xs)
-    ys = np.concatenate(ys)
+    xs = np.concatenate(xs).astype('float32')
+    ys = np.concatenate(ys).astype('float32')
     time = np.concatenate(time)
-    true_xs = np.concatenate(true_xs)
-    true_ys = np.concatenate(true_ys)
+    true_xs = np.concatenate(true_xs).astype('float32')
+    true_ys = np.concatenate(true_ys).astype('float32')
     true_time = np.concatenate(true_time)
 
     fig, ax = plt.subplots(2,2,figsize=(18,12))
@@ -165,7 +165,7 @@ def make_ratios(path_,label,momentum,outpath):
     y_true = []
     t_true = []
     for file in os.listdir(path_):
-        if label not in file:
+        if label not in file or ".pkl" not in file:
             continue
 
         file_counter += 1
