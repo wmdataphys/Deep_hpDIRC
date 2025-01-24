@@ -1,5 +1,5 @@
 {
-    "name": "PScore_6L_T100_cosine",
+    "name": "PGSGM_4L_T100",
     "seed": 752022,
     "run_val":0,
     "method":"Pion",
@@ -36,10 +36,10 @@
         "hidden_dim": 128
     },
     "model_GSGM":{
-        "num_layers":6,
+        "num_layers":4,
         "input_shape":3,
-        "cond_shape":3,
-        "num_steps":75,
+        "cond_shape":2,
+        "num_steps":100,
         "num_embed":32,
         "hidden_dim": 128,
         "learned_variance":0,
@@ -58,41 +58,41 @@
     },
     "dataset": {
         "fixed_point":{
-            "pion_data_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
-            "kaon_data_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl",
-            "pion_data_path_6GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/6GeV/mixed_pik_all_theta_Pions.pkl",
-            "kaon_data_path_6GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/6GeV/mixed_pik_all_theta_Kaons.pkl",
-            "pion_data_path_9GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/9GeV/merged_pik_9GeV_Pions.pkl",
-            "kaon_data_path_9GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/9GeV/merged_pik_9GeV_Kaons.pkl",
-            "pion_data_path_3GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/3GeV/merged_pik_3GeV_Pions.pkl",
-            "kaon_data_path_3GeV": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/fixed_thetas/3GeV/merged_pik_3GeV_Kaons.pkl"
+            "pion_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl",
+            "pion_data_path_6GeV": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/fixed_thetas/6GeV/mixed_pik_all_theta_Pions.pkl",
+            "kaon_data_path_6GeV": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/fixed_thetas/6GeV/mixed_pik_all_theta_Kaons.pkl",
+            "pion_data_path_9GeV": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/fixed_thetas/9GeV/merged_pik_9GeV_Pions.pkl",
+            "kaon_data_path_9GeV": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/fixed_thetas/9GeV/merged_pik_9GeV_Kaons.pkl",
+            "pion_data_path_3GeV": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/fixed_thetas/3GeV/merged_pik_3GeV_Pions.pkl",
+            "kaon_data_path_3GeV": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/fixed_thetas/3GeV/merged_pik_3GeV_Kaons.pkl"
         },
         "mcmc":{
-            "pion_data_path":"/sciclone/data10/jgiroux/Cherenkov/hpDIRC/TrackWiseGeneration_Pions.pkl",
-            "kaon_data_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/TrackWiseGeneration_Kaons.pkl"
+            "pion_data_path":"/sciclone/data10/mcmartinez/hpDIRC/TrackWiseGeneration_Pions.pkl",
+            "kaon_data_path": "/sciclone/data10/mcmartinez/hpDIRC/TrackWiseGeneration_Kaons.pkl"
         },
         "training": {
             "smeared":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC_Smeared.feather",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC_Smeared.feather"
+            "pion_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC_Smeared.feather",
+            "kaon_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC_Smeared.feather"
             },
             "unsmeared":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC.feather",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC.feather"              
+            "pion_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC.feather"              
             }
         },
         "validation":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Validation_Pions_hpDIRC.feather",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Validation_Kaons_hpDIRC.feather"
+            "pion_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Validation_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Validation_Kaons_hpDIRC.feather"
         },
         "testing":{
 	    "DLL":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl"
+            "pion_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl"
 	    }, 
 	    "gen":{
-            "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.feather",
-            "kaon_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.feather"
+            "pion_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.feather",
+            "kaon_data_path" : "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.feather"
         }
     }
     },
@@ -107,16 +107,18 @@
         "weight_decay": 0,
         "alpha": 1e-3
     },
-    "num_epochs": 300,
+    "num_epochs": 150,
     "dataloader": {
         "split":[0.7,0.15,0.15],
         "train": {
             "batch_size": 2048,
-            "batch_size_Score":2048
+            "batch_size_Score":2048,
+            "batch_size_GSGM":2048
     	},
         "val": {
             "batch_size": 2048,
-            "batch_size_Score":2048
+            "batch_size_Score":2048,
+            "batch_size_GSGM":2048
         },
         "test": {
             "batch_size": 25

@@ -34,6 +34,8 @@ def train(config, resume, overwrite = False):
     curr_date = datetime.now()
     exp_name = config['name'] + '___' + curr_date.strftime('%b-%d-%Y___%H:%M:%S')
     exp_name = exp_name[:-11]
+    MODEL_NAME = "GSGM"
+    print("Training",MODEL_NAME,"model.")
     print(exp_name)
 
     # Create directory structure
@@ -81,20 +83,20 @@ def train(config, resume, overwrite = False):
     
     history = {'train_loss':[],'val_loss':[],'lr':[], 'logsnr':[]}
     print("Creating loaders")
-    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config)
+    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config, model_type=MODEL_NAME)
 
     num_epochs=int(config['num_epochs'])
     lr = float(config['optimizer']['lr'])
     lr_noise = float(config['optimizer']['lr_noise'])
 
-    input_shape = int(config['model']['input_shape'])
-    cond_shape = int(config['model']['cond_shape'])
-    num_layers = int(config['model']['num_layers'])
-    timesteps = int(config['model']['num_steps'])
-    num_embed = int(config['model']['num_embed'])
-    hidden_nodes = int(config['model']['hidden_nodes'])
-    nonlinear_noise_schedule = bool(config['model']['nonlinear_noise_schedule'])
-    learned_variance = bool(config['model']['learned_variance'])
+    input_shape = int(config['model_GSGM']['input_shape'])
+    cond_shape = int(config['model_GSGM']['cond_shape'])
+    num_layers = int(config['model_GSGM']['num_layers'])
+    timesteps = int(config['model_GSGM']['num_steps'])
+    num_embed = int(config['model_GSGM']['num_embed'])
+    hidden_nodes = int(config['model_GSGM']['hidden_dim'])
+    nonlinear_noise_schedule = bool(config['model_GSGM']['nonlinear_noise_schedule'])
+    learned_variance = bool(config['model_GSGM']['learned_variance'])
 
     startEpoch = 0
     global_step = 0
@@ -104,24 +106,25 @@ def train(config, resume, overwrite = False):
     #setup_logging(args.run_name)
     device = torch.device('cuda')
 
-    net = GSGM(input_shape, cond_shape, device, num_layers, timesteps, num_embed, hidden_nodes, nonlinear_noise_schedule, learned_variance)
+    diffusion = GSGM(num_input=input_shape, 
+               num_conds=cond_shape, 
+               device=device, 
+               num_layers=num_layers, 
+               num_steps=timesteps, 
+               num_embed=num_embed, 
+               mlp_dim=hidden_nodes, 
+               nonlinear_noise_schedule=nonlinear_noise_schedule, 
+               learnedvar=learned_variance)
 
     #optimizer = optim.Adamax(model.parameters(), lr=lr)
-    optimizer = optim.AdamW(net.model.parameters(), lr=lr)
+    optimizer = optim.AdamW(diffusion.parameters(), lr=lr)
 
-    if learned_variance:
-        noise_net = net.noise_schedule_net
-        optimizer_noise= optim.AdamW(noise_net.parameters(), lr=lr_noise)
-    else:
-        noise_net = None
-        optimizer_noise = None
-
-    net.to(device)
+    diffusion.to(device)
 
     if resume:
         print('===========  Resume training  ==================:')
         dict = torch.load(resume, map_location=device)
-        net.load_state_dict(dict['net_state_dict'])
+        diffusion.load_state_dict(dict['net_state_dict'])
         optimizer.load_state_dict(dict['optimizer'])
         # scheduler.load_state_dict(dict['scheduler'])
         startEpoch = dict['epoch']+1
@@ -132,10 +135,10 @@ def train(config, resume, overwrite = False):
     
     mse = nn.MSELoss()
 
-    t_params = sum(p.numel() for p in net.parameters())
+    t_params = sum(p.numel() for p in diffusion.parameters())
     print("Score-based Network Parameters: ",t_params)
     if learned_variance:
-        noise_net_params = sum(p.numel() for p in net.noise_schedule_net.parameters())
+        noise_net_params = sum(p.numel() for p in diffusion.noise_schedule_net.parameters())
         print("Noise Scheduler Network Parameters: ",noise_net_params)
 
     #logger = SummaryWriter(os.path.join("runs", args.run_name))
@@ -144,7 +147,7 @@ def train(config, resume, overwrite = False):
     # ema = EMA(0.995)
     # ema_model = copy.deepcopy(model).eval().requires_grad_(False)
 
-    net.train()
+    diffusion.train()
     running_loss = 0.0
     running_logsnr = 0.0
 
@@ -159,11 +162,9 @@ def train(config, resume, overwrite = False):
             k = data[1].float().to(device)
 
             optimizer.zero_grad()
-            if optimizer_noise:
-                optimizer_noise.zero_grad()
 
             with torch.set_grad_enabled(True):
-                loss, logsnr = net.train_step(input, k, optimizer_noise=optimizer_noise)
+                loss, logsnr = diffusion.train_step(input, k, optimizer_noise=None)
 
             loss.backward()
             optimizer.step()
@@ -179,7 +180,7 @@ def train(config, resume, overwrite = False):
                 name_output_file = config['name']+'_epoch{:02d}_save_iter_{:02d}.pth'.format(epoch, i)
                 filename = os.path.join(output_folder , exp_name , name_output_file)
                 checkpoint={}
-                checkpoint['net_state_dict'] = net.state_dict()
+                checkpoint['net_state_dict'] = diffusion.state_dict()
                 checkpoint['optimizer'] = optimizer.state_dict()
                 #checkpoint['scheduler'] = scheduler.state_dict()
                 checkpoint['epoch'] = epoch
@@ -197,13 +198,13 @@ def train(config, resume, overwrite = False):
         ## validation phase ##
         ######################
         if bool(config['run_val']):
-            net.eval()
+            diffusion.eval()
             val_loss = 0.0
             with torch.no_grad():
                 for i, data in enumerate(val_loader):
                     input  = data[0].to('cuda').float()
                     k = data[1].to('cuda').float()
-                    loss, logsnr = net.test_step(input, k)
+                    loss, logsnr = diffusion.test_step(input, k)
 
                     val_loss += loss
 
@@ -223,7 +224,7 @@ def train(config, resume, overwrite = False):
         filename = os.path.join(output_folder , exp_name , name_output_file)
 
         checkpoint={}
-        checkpoint['net_state_dict'] = net.state_dict()
+        checkpoint['net_state_dict'] = diffusion.state_dict()
         checkpoint['optimizer'] = optimizer.state_dict()
         checkpoint['scheduler'] = None
         checkpoint['epoch'] = epoch

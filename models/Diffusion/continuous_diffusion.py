@@ -294,7 +294,7 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
 
         log_snr_padded = right_pad_dims_to(x_start, log_snr)
         alpha, sigma = sqrt(log_snr_padded.sigmoid()), sqrt((-log_snr_padded).sigmoid())
-        x_noised =  x_start * alpha + noise * sigma
+        x_noised =  x_start * alpha + noise * sigma # actual noise being added, with alpha controlling level of noise. 
 
         return x_noised, log_snr # size of t
 

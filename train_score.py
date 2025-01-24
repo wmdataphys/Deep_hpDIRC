@@ -33,8 +33,8 @@ def train(config, resume, overwrite = False):
     curr_date = datetime.now()
     exp_name = config['name'] + '___' + curr_date.strftime('%b-%d-%Y___%H:%M:%S')
     exp_name = exp_name[:-11]
-    model_name = str(config['name']).split('_')[0][1:]
-    print("Training",model_name,"model.")
+    MODEL_NAME = "Score"
+    print("Training",MODEL_NAME,"model.")
     print(exp_name)
 
     # Create directory structure
@@ -76,7 +76,7 @@ def train(config, resume, overwrite = False):
     val_dataset = hpDIRCCherenkovPhotons(kaon_path=config['dataset']['validation']['kaon_data_path'],
                     pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'],stats=stats)
 
-    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config, model_type=model_name)
+    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config, model_type=MODEL_NAME)
     
 
     num_epochs=int(config['num_epochs'])
