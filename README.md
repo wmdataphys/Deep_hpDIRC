@@ -4,7 +4,7 @@
 
 This repository contains all the necessary files for running the hpDIRC fast simulation. I've organized them in a way that should be easy to modify and generate new simulations based on your needs.
 
-Note: The generations will not be performed bar-by-bar, but at fixed regions of momentum and theta. We are using two conditionals for the simulation, as it is set up with $\phi = 0$. This setup should be fine for now, and we can make use of symmetry arguments..
+Note: The generations will not be performed bar-by-bar, but at fixed regions of momentum and theta. We are using two conditionals for the simulation, as it is set up with $\phi = 0$. This setup should be fine for now, and we can make use of symmetry arguments. **Make sure you have updated classes from create_data.py, dataloader.py, etc.** Generally make sure the vital infrastructure we share is up to date.
 
 ### **What You Will Need (Updated Jan 18, 2025):**
 
@@ -131,6 +131,22 @@ There is a n_particles flag that defaults to 200k, which is probably fine. Set i
 ---
 <div align="center">
   <img src="assets/Ratios_Pion_FullPhaseSpace.png" alt="Figure 1: Pion Ratios" width="80%">
+</div>
+---
+
+
+## **Running DLL (Updated Jan 24,2025)**
+
+I have added code for running PID (Delta Log-likelihood) for the three models, NF,CNF,FlowMatching. You should be able to take the code from the FlowMatching model and use this to integrate your diffusion model through an ODE. Let me know if you have issues with this. To run the code you can specify specific model type you want (add a diffusion method for yourself, and modify the run_DLL_fixedpoints_hpDIRC.py file to accomodate) in the run_DLL_fixedpoints.sh file similar to the generations scripts.
+
+```bash
+./run_DLL_fixedpoints.sh
+```
+The first run of this should spawn an Inference folder and put things in there. The folder will be what is specificed in the Inference/out_dir_fixed field of the config file. This will produce plots (like below) at 3,6 and 9 GeV. You will need the LUT_Stats folder as well.
+
+---
+<div align="center">
+  <img src="assets/Seperation_NF_LUT_6GeV.png" alt="Figure 1: Pion Ratios" width="80%">
 </div>
 ---
 

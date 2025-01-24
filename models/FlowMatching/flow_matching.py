@@ -13,6 +13,7 @@ from flow_matching.solver import Solver, ODESolver
 from flow_matching.utils import ModelWrapper
 from nflows.utils import torchutils
 from models.MADE import MixtureOfGaussiansMADE
+from torch import Tensor
 
 def antiderivTanh(x): # activation function aka the antiderivative of tanh
     return torch.abs(x) + torch.log(1+torch.exp(-2.0*torch.abs(x)))
@@ -111,6 +112,8 @@ class FlowMatching(nn.Module):
         #                 epsilon=1e-2,
         #                 custom_initialization=True,
         #                 ).to(self.device)
+
+
         
 
         self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
@@ -162,8 +165,8 @@ class FlowMatching(nn.Module):
         else:
             embedded_context = context
 
-        x_0 = torch.randn_like(x_1).to(x_1.device)
-        #x_0 = self.distribution.sample(x_1.shape[0],context=embedded_context,inference=False).squeeze(0)
+        #x_0 = torch.randn_like(x_1).to(x_1.device)
+        x_0 = self.distribution.sample(x_1.shape[0],context=embedded_context,inference=False).squeeze(0)
 
         t = torch.rand(x_1.shape[0]).to(x_1.device) 
 
@@ -187,7 +190,7 @@ class FlowMatching(nn.Module):
         #x_init = self.distribution.sample(num_samples,context=embedded_context,inference=True)
 
         if embedded_context is not None:
-        #     x_init = torchutils.merge_leading_dims(x_init, num_dims=2)
+            #x_init = torchutils.merge_leading_dims(x_init, num_dims=2)
             embedded_context = torchutils.repeat_rows(
                 embedded_context, num_reps=num_samples
             )
@@ -196,6 +199,32 @@ class FlowMatching(nn.Module):
         sol = solver.sample(time_grid=T, x_init=x_init, method='midpoint', step_size=step_size, return_intermediates=False,model_extras={"c": embedded_context})
 
         return sol
+
+    def log_prob(self,inputs,context,nt=18):
+        if self.embedding:
+            embedded_context = self.context_embedding(context)
+        else:
+            embedded_context = context
+
+        step_size = 1.0 / (2*nt)
+        T = torch.linspace(1,0,nt).to(self.device)
+
+        def log_p(x: Tensor) -> Tensor:
+            neg_energy = -0.5 * \
+            torchutils.sum_except_batch(inputs ** 2, num_batch_dims=1)
+            _log_z = 0.5 * x.shape[-1] * torch.log(2 * torch.tensor(math.pi))
+            return neg_energy - _log_z
+
+        wrapped_vf = WrappedModel(self.NN)
+        solver = ODESolver(velocity_model=wrapped_vf)
+
+        _, log_likelihood = solver.compute_likelihood(time_grid=T, x_1=inputs,log_p0=log_p,
+                                                                 method='midpoint', step_size=step_size, return_intermediates=False,
+                                                                 model_extras={"c": embedded_context}, exact_divergence=True)
+
+        assert(log_likelihood.shape[0] == inputs.shape[0])
+
+        return log_likelihood 
 
     def unscale(self,x,max_,min_):
         return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
@@ -251,7 +280,7 @@ class FlowMatching(nn.Module):
 
         return hits
 
-    def create_tracks(self,num_samples,context,plotting=False,nt=20):
+    def create_tracks(self,num_samples,context,plotting=False,nt=18):
         counter = 0
         hits = self.__get_track(num_samples,context,nt=nt)
         updated_hits = self._apply_mask(hits)
