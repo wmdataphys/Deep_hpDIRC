@@ -16,6 +16,8 @@ from matplotlib.colors import LogNorm
 from models.NF.freia_models import FreiaNet
 from models.OT_Flow.ot_flow import OT_Flow
 from models.FlowMatching.flow_matching import FlowMatching
+from models.Diffusion.resnet import ResNet
+from models.Diffusion.continuous_diffusion import ContinuousTimeGaussianDiffusion
 import matplotlib.colors as mcolors
 import pickle
 import warnings
@@ -50,18 +52,27 @@ def main(config,args):
     num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
     input_shape = int(config['model_'+str(args.model_type)]['input_shape'])
     cond_shape = int(config['model_'+str(args.model_type)]['cond_shape'])
-    num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
     hidden_nodes = int(config['model_'+str(args.model_type)]['hidden_nodes'])
     stats = config['stats']
     
     if args.model_type == "NF":
+        num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
     elif args.model_type == "CNF":
+        num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         alph = config['model_'+str(args.model_type)]['alph']
         train_T = bool(config['model_'+str(args.model_type)]['train_T'])
         net = net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=True,alph=alph)
     elif args.model_type == "FlowMatching":
         net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
+    elif args.model_type == 'Score':
+        num_steps = int(config['model_Score']['num_steps'])
+        noise_schedule = config['model_Score']['noise_schedule']
+        learned_schedule_net_hidden_dim = int(config['model_Score']['learned_schedule_net_hidden_dim'])
+        gamma = int(config['model_Score']['gamma'])
+
+        model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
+        net = ContinuousTimeGaussianDiffusion(model=model, stats=stats,num_sample_steps=num_steps, noise_schedule=noise_schedule, learned_schedule_net_hidden_dim=learned_schedule_net_hidden_dim, min_snr_loss_weight = True, min_snr_gamma=gamma)
     else:
         raise ValueError("Model type not found.")
 

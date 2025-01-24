@@ -1,12 +1,10 @@
 {
-    "name": "PGSGM_4L_T100",
+    "name": "KScore_6L_T100_cosine",
     "seed": 752022,
     "run_val":0,
-    "method":"Pion",
+    "method":"Kaon",
     "datatype": "Simulation",
     "sim_type": "pgun",
-    "log_time":0,
-    "warm_start": 0,
     "stats": {"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},
     "model_CNF": {
        "num_layers":6,
@@ -21,7 +19,7 @@
         "input_shape":3,
         "cond_shape":2,
         "num_embed":32,
-        "hidden_dim": 128,
+        "hidden_nodes": 128,
         "num_steps":100,
         "noise_schedule":"cosine",
         "learned_schedule_net_hidden_dim":512,
@@ -33,7 +31,7 @@
         "cond_shape":2,
         "num_embed":32,
         "num_steps":100,
-        "hidden_dim": 128
+        "hidden_nodes": 128
     },
     "model_GSGM":{
         "num_layers":4,
@@ -41,20 +39,9 @@
         "cond_shape":2,
         "num_steps":100,
         "num_embed":32,
-        "hidden_dim": 128,
+        "hidden_nodes": 128,
         "learned_variance":0,
         "nonlinear_noise_schedule":0
-    },
-   "model": {
-    "num_layers":3,
-    "input_shape":3,
-    "cond_shape":2,
-    "num_steps":50,
-    "num_embed":32,
-    "num_blocks":2,
-    "hidden_nodes": 128,
-    "nonlinear_noise_schedule":0,
-    "learned_variance":0
     },
     "dataset": {
         "fixed_point":{
@@ -130,26 +117,12 @@
     "Inference": {
             "gen_dir": "Figures/hpDIRC_CNF_KaonTest_Small",
             "samples": 1,
-            "kaon_model_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_OT_Flow_FullDataset_v3_ReverseCondScale_DecreaseRange_RESUME___Dec-15-2024/Kaon_OT_Flow_FullDataset_v3_ReverseCondScale_DecreaseRange_RESUME_epoch05_val_loss_-21.819084.pth",
-            "pion_model_path": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_OT_Flow_FullDataset_v3_ReverseCondScale_DecreaseRange_RESUME___Dec-15-2024/Pion_OT_Flow_FullDataset_v3_ReverseCondScale_DecreaseRange_RESUME_epoch04_val_loss_-24.117643.pth",
-            "kaon_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_OT_Flow_FullDataset_v2_RESUME___Dec-12-2024/Kaon_OT_Flow_FullDataset_v2_RESUME_epoch08_val_loss_-24.729573.pth",
-            "pion_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_OT_Flow_FullDataset_v2_RESUME___Dec-12-2024/Pion_OT_Flow_FullDataset_v2_RESUME_epoch05_val_loss_-24.005458.pth",
-            "pion_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_OTFlow_FullTrain_Corrected_NLL___Dec-04-2024/Pion_OTFlow_FullTrain_Corrected_NLL_epoch54_val_loss_-24.480004.pth",
-            "kaon_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_OTFlow_FullTrain_Corrected_NLL_JupyterHub___Dec-04-2024/Kaon_OTFlow_FullTrain_Corrected_NLL_JupyterHub_epoch60_val_loss_-24.007295.pth",
-            "pion_model_path_6L": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_OTFlow_L6_Node128___Dec-03-2024/Pion_OTFlow_L6_Node128_epoch72_val_loss_-24.290056.pth",
-            "kaon_model_path_NotWorth": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_Test_OTFLOW_v11_nt20_128Node_8Layers___Dec-02-2024/Kaon_Test_OTFLOW_v11_nt20_128Node_8Layers_epoch41_val_loss_-24.259140.pth",
-            "kaon_model_path_not_bad6L" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_Test_OTFLOW_v11_nt20_L6_128Node___Dec-02-2024/Kaon_Test_OTFLOW_v11_nt20_L6_128Node_epoch29_val_loss_-22.777996.pth",
-            "kaon_model_path_6L" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_Test_OTFLOW_v11_nt20_L6_128Node___Dec-02-2024/Kaon_Test_OTFLOW_v11_nt20_L6_128Node_epoch28_val_loss_-22.791930.pth",
-            "kaon_model_path_32Node_T=1": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Test_Kaon_CNF_SMALL___Nov-26-2024/Test_Kaon_CNF_SMALL_epoch01_save_iter_20000.pth",
-            "kaon_model_path_1000Node_T=2": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Test_Kaon_CNF___Nov-25-2024/Test_Kaon_CNF_epoch00_save_iter_23000.pth",
-            "pion_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_hpDIRC_10L_8192_Batch_ExtraTracks___Oct-15-2024/Pion_hpDIRC_10L_8192_Batch_ExtraTracks_epoch60_val_loss_-2.462260.pth",
-            "kaon_model_path_": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_hpDIRC_10L_8192_Batch_ExtraTracks___Oct-15-2024/Kaon_hpDIRC_10L_8192_Batch_ExtraTracks_epoch64_val_loss_-2.364556.pth",
-            "pion_model_path_12L_extratracks": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch___Oct-18-2024/Kaon_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch_epoch49_val_loss_-2.491220.pth",
-            "kaon_model_path_12L_extratracks": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch___Oct-18-2024/Pion_hpDIRC_12L_8192_Batch_ExtraTracks_50Epoch_epoch49_val_loss_-2.499985.pth",
-            "pion_model_path_decent": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Pion_hpDIRC_10L_8192_Batch___Oct-09-2024/Pion_hpDIRC_10L_8192_Batch_epoch49_val_loss_-2.758101.pth",
-            "kaon_model_path_decent": "/sciclone/data10/jgiroux/Cherenkov/hpDIRC_Models/Kaon_hpDIRC_10L_8192_Batch___Oct-09-2024/Kaon_hpDIRC_10L_8192_Batch_epoch49_val_loss_-2.604963.pth",
+            "pion_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/PScore_6L_T100_cosine___Jan-18-2025/PScore_6L_T100_cosine_epoch88_train_loss_0.228541.pth",
+            "kaon_model_path_Score":"",
+            "pion_model_path_GSGM":"",
+            "kaon_model_path_GSGM":"",
             "out_dir": "Inference/OTFlow_FullTrain_v2_6GeV_TestRevKinScale",
             "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/ParticleGun/Generated_Data/NF_Generated",
-            "fixed_point_dir": "test"
+            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_6GeV"
         }
 }

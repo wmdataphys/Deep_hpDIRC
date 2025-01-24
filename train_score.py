@@ -86,7 +86,7 @@ def train(config, resume, overwrite = False):
     num_layers = int(config['model_Score']['num_layers'])
     input_shape = int(config['model_Score']['input_shape'])
     cond_shape = int(config['model_Score']['cond_shape'])
-    hidden_dim = int(config['model_Score']['hidden_dim']) 
+    hidden_dim = int(config['model_Score']['hidden_nodes']) 
     num_steps = int(config['model_Score']['num_steps'])
 
     # Diffusion parameters

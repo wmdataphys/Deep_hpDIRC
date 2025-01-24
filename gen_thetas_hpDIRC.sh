@@ -3,7 +3,7 @@
 # Initialize theta value
 theta=30
 momentum=6
-model_type="NF"
+model_type="Score"
 
 # Loop over theta values from 30 to 150 in steps of 5
 while [ $theta -le 150 ]
