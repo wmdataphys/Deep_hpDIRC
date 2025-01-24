@@ -135,7 +135,7 @@ class OT_Flow(nn.Module):
 
         
 
-    def __sample(self, num_samples, context, tspan=[1.0,0.0],nt=20):
+    def __sample(self, num_samples, context,nt, tspan=[1.0,0.0]):
         if self.embedding:
             embedded_context = self.context_embedding(context)
         else:
@@ -169,6 +169,17 @@ class OT_Flow(nn.Module):
         closest_indices = torch.argmin(diffs, dim=1)
         closest_values = allowed[closest_indices]
         return closest_values
+
+    def set_to_closest_2d(self,hits):
+        allowed_pairs = torch.cartesian_prod(self._allowed_x.to(self.device).float(), self._allowed_y.to(self.device).float()) 
+
+        diffs = hits.unsqueeze(1) - allowed_pairs 
+        distances = torch.norm(diffs, dim=2) 
+
+        closest_indices = torch.argmin(distances, dim=1)
+        closest_values = allowed_pairs[closest_indices]
+
+        return closest_values[:,0].detach().cpu(),closest_values[:,1].detach().cpu()
             
     def _sample(self,num_samples,context,nt=40):
         samples = self.__sample(num_samples,context,nt=nt)
@@ -181,10 +192,10 @@ class OT_Flow(nn.Module):
         y = self.set_to_closest(y,self._allowed_y)
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).detach().cpu().numpy()
 
-    def __get_track(self,num_samples,context):
-        samples = self.__sample(num_samples,context,nt=20)
-        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min']).round()
-        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min']).round()
+    def __get_track(self,num_samples,context,nt):
+        samples = self.__sample(num_samples,context,nt=nt)
+        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])#.round()
+        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])#.round()
         t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
 
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
@@ -199,9 +210,9 @@ class OT_Flow(nn.Module):
 
         return hits
 
-    def create_tracks(self,num_samples,context,plotting=False):
+    def create_tracks(self,num_samples,context,plotting=False,nt=20):
         counter = 0
-        hits = self.__get_track(num_samples,context)
+        hits = self.__get_track(num_samples,context,nt)
         updated_hits = self._apply_mask(hits)
         n_resample = int(num_samples - len(updated_hits))
 
@@ -209,7 +220,7 @@ class OT_Flow(nn.Module):
         self.photons_resampled += n_resample
         while n_resample != 0:
             counter += 1
-            resampled_hits = self.__get_track(n_resample,context)
+            resampled_hits = self.__get_track(n_resample,context,nt=nt)
             updated_hits = torch.concat((updated_hits,resampled_hits),0)
             updated_hits = self._apply_mask(updated_hits)
             n_resample = int(num_samples - len(updated_hits))
@@ -217,8 +228,8 @@ class OT_Flow(nn.Module):
             self.photons_generated += len(resampled_hits)
             
 
-        x = self.set_to_closest(updated_hits[:,0],self._allowed_x).detach().cpu()
-        y = self.set_to_closest(updated_hits[:,1],self._allowed_y).detach().cpu()
+        # Use euclidean distance
+        x,y = self.set_to_closest_2d(updated_hits[:,:-1])
         t = updated_hits[:,2].detach().cpu()
 
 

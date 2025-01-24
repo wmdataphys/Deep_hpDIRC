@@ -34,8 +34,8 @@ Note: The generations will not be performed bar-by-bar, but at fixed regions of 
 
 
 <div style="display: flex; justify-content: space-between;">
-    <img src="assets/Pion_p_6.0_theta_90.0_PID_Pion_ntracks_1483..png" alt="Plot 1" width="45%" />
-    <img src="assets/Pion_p_6.0_theta_95.0_PID_Pion_ntracks_1488..png" alt="Plot 2" width="45%" />
+    <img src="assets/Pion_p_6.0_theta_95.0_PID_Pion_ntracks_1488..png" alt="Plot 1" width="45%" />
+    <img src="assets/Kaon_p_6.0_theta_90.0_PID_Kaon_ntracks_1465..png" alt="Plot 2" width="45%" />
 </div>
 
 ---
@@ -65,7 +65,7 @@ python /sciclone/home/jgiroux/Cherenkov_FastSim/train_flow_matching.py --config 
 
 ```
 
-### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 17, 2025)**
+### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 22, 2025)**
 
 An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values. You will also need to specifcy which model type you want to generate (currently have NF, CNF, FlowMatching - this is WIP.)
 
@@ -79,7 +79,60 @@ The momentum will index specific files (in the fixed_point datasets field) and g
 ./gen_thetas_hpDIRC.sh 
 ```
 
-In the config file (also please feel free to remove all the model paths I have in there) you will see the Inference/fixed_point_dir field. You will need to change this to whatever you want. I recommend having something that gives information of the model, and also the momentum range, e.g., SDE_V1_6GeV. This will create a folder called Generations (only once), along with another folder with the name you have given in that fixed_point_dir field. Here it will dump the generations and ground truth into .pkl files, loop over these .pkl files and create individual .png images, and then combine these into a single .pdf. These images will be inside a folder called 2DPlots.
+In the config file (also please feel free to remove all the model paths I have in there) you will see the Inference/fixed_point_dir field. You will need to change this to whatever you want. I recommend having something that gives information of the model, and also the momentum range, e.g., SDE_V1_6GeV. This will create a folder called Generations (only once), along with another folder with the name you have given in that fixed_point_dir field. Here it will dump the generations and ground truth into .pkl files, loop over these .pkl files and create individual .png images, and then combine these into a single .pdf. These images will be inside a folder called Plots.
+
+I have included code for quantitative assessment of the fast simulations. This is included in the make_plots.py file and will run when you execture one of the batch scripts. It will produce the ratio plots below, along with printing you some metrics, i.e., the weighted average ratio and the weighted devation from 1 (RMS). These can be beautified later on, but give us a measure of performance. Note these run at a specific momentum, and integrate over theta.
+
+---
+
+<div align="center">
+  <img src="assets/Ratios_Pion.png" alt="Figure 1: Pion Ratios" width="80%">
+</div>
+
+
+
+<div align="center">
+  <img src="assets/Ratios_Kaon.png" alt="Figure 2: Kaon Ratios" width="80%">
+</div>
+
+---
+## Pions
+**Ratios:**
+- **X:** 1.0026906908032478 
+- **Y:** 1.0020676663483676 
+- **Time:** 1.0003601887060896 
+
+**RMS:**
+- **RMS X:** 0.05422697098701193 
+- **RMS Y:** 0.04756500211651575  
+- **RMS Time:** 0.019907633407560497 
+
+---
+
+## Kaons
+**Ratios:**
+- **X:** 1.004091814980988
+- **Y:** 1.002646862099116  
+- **Time:** 1.0003746640035895  
+
+**RMS:**
+- **RMS X:** 0.06796159986091514  
+- **RMS Y:** 0.053842877274253714 
+- **RMS Time:** 0.020213269591735018
+
+## **Generation over full phase space (Updated Jan 22, 2025)**
+I added additional code for ratio plots over the full phase space, you can run it using:
+
+```bash 
+python generate_phasespace_hpDIRC.py --method "Pion" --model_type "NF" --config config/hpDIRC_config_clean.json 
+```
+There is a n_particles flag that defaults to 200k, which is probably fine. Set it to -1 if you want to use all the data, this depends on how much RAM you have available. I have not made this super memory efficient. We may want to introduce some different time cuts, Im not sure whats going on at low t. Need to look into this more.
+
+---
+<div align="center">
+  <img src="assets/Ratios_Pion_FullPhaseSpace.png" alt="Figure 1: Pion Ratios" width="80%">
+</div>
+---
 
 ### **Creating your own simulation**
 This is more complicated. I don't think you should need to do it so I am going to save myself from detailing this but we can talk about it if you wish. Probably easier for me to run it for you.

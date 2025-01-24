@@ -87,8 +87,6 @@ def main(config,resume):
     startEpoch = 0
     global_step = 0
 
-    save_itter = 10000
-
     if resume:
         print('===========  Resume training  ==================:')
         dict = torch.load(resume)
@@ -98,7 +96,6 @@ def main(config,resume):
         startEpoch = dict['epoch']+1
         history = dict['history']
         global_step = dict['global_step']
-        print("Utilizing grad clipping.")
         print('       ... Start at epoch:',startEpoch)
 
 
@@ -106,7 +103,6 @@ def main(config,resume):
     print('      LR:', lr)
     print('      num_epochs:', num_epochs)
     print('')
-    loss_fn = nn.HuberLoss()
 
     clampMax = 1.5
     clampMin = -1.5
@@ -139,20 +135,6 @@ def main(config,resume):
             running_loss += loss.item() * input.shape[0]
             kbar.update(i, values=[("loss", loss.item()),("costC",costs[0].item()),("costL", costs[1].item()),("costR",costs[-1].item()),("T:",net.end_time.item())])
             global_step += 1
-
-            if i % save_itter == 0 and i > 0:
-                name_output_file = config['name']+'_epoch{:02d}_save_iter_{:02d}.pth'.format(epoch, i)
-                filename = os.path.join(output_folder , exp_name , name_output_file)
-                checkpoint={}
-                checkpoint['net_state_dict'] = net.state_dict()
-                checkpoint['optimizer'] = optimizer.state_dict()
-                checkpoint['scheduler'] = scheduler.state_dict()
-                checkpoint['epoch'] = epoch
-                checkpoint['history'] = history
-                checkpoint['global_step'] = global_step
-
-                torch.save(checkpoint,filename)
-
 
         history['train_loss'].append(running_loss / len(train_loader.dataset))
         history['lr'].append(scheduler.get_last_lr()[0])

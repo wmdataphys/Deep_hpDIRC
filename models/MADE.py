@@ -352,12 +352,17 @@ class MixtureOfGaussiansMADE(MADE):
         )
         return log_prob
 
-    def sample(self, num_samples, context=None,device='cuda'):
+    def sample(self, num_samples, context=None,device='cuda',inference=True):
 
-        if context is not None:
-            context = torchutils.repeat_rows(context, num_samples).to(context.device)
+        if context is not None and inference:
+           context = torchutils.repeat_rows(context, num_samples).to(context.device)
 
-        with torch.no_grad():
+        if inference:
+            scope_ = torch.no_grad()
+        else:
+            scope_ = torch.set_grad_enabled(True)
+
+        with scope_:
 
             samples = torch.zeros(context.shape[0], self.features).to(device)
 
