@@ -203,10 +203,10 @@ def run_plotting(out_folder,momentum,model_type):
         path_ = "LUT_Stats/6GeV/sigma_sep.pkl"
         sigma_10mill,theta_10mill = extract_values(path_)
     elif momentum == 3.0:
-        path_ = "LUT_Stats/3GeV/reco/sigma_sep.pkl"
+        path_ = "LUT_Stats/3GeV/sigma_sep.pkl"
         sigma_10mill,theta_10mill = extract_values(path_)
     elif momentum == 9.0:
-        path_ = "LUT_Stats/9GeV/reco/sigma_sep.pkl"
+        path_ = "LUT_Stats/9GeV/sigma_sep.pkl"
         sigma_10mill,theta_10mill = extract_values(path_)
     else:
         raise ValueError("Momentum value not found.")
