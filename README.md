@@ -52,7 +52,7 @@ Below Im including the resources you will need for training (in terms of what to
 #SBATCH --tasks=20
 #SBATCH --mem-per-cpu=4000
 #SBATCH --gpus=1
-#SBATCH -t 65:00:00
+#SBATCH -t 72:00:00
 
 
 cd $SLURM_SUBMIT_DIR
@@ -65,9 +65,9 @@ python /sciclone/home/jgiroux/Cherenkov_FastSim/train_flow_matching.py --config 
 
 ```
 
-### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 22, 2025)**
+### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 28, 2025)**
 
-An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values. You will also need to specifcy which model type you want to generate (currently have NF, CNF, FlowMatching - this is WIP.)
+An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values. You will also need to specifcy which model type you want to generate (currently have NF, CNF, FlowMatching - this is WIP.) I have made some QOL improvements to prevent rerunning generations. If you simply want to remake plots, it will do this by default if the folder and files already exist. I also improved the ratio plots and the associated metrics.
 
 ```bash
 chmod +x gen_thetas_hpDIRC.sh

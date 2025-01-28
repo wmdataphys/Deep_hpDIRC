@@ -71,8 +71,13 @@ def merge_PDF(out_dir):
     with open(os.path.join(out_dir,'Combined_DLL.pdf'), 'wb') as f:
         output_pdf.write(f)
 
-def perform_fit(dll_k,dll_p,bins=200):
-    hist_k, bin_edges_k = np.histogram(dll_k, bins=bins, density=True)
+def perform_fit(dll_k,dll_p,bins=200,normalized=False):
+    if normalized:
+        gaussian = gaussian_normalized
+    else:
+        gaussian = gaussian_unnormalized
+
+    hist_k, bin_edges_k = np.histogram(dll_k, bins=bins, density=normalized)
     bin_centers_k = (bin_edges_k[:-1] + bin_edges_k[1:]) / 2
     try:
         popt_k, pcov_k = curve_fit(gaussian, bin_centers_k, hist_k, p0=[1, np.mean(dll_k), np.std(dll_k)],maxfev=1000,bounds = ([0, -np.inf, 1e-9], [np.inf, np.inf, np.inf]))
@@ -84,7 +89,7 @@ def perform_fit(dll_k,dll_p,bins=200):
         exit()
         
 
-    hist_p, bin_edges_p = np.histogram(dll_p, bins=bins, density=True)
+    hist_p, bin_edges_p = np.histogram(dll_p, bins=bins, density=normalized)
     bin_centers_p = (bin_edges_p[:-1] + bin_edges_p[1:]) / 2
     try:
         popt_p, pcov_p = curve_fit(gaussian, bin_centers_p, hist_p, p0=[1, np.mean(dll_p), np.std(dll_p)],maxfev=1000,bounds = ([0, -np.inf, 1e-9], [np.inf, np.inf, np.inf]))
@@ -97,10 +102,14 @@ def perform_fit(dll_k,dll_p,bins=200):
     
     sigma_sep = (mean_k - mean_p) / ((stddev_k + stddev_p)/2.) #np.sqrt(stddev_k**2 + stddev_p**2)
     sigma_err = (2*perr_k[1]/(stddev_k + stddev_p))** 2 + (2*perr_p[1]/(stddev_k + stddev_p))** 2 + (-2*(mean_k - mean_p) * perr_k[2] / (stddev_k + stddev_p)**2)**2 + (-2*(mean_k - mean_p) * perr_p[2] / (stddev_k + stddev_p)**2)**2
-    return popt_k,popt_p,sigma_sep,bin_centers_k,bin_centers_p,np.sqrt(sigma_err)
+    return popt_k,popt_p,sigma_sep,bin_centers_k,bin_centers_p,np.sqrt(sigma_err), normalized
 
-def gaussian(x, amplitude, mean, stddev):
-    return (1 / (np.sqrt(2*np.pi)*stddev))* np.exp(-((x - mean) / stddev) ** 2 / 2)
+def gaussian_normalized(x, amplitude, mean, stddev):
+    return amplitude * np.exp(-((x - mean) ** 2) / (2 * stddev ** 2)) / (np.sqrt(2 * np.pi) * stddev)
+
+def gaussian_unnormalized(x, amplitude, mean, stddev):
+    return amplitude * np.exp(-((x - mean) ** 2) / (2 * stddev ** 2))
+
 
 def extract_values(file_path):
     results = np.load(file_path,allow_pickle=True)
@@ -165,7 +174,7 @@ def run_plotting(out_folder,momentum,model_type):
 
     
     if momentum >= 6.0:
-        bins = np.linspace(-50,50,400) 
+        bins = np.linspace(-100,100,400) 
     else:
         bins = np.linspace(-250,300,400) 
 
@@ -194,9 +203,26 @@ def run_plotting(out_folder,momentum,model_type):
         k_idx = np.where(kin_k[:,1] == theta)[0]
         p_idx = np.where(kin_p[:,1] == theta)[0]
         print("Theta: ",theta, "Pions: ",len(p_idx)," Kaons: ",len(k_idx))
-        popt_k_NF,popt_p_NF,sep_NF,bin_centers_k_NF,bin_centers_p_NF,se = perform_fit(dll_k[k_idx],dll_p[p_idx],bins)
+        popt_k_NF,popt_p_NF,sep_NF,bin_centers_k_NF,bin_centers_p_NF,se,normalized = perform_fit(dll_k[k_idx],dll_p[p_idx],bins)
         seps.append(abs(sep_NF))
         sep_err.append(se)
+
+        if normalized:
+            gaussian = gaussian_normalized
+        else:
+            gaussian = gaussian_unnormalized
+
+        fig = plt.figure(figsize=(6,4))
+        plt.plot(bin_centers_k_NF, gaussian(bin_centers_k_NF, *popt_k_NF),color='blue', label=r"$\mathcal{K}$")
+        plt.plot(bin_centers_p_NF, gaussian(bin_centers_p_NF, *popt_p_NF),color='red', label=r"$\pi$")
+        plt.hist(dll_p[p_idx],bins=bins,density=normalized,color='red',histtype='step',lw=3)
+        plt.hist(dll_k[k_idx],bins=bins,density=normalized,color='blue',histtype='step',lw=3)
+        plt.legend(fontsize=18) 
+        plt.title(r"$\theta = $ {0}".format(theta)+ r", $\sigma = $ {0:.2f}".format(sep_NF),fontsize=18)
+        plt.xlabel(r"$Ln \, L(\mathcal{K}) - Ln \, L(\pi)$",fontsize=18)
+        plt.ylabel("entries [#]",fontsize=18)
+        plt.savefig(os.path.join(out_folder,"Gauss_fit_theta_{0}.pdf".format(theta)),bbox_inches="tight")
+        plt.close()
 
 
     if momentum == 6.0:
@@ -227,6 +253,13 @@ def run_plotting(out_folder,momentum,model_type):
     plt.title(r"$|\vec{p}| = "+ r" {0} \; GeV$".format(momentum),fontsize=28)
     plt.savefig(os.path.join(out_folder,"Seperation_{0}_LUT_{1}GeV.pdf".format(str(model_type),int(momentum))),bbox_inches="tight")
     plt.close()
+
+    print(" ")
+    print(model_type)
+    print("Average sigma: ",np.average(seps)," +- ",np.std(seps) / np.sqrt(len(seps)))
+    print("LUT")
+    print("Average sigma: ",np.average(sigma_10mill)," +- ",np.std(sigma_10mill) / np.sqrt(len(sigma_10mill)))
+    print(" ")
 
 
 def drop_and_sum(x,batch_size):

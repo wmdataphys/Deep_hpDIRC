@@ -1,6 +1,6 @@
 #!/bin/bash
 
-model_type="FlowMatching"
+model_type="NF"
 
 
 for p in 3.0 6.0 9.0

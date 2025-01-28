@@ -112,6 +112,7 @@ class FlowMatching(nn.Module):
         #                 epsilon=1e-2,
         #                 custom_initialization=True,
         #                 ).to(self.device)
+        # print("Using MOG 40.")
 
 
         
@@ -165,8 +166,8 @@ class FlowMatching(nn.Module):
         else:
             embedded_context = context
 
-        #x_0 = torch.randn_like(x_1).to(x_1.device)
-        x_0 = self.distribution.sample(x_1.shape[0],context=embedded_context,inference=False).squeeze(0)
+        x_0 = torch.randn_like(x_1).to(x_1.device)
+        #x_0 = self.distribution.sample(x_1.shape[0],context=embedded_context,inference=False).squeeze(0)
 
         t = torch.rand(x_1.shape[0]).to(x_1.device) 
 
