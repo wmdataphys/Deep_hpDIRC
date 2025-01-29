@@ -1,8 +1,8 @@
 {
-    "name": "KScore_6L_T100_cosine",
+    "name": "PCFG_4L_T100",
     "seed": 752022,
     "run_val":0,
-    "method":"Kaon",
+    "method":"Pion",
     "datatype": "Simulation",
     "sim_type": "pgun",
     "stats": {"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},
@@ -18,7 +18,6 @@
         "num_layers":6,
         "input_shape":3,
         "cond_shape":2,
-        "num_embed":32,
         "hidden_nodes": 128,
         "num_steps":100,
         "noise_schedule":"cosine",
@@ -29,7 +28,6 @@
         "num_layers":12,
         "input_shape":3,
         "cond_shape":2,
-        "num_embed":32,
         "num_steps":100,
         "hidden_nodes": 128
     },
@@ -42,6 +40,17 @@
         "hidden_nodes": 128,
         "learned_variance":0,
         "nonlinear_noise_schedule":0
+    },
+    "model_CFG":{
+        "num_layers":4,
+        "input_shape":3,
+        "cond_shape":2,
+        "hidden_nodes": 128,
+        "num_steps":100,
+        "noise_schedule":"cosine",
+        "sampling_timesteps":50,
+        "noising_level":0.7,
+        "gamma":0
     },
     "dataset": {
         "fixed_point":{
@@ -90,6 +99,7 @@
     "optimizer": {
         "lr":3e-4,
         "lr_Score":3e-4,
+        "lr_CFG":3e-4,
         "lr_noise":3e-3,
         "weight_decay": 0,
         "alpha": 1e-3
@@ -100,12 +110,14 @@
         "train": {
             "batch_size": 2048,
             "batch_size_Score":2048,
-            "batch_size_GSGM":2048
+            "batch_size_GSGM":2048,
+            "batch_size_CFG":2048
     	},
         "val": {
             "batch_size": 2048,
             "batch_size_Score":2048,
-            "batch_size_GSGM":2048
+            "batch_size_GSGM":2048,
+            "batch_size_CFG":2048
         },
         "test": {
             "batch_size": 25
@@ -117,8 +129,8 @@
     "Inference": {
             "gen_dir": "Figures/hpDIRC_CNF_KaonTest_Small",
             "samples": 1,
-            "pion_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/PScore_6L_T100_cosine___Jan-18-2025/PScore_6L_T100_cosine_epoch88_train_loss_0.228541.pth",
-            "kaon_model_path_Score":"",
+            "pion_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/PScore_6L_T100_cosine___Jan-18-2025/PScore_6L_T100_cosine_epoch111_train_loss_0.228536.pth",
+            "kaon_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/KScore_6L_T100_cosine___Jan-24-2025/KScore_6L_T100_cosine_epoch131_train_loss_0.229118.pth",
             "pion_model_path_GSGM":"",
             "kaon_model_path_GSGM":"",
             "out_dir": "Inference/OTFlow_FullTrain_v2_6GeV_TestRevKinScale",

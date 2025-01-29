@@ -80,7 +80,11 @@ def cosine_beta_schedule(timesteps, s = 0.008):
 
 
 class GaussianDiffusion(nn.Module):
-    def __init__(self, denoise_fn, timesteps=1000, loss_type='l1', betas = None):
+    def __init__(self, 
+                 denoise_fn, 
+                 timesteps=1000, 
+                 loss_type='l1', 
+                 betas = None):
         super().__init__()
         self.denoise_fn = denoise_fn
 

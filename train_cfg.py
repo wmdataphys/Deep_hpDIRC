@@ -1,19 +1,18 @@
 import os
-import copy
 import numpy as np
 import torch
 import torch.nn as nn
 import random
 import argparse
-
 from torch import optim
 from datetime import datetime
-
+import logging
 import json 
 import pkbar
 import shutil
 
-from models.Diffusion.gsgm import GSGM
+from models.Diffusion.resnet import ResNet, EMA
+from models.Diffusion.classifier_free_guidance import CFGDiffusion
 
 from dataloader.create_data import hpDIRCCherenkovPhotons
 from dataloader.dataloader import CreateLoaders
@@ -34,7 +33,7 @@ def train(config, resume, overwrite = False):
     curr_date = datetime.now()
     exp_name = config['name'] + '___' + curr_date.strftime('%b-%d-%Y___%H:%M:%S')
     exp_name = exp_name[:-11]
-    MODEL_NAME = "GSGM"
+    MODEL_NAME = "CFG"
     print("Training",MODEL_NAME,"model.")
     print(exp_name)
 
@@ -45,7 +44,7 @@ def train(config, resume, overwrite = False):
     else:
         exp_path = os.path.join(output_folder,exp_name)
     version_num = 0
-    
+
     if not resume:
         if os.path.exists(exp_path):
             if overwrite:
@@ -65,14 +64,11 @@ def train(config, resume, overwrite = False):
         else:
             os.mkdir(exp_path)
 
-    # os.mkdir(os.path.join(output_folder,exp_name))
-    # with open(os.path.join(output_folder,exp_name,'config.json'),'w') as outfile:
-    #     json.dump(config, outfile)
-
-
-       # Load the dataset
+    # Load the dataset
+    print('Creating Loaders.')
     stats = config['stats']
 
+    history = {'train_loss':[],'val_loss':[],'lr':[]}
     
     train_dataset = hpDIRCCherenkovPhotons(kaon_path=config['dataset']['training']['smeared']['kaon_data_path'],
                     pion_path=config['dataset']['training']['smeared']['pion_data_path'],inference=False,mode=config['method'],stats=stats)
@@ -80,45 +76,52 @@ def train(config, resume, overwrite = False):
     val_dataset = hpDIRCCherenkovPhotons(kaon_path=config['dataset']['validation']['kaon_data_path'],
                     pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'],stats=stats)
 
-    
-    history = {'train_loss':[],'val_loss':[],'lr':[], 'logsnr':[]}
-    print("Creating loaders")
     train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config, model_type=MODEL_NAME)
+    
 
     num_epochs=int(config['num_epochs'])
-    lr = float(config['optimizer']['lr'])
-    lr_noise = float(config['optimizer']['lr_noise'])
+    lr = float(config['optimizer']['lr_CFG'])
 
-    input_shape = int(config['model_GSGM']['input_shape'])
-    cond_shape = int(config['model_GSGM']['cond_shape'])
-    num_layers = int(config['model_GSGM']['num_layers'])
-    timesteps = int(config['model_GSGM']['num_steps'])
-    num_embed = int(config['model_GSGM']['num_embed'])
-    hidden_nodes = int(config['model_GSGM']['hidden_nodes'])
-    nonlinear_noise_schedule = bool(config['model_GSGM']['nonlinear_noise_schedule'])
-    learned_variance = bool(config['model_GSGM']['learned_variance'])
+    # ResNet/MLP parameters
+    num_layers = int(config['model_CFG']['num_layers'])
+    input_shape = int(config['model_CFG']['input_shape'])
+    cond_shape = int(config['model_CFG']['cond_shape'])
+    hidden_dim = int(config['model_CFG']['hidden_nodes']) 
+    num_steps = int(config['model_CFG']['num_steps'])
+
+    # Diffusion parameters
+    noise_schedule = config['model_CFG']['noise_schedule']
+    sampling_timesteps = config['model_CFG']['sampling_timesteps'] # controls how many timesteps for sampling, for DDIM
+    noising_level = config['model_CFG']['noising_level'] # controls how much noise should be added at inference
+    gamma = int(config['model_CFG']['gamma'])
 
     startEpoch = 0
     global_step = 0
 
-    save_itter = 50000
 
     #setup_logging(args.run_name)
     device = torch.device('cuda')
 
-    diffusion = GSGM(num_input=input_shape, 
-               num_conds=cond_shape, 
-               device=device, 
-               num_layers=num_layers, 
-               num_steps=timesteps, 
-               num_embed=num_embed, 
-               mlp_dim=hidden_nodes, 
-               nonlinear_noise_schedule=nonlinear_noise_schedule, 
-               learnedvar=learned_variance)
+    model = ResNet(input_dim=input_shape, 
+                   end_dim=input_shape, 
+                   cond_dim=cond_shape, 
+                   mlp_dim=hidden_dim, 
+                   num_layer=num_layers
+                   )
 
-    #optimizer = optim.Adamax(model.parameters(), lr=lr)
-    optimizer = optim.AdamW(diffusion.parameters(), lr=lr)
-
+    model.to(device)
+    
+    optimizer = optim.AdamW(model.parameters(), lr=lr)
+    
+    diffusion = CFGDiffusion(model=model, 
+                            stats=stats,
+                            timesteps=num_steps, 
+                            sampling_timesteps=sampling_timesteps,
+                            beta_schedule=noise_schedule,
+                            ddim_sampling_eta = noising_level,
+                            min_snr_loss_weight = True,
+                            min_snr_gamma=gamma
+                            )
     diffusion.to(device)
 
     if resume:
@@ -132,66 +135,44 @@ def train(config, resume, overwrite = False):
         global_step = dict['global_step']
         # print("Utilizing grad clipping.")
         print('       ... Start at epoch:',startEpoch)
-    
-    mse = nn.MSELoss()
 
-    t_params = sum(p.numel() for p in diffusion.parameters())
-    print("Score-based Network Parameters: ",t_params)
-    if learned_variance:
-        noise_net_params = sum(p.numel() for p in diffusion.noise_schedule_net.parameters())
-        print("Noise Scheduler Network Parameters: ",noise_net_params)
+    t_params = sum(p.numel() for p in model.parameters())
+    print("Diffusion Network Parameters: ",t_params)
 
     #logger = SummaryWriter(os.path.join("runs", args.run_name))
 
     l = len(train_loader)
-    # ema = EMA(0.995)
+    ema = EMA(0.995)
     # ema_model = copy.deepcopy(model).eval().requires_grad_(False)
 
-    diffusion.train()
-    running_loss = 0.0
-    running_logsnr = 0.0
-
     for epoch in range(startEpoch,num_epochs):
-        # logging.info(f"Starting epoch {epoch}:")
+        logging.info(f"Starting epoch {epoch}:")
+        diffusion.train()
+        # ema_model.train()
 
         kbar = pkbar.Kbar(target=len(train_loader), epoch=epoch, num_epochs=num_epochs, width=20, always_stateful=False)
 
+        running_loss = 0.0
         for i, data in enumerate(train_loader):
-            #inputs = data.to(device).float()
-            input  = data[0].float().to(device)
-            k = data[1].float().to(device)
-
             optimizer.zero_grad()
 
-            with torch.set_grad_enabled(True):
-                loss, logsnr = diffusion.train_step(input, k, optimizer_noise=None)
+            inp  = data[0].to(device).float()
+            conds = data[1].to(device).float()
 
+            loss = diffusion(inp, conds)
+            #backwards(loss, optimizer)
             loss.backward()
+
+            running_loss += loss.item() * inp.shape[0]
+
             optimizer.step()
-            
-            running_logsnr += logsnr.mean().item()
 
-            running_loss += loss.item() * input.shape[0]
-            kbar.update(i, values=[("loss", loss.detach().cpu().numpy().item())])
-            #print('\n',logsnr.mean().item())
-            global_step += 1
+            # ema.step_ema(ema_model, model)
 
-            if i % save_itter == 0 and i > 0:
-                name_output_file = config['name']+'_epoch{:02d}_save_iter_{:02d}.pth'.format(epoch, i)
-                filename = os.path.join(output_folder , exp_name , name_output_file)
-                checkpoint={}
-                checkpoint['net_state_dict'] = diffusion.state_dict()
-                checkpoint['optimizer'] = optimizer.state_dict()
-                #checkpoint['scheduler'] = scheduler.state_dict()
-                checkpoint['epoch'] = epoch
-                checkpoint['history'] = history
-                checkpoint['global_step'] = global_step
-
-                torch.save(checkpoint,filename)
+            kbar.update(i, values=[("loss", loss.item())])
 
         history['train_loss'].append(running_loss / len(train_loader.dataset))
         history['lr'].append(lr)
-        history['logsnr'].append(running_logsnr)
 
 
         ######################
@@ -199,29 +180,39 @@ def train(config, resume, overwrite = False):
         ######################
         if bool(config['run_val']):
             diffusion.eval()
-            val_loss = 0.0
+            # ema_model.eval()
+            running_val_loss = 0.0
+
+            val_kbar = pkbar.Kbar(target=len(val_loader), epoch=epoch, num_epochs=num_epochs, width=20, always_stateful=False)
+
             with torch.no_grad():
                 for i, data in enumerate(val_loader):
-                    input  = data[0].to('cuda').float()
-                    k = data[1].to('cuda').float()
-                    loss, logsnr = diffusion.test_step(input, k)
+                    inp  = data[0].to('cuda').float()
+                    conds = data[1].to('cuda').float()
 
-                    val_loss += loss
+                    val_loss = diffusion(inp, conds)
 
-            val_loss = val_loss.cpu().numpy() / len(val_loader)
+                    running_val_loss += val_loss.item() * inp.shape[0]
 
-            history['val_loss'].append(val_loss)
+                    val_kbar.update(i, values=[("val_loss", val_loss.item())])
 
-            kbar.add(1, values=[("val_loss", val_loss.item())])
+            epoch_val_loss = running_val_loss / len(val_loader.dataset)
 
-            name_output_file = config['name']+'_epoch{:02d}_val_loss_{:.6f}.pth'.format(epoch, val_loss)
+            history['val_loss'].append(epoch_val_loss)
+
+            val_kbar.add(1, values=[("val_loss", epoch_val_loss)])
+
+            name_output_file = config['name']+'_epoch{:02d}_val_loss_{:.6f}.pth'.format(epoch, epoch_val_loss)
         else:
-            kbar.add(1,values=[('val_loss',0.)])
+            #kbar.add(1,values=[('val_loss',0.)])
             name_output_file = config['name']+'_epoch{:02d}_train_loss_{:.6f}.pth'.format(epoch, running_loss / len(train_loader.dataset))
                 
         # Save the output file
+
+        # kbar.add(1,values=[('val_loss',0.)])
+        # name_output_file = config['name']+'_epoch{:02d}_train_loss_{:.6f}.pth'.format(epoch, running_loss / len(train_loader.dataset))
         
-        filename = os.path.join(output_folder , exp_name , name_output_file)
+        filename = os.path.join(exp_path, name_output_file)
 
         checkpoint={}
         checkpoint['net_state_dict'] = diffusion.state_dict()
@@ -230,24 +221,19 @@ def train(config, resume, overwrite = False):
         checkpoint['epoch'] = epoch
         checkpoint['history'] = history
         checkpoint['global_step'] = global_step
-        checkpoint['config'] = config
 
         torch.save(checkpoint,filename)
 
         print('')
 
-
-
 def launch():
-    parser = argparse.ArgumentParser(description='SGM Training')
+    parser = argparse.ArgumentParser(description='Diffusion Training')
     parser.add_argument('-c', '--config', default='config.json',type=str,
                         help='Path to the config file (default: config.json)')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='Path to the .pth model checkpoint to resume training')
     parser.add_argument('--overwrite', action='store_true',
                         help='Overwrite the existing experiment directory if it exists.')
-    # parser.add_argument('-r', '--resume', default=None, type=str,
-    #                     help='Path to the .pth model checkpoint to resume training')
     args = parser.parse_args()
 
     config = json.load(open(args.config))
