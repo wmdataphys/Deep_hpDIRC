@@ -185,7 +185,6 @@ class FlowMatching(nn.Module):
             embedded_context = context
 
         step_size = 1.0 / (2*nt) 
-        eps_time = step_size / 5.
         wrapped_vf = WrappedModel(self.NN)
         T = torch.linspace(0,1,nt).to(self.device)
         #x_init = self.distribution.sample(num_samples,context=embedded_context,inference=True)
@@ -281,7 +280,7 @@ class FlowMatching(nn.Module):
 
         return hits
 
-    def create_tracks(self,num_samples,context,plotting=False,nt=18):
+    def create_tracks(self,num_samples,context,plotting=False,nt=36):
         counter = 0
         hits = self.__get_track(num_samples,context,nt=nt)
         updated_hits = self._apply_mask(hits)
