@@ -18,6 +18,7 @@ from models.OT_Flow.ot_flow import OT_Flow
 from models.FlowMatching.flow_matching import FlowMatching
 from models.Diffusion.resnet import ResNet
 from models.Diffusion.continuous_diffusion import ContinuousTimeGaussianDiffusion
+from models.Diffusion.gsgm import GSGM
 import matplotlib.colors as mcolors
 import pickle
 import warnings
@@ -73,6 +74,13 @@ def main(config,args):
 
         model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
         net = ContinuousTimeGaussianDiffusion(model=model, stats=stats,num_sample_steps=num_steps, noise_schedule=noise_schedule, learned_schedule_net_hidden_dim=learned_schedule_net_hidden_dim, min_snr_loss_weight = True, min_snr_gamma=gamma)
+    elif args.model_type == 'GSGM':
+        num_steps = int(config['model_GSGM']['num_steps'])
+        num_embed = int(config['model_GSGM']['num_embed'])
+        learned_variance = config['model_GSGM']['learned_variance']
+        nonlinear_noise_schedule = int(config['model_GSGM']['nonlinear_noise_schedule'])
+        
+        net = GSGM(num_input=input_shape, num_conds=cond_shape, device=device, num_layers=num_layers, num_steps=num_steps, num_embed=num_embed, mlp_dim=hidden_nodes, nonlinear_noise_schedule=nonlinear_noise_schedule, learnedvar=learned_variance)
     else:
         raise ValueError("Model type not found.")
 

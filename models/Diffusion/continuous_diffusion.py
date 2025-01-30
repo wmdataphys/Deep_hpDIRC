@@ -211,7 +211,8 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
         self.min_snr_loss_weight = min_snr_loss_weight
         self.min_snr_gamma = min_snr_gamma
 
-    # hpDIRC util functions: 
+    # --------- hpDIRC util functions --------- 
+    
     def unscale(self,x,max_,min_):
         return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
 
@@ -235,6 +236,8 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
         closest_values = allowed_pairs[closest_indices]
 
         return closest_values[:,0].detach().cpu(),closest_values[:,1].detach().cpu()
+
+    # -----------------------------------------
 
     @property
     def device(self):

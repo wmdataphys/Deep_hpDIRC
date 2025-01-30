@@ -224,8 +224,18 @@ class NoiseSchedule_NNet(nn.Module):
 
 class GSGM(nn.Module):
     "Score based generative model"
-    def __init__(self, num_input, num_conds, device, num_layers=6, num_steps=500, 
-                 num_embed = 32, mlp_dim=128, nonlinear_noise_schedule=False, learnedvar=False, name = 'SGM'):
+    def __init__(self, 
+                 num_input, 
+                 num_conds, 
+                 device, 
+                 stats,
+                 num_layers=6, 
+                 num_steps=500, 
+                 num_embed = 32, 
+                 mlp_dim=128, 
+                 nonlinear_noise_schedule=False, 
+                 learnedvar=False, name = 'SGM'
+            ):
         super(GSGM, self).__init__() # invokes parent class constructor
         # Initializes underlying nn.Module, with all attributes
         # and methods
@@ -235,34 +245,59 @@ class GSGM(nn.Module):
         self.num_conds = num_conds
         self.num_layers = num_layers
 
+        # ------------ hpDIRC constants ------------
+
         self.device = device
 
-        self.allowed_x = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,   # 0
-                            53.,  59.,  65., 71.,  77.,  83.,  89.,  95.,  # 1
-                            103., 109., 115., 121., 127., 133., 139., 145.,# 2
-                            153., 159., 165., 171., 177., 183., 189., 195.,# 3
-                            203., 209., 215., 221., 227., 233., 239., 245.,# 4 
-                            253., 259., 265., 271.,277., 283., 289.,  295.,# 5
-                            303., 309., 315., 321., 327., 333., 339., 345.,# 6
-                            353., 359., 365., 371., 377., 383., 389., 395.,# 7 
-                            403., 409., 415., 421., 427., 433., 439., 445.,# 8
-                            453., 459., 465., 471., 477., 483., 489., 495.,# 9 
-                            503., 509., 515., 521., 527., 533., 539., 545.,# 10
-                            553., 559., 565., 571., 577., 583., 589., 595.,# 11
-                            603., 609., 615., 621., 627., 633., 639., 645.,# 12 
-                            653., 659., 665., 671., 677., 683., 689., 695.,# 13
-                            703., 709., 715., 721., 727., 733., 739., 745.,# 14 
-                            753., 759., 765., 771., 777., 783., 789., 795.,# 15 
-                            803., 809., 815., 821., 827., 833., 839., 845.,# 16
-                            853., 859., 865., 871., 877., 883., 889., 895.])).to(device) # 17
-        self.allowed_y = torch.tensor(np.array([  3.,   9.,  15.,  21.,  27.,  33.,  39.,  45.,  # 0
-                            53.,  59.,  65.,71.,  77.,  83.,  89.,  95.,   # 1
-                            103., 109., 115., 121., 127., 133.,139., 145., # 2
-                            153., 159., 165., 171., 177., 183., 189., 195.,# 3  
-                            203., 209., 215., 221., 227., 233., 239., 245.,# 4 
-                            253., 259., 265., 271.,277., 283., 289., 295.])).to(device)
+        self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
+                                                   16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
+                                                   30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
+                                                   43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
+                                                   62.54841111,  65.86091111,  69.17341111,  72.48591111,
+                                                   75.79841111,  79.11091111,  82.42341111,  85.73591111,
+                                                   89.04841111,  92.36091111,  95.67341111,  98.98591111,
+                                                   102.29841111, 105.61091111, 108.92341111, 112.23591111,
+                                                   121.44057223, 124.75307223, 128.06557223, 131.37807223,
+                                                   134.69057223, 138.00307223, 141.31557223, 144.62807223,
+                                                   147.94057223, 151.25307223, 154.56557223, 157.87807223,
+                                                   161.19057223, 164.50307223, 167.81557223, 171.12807223,
+                                                   180.33273334, 183.64523334, 186.95773334, 190.27023334,
+                                                   193.58273334, 196.89523334, 200.20773334, 203.52023334,
+                                                   206.83273334, 210.14523334, 213.45773334, 216.77023334,
+                                                   220.08273334, 223.39523334, 226.70773334, 230.02023334,
+                                                   239.22489446, 242.53739446, 245.84989446, 249.16239446,
+                                                   252.47489446, 255.78739446, 259.09989446, 262.41239446,
+                                                   265.72489446, 269.03739446, 272.34989446, 275.66239446,
+                                                   278.97489446, 282.28739446, 285.59989446, 288.91239446,
+                                                   298.11705557, 301.42955557, 304.74205557, 308.05455557,
+                                                   311.36705557, 314.67955557, 317.99205557, 321.30455557,
+                                                   324.61705557, 327.92955557, 331.24205557, 334.55455557,
+                                                   337.86705557, 341.17955557, 344.49205557, 347.80455557])).to(self.device)
+        self._allowed_y = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
+                                                   16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
+                                                   30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
+                                                   43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
+                                                   62.01339286,  65.32589286,  68.63839286,  71.95089286,
+                                                   75.26339286,  78.57589286,  81.88839286,  85.20089286,
+                                                   88.51339286,  91.82589286,  95.13839286,  98.45089286,
+                                                   101.76339286, 105.07589286, 108.38839286, 111.70089286,
+                                                   120.37053571, 123.68303571, 126.99553571, 130.30803571,
+                                                   133.62053571, 136.93303571, 140.24553571, 143.55803571,
+                                                   146.87053571, 150.18303571, 153.49553571, 156.80803571,
+                                                   160.12053571, 163.43303571, 166.74553571, 170.05803571,
+                                                   178.72767857, 182.04017857, 185.35267857, 188.66517857,
+                                                   191.97767857, 195.29017857, 198.60267857, 201.91517857,
+                                                   205.22767857, 208.54017857, 211.85267857, 215.16517857,
+                                                   218.47767857, 221.79017857, 225.10267857, 228.41517857])).to(self.device) 
         
-        self.stats = {"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.0,"time_min":0.0}
+        self.stats = stats
+
+        self.photons_generated = 0
+        self.photons_resampled = 0
+        self.gapx =  1.89216111455965 + 4.
+        self.gapy = 1.3571428571428572 + 4.
+        self.pixel_width = 3.3125
+        self.pixel_height = 3.3125
 
         self.ema = 0.999
         self.minlogsnr = torch.tensor(-20.0, dtype=torch.float32)
@@ -305,6 +340,34 @@ class GSGM(nn.Module):
             param.requires_grad = False # not trained directly
 
         # Need to know in_feaures, out_features
+
+    # --------- hpDIRC util functions --------- 
+    
+    def unscale(self,x,max_,min_):
+        return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
+
+    def unscale_conditions(self,x,max_,min_):
+        return x * (max_ - min_) + max_
+
+    def set_to_closest(self, x, allowed):
+        x = x.unsqueeze(1)  # Adding a dimension to x for broadcasting
+        diffs = torch.abs(x - allowed.to(self.device).float())
+        closest_indices = torch.argmin(diffs, dim=1)
+        closest_values = allowed[closest_indices]
+        return closest_values
+
+    def set_to_closest_2d(self,hits):
+        allowed_pairs = torch.cartesian_prod(self._allowed_x.to(self.device).float(), self._allowed_y.to(self.device).float()) 
+
+        diffs = hits.unsqueeze(1) - allowed_pairs 
+        distances = torch.norm(diffs, dim=2) 
+
+        closest_indices = torch.argmin(distances, dim=1)
+        closest_values = allowed_pairs[closest_indices]
+
+        return closest_values[:,0].detach().cpu(),closest_values[:,1].detach().cpu()
+
+    # -----------------------------------------
     
     def GaussianFourierProjection(self, scale = 30):
         half_dim = self.num_embed // 2
@@ -424,42 +487,23 @@ class GSGM(nn.Module):
         closest_values = allowed[closest_indices]
         return closest_values
 
-    def generate(self, cond, num_samples):
+    def resample(self, cond, num_samples):
         # Modified to do resampling as needed with the DIRC detector
         
         # initial_cond = cond.repeat(num_samples, 1) # Creating "batch size", which is just the number of photons we want to reproduce
 
-        initial = self.DDPMSampler(cond.repeat(num_samples, 1),
+        samples = self.DDPMSampler(cond.repeat(num_samples, 1),
                                 self.model,
                                 data_shape=[num_samples,self.num_input],
                                 unscale=True
                                 ) # this is unscaled
                                 #    const_shape = (-1,1)).numpy() 
-        #print("initial: ", initial.shape)       
-        updated = _apply_mask(initial, self.stats)
-        #print("updated: ", updated.shape)
-        n_resample = num_samples - len(updated)
-        #print(n_resample)
-        while n_resample != 0:
-            resampled = self.DDPMSampler(cond.repeat(n_resample, 1),
-                                              self.model,
-                                              data_shape=[n_resample, self.num_input],
-                                              unscale=True
-                                              ) # this is unscaled
-            #print("resampled: ", resampled.shape)
-            updated = torch.concat((updated,resampled),0)
-            updated = _apply_mask(updated, self.stats)
-            #print("updated: ", updated.shape)
-            n_resample = int(num_samples - len(updated))
-            #print(n_resample)
-            # self.photons_resampled += n_resample
-            # self.photons_generated += len(resampled_hits)
 
-        x = self.set_to_closest(updated[:,0],self.allowed_x)
-        y = self.set_to_closest(updated[:,1],self.allowed_y)
-        t = updated[:,2]
+        x = self.set_to_closest(samples[:,0],self.allowed_x)
+        y = self.set_to_closest(samples[:,1],self.allowed_y)
+        t = samples[:,2]
 
-        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).detach().cpu().numpy()
     
     def DDPMSampler(self,
                     cond,
@@ -505,12 +549,72 @@ class GSGM(nn.Module):
             y = unscale_inputs(mean[:,1].flatten(),self.stats['y_max'],self.stats['y_min'])
             t = unscale_inputs(mean[:,2].flatten(),self.stats['time_max'],self.stats['time_min'])
 
-            x = self.set_to_closest(x,self.allowed_x)
-            y = self.set_to_closest(y,self.allowed_y)
-
             mean = torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1) 
         # return the concatenation of the rescaled data
 
         return mean
     
-    import torch
+    # --------------- hpDIRC sampling ----------------
+
+    def __get_track(self,n_samples, cond, input_dim=3):
+        samples = self.DDPMSampler(cond.repeat(n_samples, 1),
+                                self.model,
+                                data_shape=[n_samples,self.num_input],
+                                unscale=False
+                                )
+
+        x = self.unscale(samples[:,0].flatten(),self.stats['x_max'],self.stats['x_min'])#.round()
+        y = self.unscale(samples[:,1].flatten(),self.stats['y_max'],self.stats['y_min'])#.round()
+        t = self.unscale(samples[:,2].flatten(),self.stats['time_max'],self.stats['time_min'])
+
+        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+
+    def _apply_mask(self, hits):
+        # Time > 0 
+        mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats['time_max']))
+        hits = hits[mask]
+        # Outter bounds
+        mask = torch.where((hits[:, 0] > self.stats['x_min']) & (hits[:, 0] < self.stats['x_max']) & (hits[:, 1] > self.stats['y_min']) & (hits[:, 1] < self.stats['y_max']))[0] # Acceptance mask
+        hits = hits[mask]
+
+        return hits
+
+    def create_tracks(self,num_samples,context,plotting=False): # resampling logic
+        hits = self.__get_track(num_samples,context)
+        updated_hits = self._apply_mask(hits)
+        n_resample = int(num_samples - len(updated_hits))
+        
+
+        self.photons_generated += len(hits)
+        self.photons_resampled += n_resample
+        while n_resample != 0:
+            resampled_hits = self.__get_track(n_resample,context)
+            updated_hits = torch.concat((updated_hits,resampled_hits),0)
+            updated_hits = self._apply_mask(updated_hits)
+            n_resample = int(num_samples - len(updated_hits))
+            self.photons_resampled += n_resample
+            self.photons_generated += len(resampled_hits)
+            
+
+        # Use euclidean distance
+        x,y = self.set_to_closest_2d(updated_hits[:,:-1])
+        #x,y = updated_hits[:,0].detach().cpu(),updated_hits[:,1].detach().cpu()
+        t = updated_hits[:,2].detach().cpu()
+
+        pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
+        col = (1.0/self.pixel_width) * (x - 2 - self.pixel_width/2. - (pmtID%6)*self.gapx)
+        row = (1.0/self.pixel_height) * (y - 2 - self.pixel_height/2. - self.gapy * torch.div(pmtID,torch.tensor(6,dtype=torch.int),rounding_mode='floor'))
+
+        assert(len(row) == num_samples)
+        assert(len(col) == num_samples)
+        assert(len(pmtID) == num_samples)
+
+        P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats['P_max'],self.stats['P_min'])
+        Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats['theta_max'],self.stats['theta_min'])
+        Phi = 0.0
+
+        if not plotting:
+            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
+        else:
+            return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+

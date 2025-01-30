@@ -135,6 +135,6 @@
             "kaon_model_path_GSGM":"",
             "out_dir": "Inference/OTFlow_FullTrain_v2_6GeV_TestRevKinScale",
             "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/ParticleGun/Generated_Data/NF_Generated",
-            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_6GeV"
+            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_T100_cosine_9GeV"
         }
 }
