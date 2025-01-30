@@ -10,7 +10,6 @@ import pkbar
 import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.nn as nn
-from models.nflows_models import create_nflows
 from dataloader.create_data import unscale,scale_data
 from datetime import datetime
 import itertools
@@ -18,7 +17,7 @@ import matplotlib.pyplot as plt
 import time
 import pickle
 from dataloader.create_data import hpDIRC_DLL_Dataset
-from models.freia_models import FreiaNet
+from models.NF.freia_models import FreiaNet
 from sklearn.metrics import roc_curve, auc,roc_auc_score
 from sklearn import metrics
 from scipy.optimize import curve_fit
@@ -668,7 +667,7 @@ def run_inference_seperate(pions,kaons,pion_net,kaon_net):
     return LL_Pion,LL_Kaon
 
 
-def main(config,resume):
+def main(config,args):
 
     # Setup random seed
     torch.manual_seed(config['seed'])
@@ -676,26 +675,26 @@ def main(config,resume):
     random.seed(config['seed'])
     torch.cuda.manual_seed(config['seed'])
     print("Running inference")
-    datatype = config['datatype']
-    num_layers = int(config['model']['num_layers'])
-    input_shape = int(config['model']['input_shape'])
-    cond_shape = int(config['model']['cond_shape'])
-    num_blocks = int(config['model']['num_blocks'])
-    hidden_nodes = int(config['model']['hidden_nodes'])
-
     assert config["method"] in ["Combined","Pion","Kaon"]
+
+    datatype = config['datatype']
+    num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
+    input_shape = int(config['model_'+str(args.model_type)]['input_shape'])
+    cond_shape = int(config['model_'+str(args.model_type)]['cond_shape'])
+    num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
+    hidden_nodes = int(config['model_'+str(args.model_type)]['hidden_nodes'])
     stats = config['stats']
 
     if not os.path.exists("Inference"):
         os.makedirs("Inference")
 
-    if os.path.exists(os.path.join(config['Inference']['out_dir'],"Kaon_DLL_Results.pkl")) and os.path.exists(os.path.join(config['Inference']['out_dir'],"Pion_DLL_Results.pkl")):
+    if os.path.exists(os.path.join(config['Inference']['out_dir_cont'],"Kaon_DLL_Results.pkl")) and os.path.exists(os.path.join(config['Inference']['out_dir_cont'],"Pion_DLL_Results.pkl")):
         print("Found existing inference files. Skipping inference and only plotting.")
         sim_type = config['sim_type']
-        LL_Kaon = np.load(os.path.join(config['Inference']['out_dir'],"Kaon_DLL_Results.pkl"),allow_pickle=True)#[:10000]
-        LL_Pion = np.load(os.path.join(config['Inference']['out_dir'],"Pion_DLL_Results.pkl"),allow_pickle=True)#[:10000]
+        LL_Kaon = np.load(os.path.join(config['Inference']['out_dir_cont'],"Kaon_DLL_Results.pkl"),allow_pickle=True)#[:10000]
+        LL_Pion = np.load(os.path.join(config['Inference']['out_dir_cont'],"Pion_DLL_Results.pkl"),allow_pickle=True)#[:10000]
         print('Stats:',len(LL_Kaon),len(LL_Pion))
-        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir'],datatype,sim_type)
+        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir_cont'],datatype,sim_type)
 
     else:
         #test_pions = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['pion_data_path'],time_cuts=args.time,stats=stats)
@@ -709,34 +708,46 @@ def main(config,resume):
         pions = CreateInferenceLoader(test_pions,config) # Batch size is 1 untill I figure out a better way
         kaons = CreateInferenceLoader(test_kaons,config)
 
-        pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
+        if args.model_type == 'NF':
+            pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
+            kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
+        elif args.model_type == 'CNF':
+            alph = config['model_'+str(args.model_type)]['alph']
+            train_T = bool(config['model_'+str(args.model_type)]['train_T'])
+            pion_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
+            kaon_net  = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
+        elif args.model_type == 'FlowMatching':
+            pion_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
+            kaon_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
+        else:
+            raise ValueError("Model type not found.")
+
         device = torch.device('cuda')
         pion_net.to('cuda')
-        dicte = torch.load(config['Inference']['pion_model_path'])
+        dicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)])
         pion_net.load_state_dict(dicte['net_state_dict'])
 
-        kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
-        device = torch.device('cuda')
+        
         kaon_net.to('cuda')
-        dicte = torch.load(config['Inference']['kaon_model_path'])
+        dicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
         kaon_net.load_state_dict(dicte['net_state_dict'])
 
         LL_Pion,LL_Kaon = run_inference_seperate(pions,kaons,pion_net,kaon_net)
         
-        if not os.path.exists(config['Inference']['out_dir']):
-            print('Inference plots can be found in: ' + config['Inference']['out_dir'])
-            os.mkdir(config['Inference']['out_dir'])
+        if not os.path.exists(config['Inference']['out_dir_cont']):
+            print('Inference plots can be found in: ' + config['Inference']['out_dir_cont'])
+            os.mkdir(config['Inference']['out_dir_cont'])
 
-        pion_path = os.path.join(config['Inference']['out_dir'],"Pion_DLL_Results.pkl")
+        pion_path = os.path.join(config['Inference']['out_dir_cont'],"Pion_DLL_Results.pkl")
         with open(pion_path,"wb") as file:
             pickle.dump(LL_Pion,file)
 
-        kaon_path = os.path.join(config['Inference']['out_dir'],"Kaon_DLL_Results.pkl")
+        kaon_path = os.path.join(config['Inference']['out_dir_cont'],"Kaon_DLL_Results.pkl")
         with open(kaon_path,"wb") as file:
             pickle.dump(LL_Kaon,file)
 
         sim_type = config['sim_type']
-        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir'],datatype,sim_type)
+        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir_cont'],datatype,sim_type)
 
 
 
@@ -749,6 +760,7 @@ if __name__=='__main__':
                         help='Path to the .pth model checkpoint to resume training')
     parser.add_argument('-t','--time',default=None,type=float,
                         help='Maximum hit time for Cherenkov photons')
+    parser.add_argument('-m','--model_type',default='NF',type=str,help='Type of model to use.')
     args = parser.parse_args()
 
     config = json.load(open(args.config))
@@ -757,4 +769,4 @@ if __name__=='__main__':
         print("Making Inference Directory.")
         os.makedirs("Inference",exist_ok=True)
 
-    main(config,args.resume)
+    main(config,args)

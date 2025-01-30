@@ -4,7 +4,7 @@
 
 This repository contains all the necessary files for running the hpDIRC fast simulation. I've organized them in a way that should be easy to modify and generate new simulations based on your needs.
 
-Note: The generations will not be performed bar-by-bar, but at fixed regions of momentum and theta. We are using two conditionals for the simulation, as it is set up with $\phi = 0$. This setup should be fine for now, and we can make use of symmetry arguments..
+Note: The generations will not be performed bar-by-bar, but at fixed regions of momentum and theta. We are using two conditionals for the simulation, as it is set up with $\phi = 0$. This setup should be fine for now, and we can make use of symmetry arguments. **Make sure you have updated classes from create_data.py, dataloader.py, etc.** Generally make sure the vital infrastructure we share is up to date.
 
 ### **What You Will Need (Updated Jan 18, 2025):**
 
@@ -52,7 +52,7 @@ Below Im including the resources you will need for training (in terms of what to
 #SBATCH --tasks=20
 #SBATCH --mem-per-cpu=4000
 #SBATCH --gpus=1
-#SBATCH -t 65:00:00
+#SBATCH -t 72:00:00
 
 
 cd $SLURM_SUBMIT_DIR
@@ -65,9 +65,9 @@ python /sciclone/home/jgiroux/Cherenkov_FastSim/train_flow_matching.py --config 
 
 ```
 
-### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 22, 2025)**
+### **Using the `.sh` / `.tcsh` Files for Generation (Updated Jan 28, 2025)**
 
-An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values. You will also need to specifcy which model type you want to generate (currently have NF, CNF, FlowMatching - this is WIP.)
+An important thing to note is that if you make a change in the .tcsh or .sh files, you need to recompile them as executables. Theta will loop in these automatically, but you will need to go in and change the momentum values. You will also need to specifcy which model type you want to generate (currently have NF, CNF, FlowMatching - this is WIP.) I have made some QOL improvements to prevent rerunning generations. If you simply want to remake plots, it will do this by default if the folder and files already exist. I also improved the ratio plots and the associated metrics.
 
 ```bash
 chmod +x gen_thetas_hpDIRC.sh
@@ -131,6 +131,22 @@ There is a n_particles flag that defaults to 200k, which is probably fine. Set i
 ---
 <div align="center">
   <img src="assets/Ratios_Pion_FullPhaseSpace.png" alt="Figure 1: Pion Ratios" width="80%">
+</div>
+---
+
+
+## **Running DLL (Updated Jan 24,2025)**
+
+I have added code for running PID (Delta Log-likelihood) for the three models, NF,CNF,FlowMatching. You should be able to take the code from the FlowMatching model and use this to integrate your diffusion model through an ODE. Let me know if you have issues with this. To run the code you can specify specific model type you want (add a diffusion method for yourself, and modify the run_DLL_fixedpoints_hpDIRC.py file to accomodate) in the run_DLL_fixedpoints.sh file similar to the generations scripts.
+
+```bash
+./run_DLL_fixedpoints.sh
+```
+The first run of this should spawn an Inference folder and put things in there. The folder will be what is specificed in the Inference/out_dir_fixed field of the config file. This will produce plots (like below) at 3,6 and 9 GeV. You will need the LUT_Stats folder as well.
+
+---
+<div align="center">
+  <img src="assets/Seperation_NF_LUT_6GeV.png" alt="Figure 1: Pion Ratios" width="80%">
 </div>
 ---
 

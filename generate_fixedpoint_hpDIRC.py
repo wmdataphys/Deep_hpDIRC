@@ -63,7 +63,7 @@ def main(config,args):
         num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         alph = config['model_'+str(args.model_type)]['alph']
         train_T = bool(config['model_'+str(args.model_type)]['train_T'])
-        net = net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=True,alph=alph)
+        net = net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
     elif args.model_type == "FlowMatching":
         net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
     elif args.model_type == 'Score':

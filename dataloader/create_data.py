@@ -20,7 +20,7 @@ def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_ma
     return np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
 
 class hpDIRC_DLL_Dataset(Dataset):
-    def __init__(self,file_path,stats={"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},time_cuts=None,n_particle=400000):
+    def __init__(self,file_path,stats={"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},time_cuts=None,n_particles=400000):
         data = np.load(file_path,allow_pickle=True)[:n_particles] # Useful for testing
         self.data = []
         print(len(data))
@@ -34,7 +34,6 @@ class hpDIRC_DLL_Dataset(Dataset):
 
 
         self.n_photons = 240
-        
         self.conditional_maxes = np.array([self.stats['P_max'],self.stats['theta_max']])
         self.conditional_mins = np.array([self.stats['P_min'],self.stats['theta_min']])
         self.time_cuts = time_cuts
@@ -69,6 +68,8 @@ class hpDIRC_DLL_Dataset(Dataset):
         barY = data['Y']
         pmtID = np.array(data['pmtID'])
         event_num = data['EventID']
+        if data['NHits'] == 0:
+            print("Stop.",NHits)
 
         pixelID = np.array(data['pixelID'])
 
@@ -88,6 +89,9 @@ class hpDIRC_DLL_Dataset(Dataset):
         pmtID = pmtID[pos_time]
         x = x[pos_time]
         y = y[pos_time]
+
+        if len(time) == 0:
+            print("Hey, wrong.",idx)
         
         if len(time) > self.n_photons:
 

@@ -106,7 +106,7 @@ class OT_Flow(nn.Module):
 
        
 
-    def log_prob(self, inputs, context,nt=20, tspan=[0,1],alpha=[1.0,1.0,1.0]):
+    def log_prob(self, inputs, context,nt=12, tspan=[0,1],alpha=[1.0,1.0,1.0]):
         if self.embedding:
             embedded_context = self.context_embedding(context)
         else:
@@ -117,7 +117,7 @@ class OT_Flow(nn.Module):
 
         _,costs = OTFlowProblem(inputs,self.Phi,tspan,nt,alph=self.alph,conds=embedded_context,dist_func=self.distribution,training=False)
 
-        return -1*costs[1],costs[0],costs[2]
+        return -1*costs[1]
 
 
     def compute_loss(self,inputs,context,nt,tspan=[0,1],alpha=[1.0,1.0,1.0]):
@@ -181,7 +181,7 @@ class OT_Flow(nn.Module):
 
         return closest_values[:,0].detach().cpu(),closest_values[:,1].detach().cpu()
             
-    def _sample(self,num_samples,context,nt=40):
+    def _sample(self,num_samples,context,nt=20):
         samples = self.__sample(num_samples,context,nt=nt)
         x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
         y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
@@ -210,7 +210,7 @@ class OT_Flow(nn.Module):
 
         return hits
 
-    def create_tracks(self,num_samples,context,plotting=False,nt=20):
+    def create_tracks(self,num_samples,context,plotting=False,nt=18):
         counter = 0
         hits = self.__get_track(num_samples,context,nt)
         updated_hits = self._apply_mask(hits)

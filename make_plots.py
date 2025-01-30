@@ -56,7 +56,7 @@ bins_y = [0, 3.65625 - pixel_height/2,  3.65625 + pixel_height/2, 6.96875+ pixel
     205.22767857+ pixel_height/2, 208.54017857+ pixel_height/2, 211.85267857+ pixel_height/2, 215.16517857+ pixel_height/2,
     218.47767857+ pixel_height/2, 221.79017857+ pixel_height/2, 225.10267857+ pixel_height/2, 228.41517857+ pixel_height/2, 228.41517857 + pixel_height/2 + 2 ]
 
-t_bins = np.arange(0,100,0.5)
+t_bins = np.arange(0.0,157.0,0.5)
 ####################################### hpDIRC Discretization #################################
 
 
@@ -239,23 +239,37 @@ def make_ratios(path_,label,momentum,outpath):
     ax[2].set_xlabel("Y (mm)", fontsize=20, labelpad=10)
 
     # Ratio plot for Time PDF
-    ratio_t = np.divide(n_gen_t, n_true_t, out=np.ones_like(n_gen_t), where=n_true_t!=0)
-    ax[3].scatter(t_bins[:-1], ratio_t, color='red')
+    ratio_t = n_gen_t / (n_true_t + 1e-50)
+    ratio_t[np.where(n_gen_t == n_true_t)[0]] = 1.0
+    ratio_t_upper = ratio_t + ratio_err_t
+    ratio_t_lower = ratio_t - ratio_err_t
+    #ax[3].errorbar(t_bins[:-1], ratio_t, yerr=ratio_err_t, color='red', ls='none', capsize=3, marker='.', ms=8)
+    ax[3].fill_between((t_bins[:-1] + t_bins[1:]) / 2, ratio_t_lower, ratio_t_upper, color='red', alpha=0.7, step='mid')
     ax[3].set_ylabel('Ratio', fontsize=15)
     ax[3].set_ylim([0, 2])
     ax[3].set_yticks([0.5, 1, 1.5])
     ax[3].axhline(1.0, color='black', linestyle='--', lw=1)
 
     # Ratio plot for X PDF
-    ratio_x = np.divide(n_gen_x, n_true_x, out=np.ones_like(n_gen_x), where=n_true_x!=0)
-    ax[4].scatter(bins_x[:-1], ratio_x, color='red')
+    bin_centers_x = [(bins_x[i] + bins_x[i + 1]) / 2 for i in range(len(bins_x) - 1)]
+    ratio_x = n_gen_x / (n_true_x + 1e-50)
+    ratio_x[np.where(n_gen_x == n_true_x)[0]] = 1.0
+    ratio_x_upper = ratio_x + ratio_err_x
+    ratio_x_lower = ratio_x - ratio_err_x
+    #ax[4].errorbar(bins_x[:-1], ratio_x, yerr=ratio_err_x, color='red', ls='none', capsize=3, marker='.', ms=8)
+    ax[4].fill_between(bin_centers_x, ratio_x_lower, ratio_x_upper, color='red', alpha=0.7, step='mid')
     ax[4].set_ylim([0, 2])
     ax[4].set_yticks([0.5, 1, 1.5])
     ax[4].axhline(1.0, color='black', linestyle='--', lw=1)
 
     # Ratio plot for Y PDF
-    ratio_y = np.divide(n_gen_y, n_true_y, out=np.ones_like(n_gen_y), where=n_true_y!=0)
-    ax[5].scatter(bins_y[:-1], ratio_y,color='red')
+    bin_centers_y = [(bins_y[i] + bins_y[i + 1]) / 2 for i in range(len(bins_y) - 1)]
+    ratio_y = n_gen_y / (n_true_y + 1e-50)
+    ratio_y[np.where(n_gen_y == n_true_y)[0]] = 1.0
+    ratio_y_upper = ratio_y + ratio_err_y
+    ratio_y_lower = ratio_y - ratio_err_y
+    #ax[5].errorbar(bins_y[:-1], ratio_y, yerr=ratio_err_y, color='red', ls='none', capsize=3, marker='.', ms=8)
+    ax[5].fill_between(bin_centers_y, ratio_y_lower, ratio_y_upper, color='red', alpha=0.7, step='mid')
     ax[5].set_ylim([0, 2])
     ax[5].set_yticks([0.5, 1, 1.5])
     ax[5].axhline(1.0, color='black', linestyle='--', lw=1)
@@ -278,13 +292,13 @@ def make_ratios(path_,label,momentum,outpath):
     plt.close()
 
     print(label," ratios.")
-    print("X: ",np.average(ratio_x,weights=n_gen_x))
-    print("Y: ", np.average(ratio_y,weights=n_gen_y))
-    print("Time: ",np.average(ratio_t,weights=n_gen_t))
+    print("X: ",np.average(ratio_x,weights=n_true_x))
+    print("Y: ", np.average(ratio_y,weights=n_true_y))
+    print("Time: ",np.average(ratio_t,weights=n_true_t))
 
-    print("RMS X: ",np.sqrt(np.average((ratio_x -1)**2,weights=n_gen_x)))
-    print("RMS Y: ", np.sqrt(np.average((ratio_y - 1)**2,weights=n_gen_y)))
-    print("RMS Time: ",np.sqrt(np.average((ratio_t - 1)**2,weights=n_gen_t)))
+    print("RMS X: ",np.sqrt(np.average((ratio_x -1)**2,weights=n_true_x)))
+    print("RMS Y: ", np.sqrt(np.average((ratio_y - 1)**2,weights=n_true_y)))
+    print("RMS Time: ",np.sqrt(np.average((ratio_t - 1)**2,weights=n_true_t)))
     print(" ")
         
 

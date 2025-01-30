@@ -60,12 +60,18 @@
     },
     "dataset": {
         "fixed_point":{
-            "pion_data_path_6GeV": "data/6GeV/mixed_pik_all_theta_Pions.pkl",
-            "kaon_data_path_6GeV": "data/6GeV/mixed_pik_all_theta_Kaons.pkl",
-            "pion_data_path_9GeV": "data/9GeV/merged_pik_9GeV_Pions.pkl",
-            "kaon_data_path_9GeV": "data/9GeV/merged_pik_9GeV_Kaons.pkl",
-            "pion_data_path_3GeV": "data/3GeV/merged_pik_3GeV_Pions.pkl",
-            "kaon_data_path_3GeV": "data/3GeV/merged_pik_3GeV_Kaons.pkl",
+            "pion_data_path_6GeV_": "data/6GeV/mixed_pik_all_theta_Pions.pkl",
+            "kaon_data_path_6GeV_": "data/6GeV/mixed_pik_all_theta_Kaons.pkl",
+            "pion_data_path_6GeV": "data/6GeV_setP_Jan27/merged_pik_6GeV_Pions.pkl",
+            "kaon_data_path_6GeV": "data/6GeV_setP_Jan27/merged_pik_6GeV_Kaons.pkl",
+            "pion_data_path_9GeV": "data/9GeV_setP_Jan27/merged_pik_9GeV_Pions.pkl",
+            "kaon_data_path_9GeV": "data/9GeV_setP_Jan27/merged_pik_9GeV_Kaons.pkl",
+            "pion_data_path_3GeV": "data/3GeV_setP_Jan27/merged_pik_3GeV_Pions.pkl",
+            "kaon_data_path_3GeV": "data/3GeV_setP_Jan27/merged_pik_3GeV_Kaons.pkl",
+            "pion_data_path_9GeV_": "data/9GeV/merged_pik_9GeV_Pions.pkl",
+            "kaon_data_path_9GeV_": "data/9GeV/merged_pik_9GeV_Kaons.pkl",
+            "pion_data_path_3GeV_": "data/3GeV/merged_pik_3GeV_Pions.pkl",
+            "kaon_data_path_3GeV_": "data/3GeV/merged_pik_3GeV_Kaons.pkl",
             "pion_data_path_1GeV": "data/1GeV/merged_pions_1GeV_Pions.pkl",
             "kaon_data_path_1GeV": "data/1GeV/merged_kaons_1GeV_Kaons.pkl"
         },
@@ -90,7 +96,9 @@
         "testing":{
 	    "DLL":{
             "pion_data_path": "data/6GeV/mixed_pik_all_theta_Pions.pkl",
-            "kaon_data_path": "data/6GeV/mixed_pik_all_theta_Kaons.pkl"
+            "kaon_data_path": "data/6GeV/mixed_pik_all_theta_Kaons.pkl",
+            "pion_data_path_": "data/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path_": "data/Testing_Kaons_hpDIRC.pkl"
 	    }, 
 	    "gen":{
             "pion_data_path" : "/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.feather",
@@ -139,10 +147,15 @@
             "pion_model_path_CNF": "Trained_Models/CNF/Pion_hpDIRC_CNF_MOG40_RESUME___Jan-19-2025/Pion_hpDIRC_CNF_MOG40_RESUME_epoch17_val_loss_-27.163671.pth",
             "kaon_model_path_CNF": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_RESUME___Jan-19-2025/Kaon_hpDIRC_CNF_MOG40_RESUME_epoch22_val_loss_-26.639817.pth",
             "kaon_model_path_CNF_": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_epoch05_val_loss_-24.785789.pth",
-            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_OriginalDistSampling_10L___Jan-21-2025/Kaon_FlowMatch_Affine_OriginalDistSampling_10L_epoch15_val_loss_0.573955.pth",
-            "kaon_model_path_FlowMatching": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_OriginalDistSampling_10L___Jan-21-2025/Kaon_FlowMatch_Affine_OriginalDistSampling_10L_epoch15_val_loss_0.573955.pth",
-            "out_dir": "Inference/TEST_10L_FlowMatch",
-            "fixed_point_dir": "NF_V1",
-            "full_phase_space_dir": "NF_FullPhaseSpaceGen"
+            "pion_model_path_FlowMatching_20L": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_20L_epoch99_val_loss_0.566178.pth",
+            "kaon_model_path_FlowMatching_20L": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_20L_epoch99_val_loss_0.568126.pth",
+            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_OriginalDistSampling_10L___Jan-23-2025/Pion_FlowMatch_Affine_OriginalDistSampling_10L_epoch99_val_loss_0.566670.pth",
+            "pion_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_MOG40___Jan-23-2025/Pion_FlowMatch_Affine_MOG40_epoch99_val_loss_0.584035.pth",
+            "kaon_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_MOG40_RESUME_V2_epoch99_val_loss_0.586034.pth",
+            "kaon_model_path_FlowMatching": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_OriginalDistSampling_10L___Jan-21-2025/Kaon_FlowMatch_Affine_OriginalDistSampling_10L_RESUME_epoch99_val_loss_0.568800.pth",
+            "fixed_point_dir": "FLowMatching_10L_nt18_6GeV",
+            "full_phase_space_dir": "NF_FullPhaseSpaceGen",
+            "out_dir_fixed": "Inference/NF_UpdatedSims_Jan27",
+            "out_dir_cont": "Inference/NF_MOG40_FullPhaseSpace_Jan23"
          }
 }
