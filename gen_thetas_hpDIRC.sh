@@ -1,9 +1,18 @@
 #!/bin/bash
 
+#!/bin/bash
+#SBATCH --export=ALL
+#SBATCH --job-name=gen_thetas
+#SBATCH --nodes=1
+#SBATCH --tasks=8
+#SBATCH --mem-per-cpu=2000
+#SBATCH --gpus=1
+#SBATCH -t 72:00:00
+
 theta=25
-momentum=6
-model_type="FlowMatching"
-config_file="config/hpDIRC_config_clean.json"
+momentum=3
+model_type="GSGM"
+config_file="config/hpDIRC_config_gulf.json"
 
 output_dir=$(python -c "
 import json
@@ -27,11 +36,11 @@ do
         python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Pion" --model_type $model_type
     fi
 
-    #if ls "${output_dir}"/*Kaon*theta_${theta}* 1> /dev/null 2>&1; then
-    #    echo "Kaon file for theta $theta already exists. Skipping..."
-    #else
-    #    python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Kaon" --model_type $model_type
-    #fi
+    if ls "${output_dir}"/*Kaon*theta_${theta}* 1> /dev/null 2>&1; then
+       echo "Kaon file for theta $theta already exists. Skipping..."
+    else
+       python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Kaon" --model_type $model_type
+    fi
 
     theta=$((theta + 5))
 done

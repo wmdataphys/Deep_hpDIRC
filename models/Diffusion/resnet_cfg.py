@@ -14,6 +14,44 @@ from einops import rearrange, repeat, reduce
 def divisible_by(numer, denom):
     return (numer % denom) == 0
 
+def exists(x):
+    return x is not None
+
+def default(val, d):
+    if exists(val):
+        return val
+    return d() if callable(d) else d
+
+def pack_one_with_inverse(x, pattern):
+    packed, packed_shape = pack([x], pattern)
+
+    def inverse(x, inverse_pattern = None):
+        inverse_pattern = default(inverse_pattern, pattern)
+        return unpack(x, packed_shape, inverse_pattern)[0]
+
+    return packed, inverse
+
+def project(x, y):
+    x, inverse = pack_one_with_inverse(x, 'b *')
+    y, _ = pack_one_with_inverse(y, 'b *')
+
+    dtype = x.dtype
+    x, y = x.double(), y.double()
+    unit = F.normalize(y, dim = -1)
+
+    parallel = (x * unit).sum(dim = -1, keepdim = True) * unit
+    orthogonal = x - parallel
+
+    return inverse(parallel).to(dtype), inverse(orthogonal).to(dtype)
+
+def prob_mask_like(shape, prob, device):
+    if prob == 1:
+        return torch.ones(shape, device = device, dtype = torch.bool)
+    elif prob == 0:
+        return torch.zeros(shape, device = device, dtype = torch.bool)
+    else:
+        return torch.zeros(shape, device = device).float().uniform_(0, 1) < prob
+
 class EMA:
     def __init__(self, beta):
         super().__init__()
@@ -125,13 +163,25 @@ class ResNet(nn.Module):
         #     sinu_pos_emb = RandomOrLearnedSinusoidalPosEmb(learned_sinusoidal_dim, random_fourier_features)
         #     fourier_dim = learned_sinusoidal_dim + 1
         # else:
+    
+        sinu_pos_emb = SinusoidalPosEmb(mlp_dim // 4)
+        fourier_dim = mlp_dim // 4
+    
+        self.time_embed = nn.Sequential( 
+            sinu_pos_emb,
+            nn.Linear(fourier_dim, mlp_dim),
+            nn.GELU(),
+            nn.Linear(mlp_dim, mlp_dim)
+        )
 
-        self.time_dense = nn.Linear(1, mlp_dim)
+        # from https://arxiv.org/pdf/2407.07376
 
         if cond_dim:
             self.context_encoder =  nn.Sequential(*[nn.Linear(cond_dim,16),
                                                     nn.ReLU(),
                                                     nn.Linear(16,mlp_dim)]) # needs to be same size as time embedding to add together, 
+            self.null_classes_emb = nn.Parameter(torch.zeros(cond_dim)) # for cfg
+            # so we project to mlp_dim 
 
         # Residual connection after combining input and time embedding
         self.initial_residual_dense1 = nn.Linear(mlp_dim, mlp_dim)
@@ -150,10 +200,11 @@ class ResNet(nn.Module):
     def forward(self, 
                 inputs, 
                 t, 
-                cond=None,):
+                cond=None, 
+                cond_drop_prob = 0):
         # Process time embedding and conds
 
-        time_embed = self.activation(self.time_dense(t.view(-1,1).float()))
+        time_embed = self.activation(self.time_embed(t))
 
         # cfg code taken from LucidRains https://github.com/lucidrains/denoising-diffusion-pytorch/blob/main/denoising_diffusion_pytorch/classifier_free_guidance.py
         batch, device = inputs.shape[0], inputs.device
@@ -166,6 +217,19 @@ class ResNet(nn.Module):
         else:
             cond = cond.view(cond.size(0),-1)
             conds_embed = self.activation(self.context_encoder(cond)) if hasattr(self, 'context_encoder') else torch.zeros_like(embed)
+            
+            if cond_drop_prob > 0:
+                keep_mask = prob_mask_like((batch,), 1 - cond_drop_prob, device = device)
+                # print("keep mask:",keep_mask.shape)
+                null_classes_emb = repeat(self.null_classes_emb, 'd -> b d', b = batch)
+                # print("null classes:",null_classes_emb.shape)
+                conds_embed = torch.where( # randomly masking
+                    rearrange(keep_mask, 'b -> b 1'),
+                    conds_embed,
+                    null_classes_emb
+                )
+            
+            # print("cond_embed:",conds_embed.shape)
 
             embed = time_embed + conds_embed
         
@@ -188,3 +252,35 @@ class ResNet(nn.Module):
         outputs = self.output_dense(layer)
 
         return outputs
+    
+    def forward_with_cond_scale(
+        self,
+        *args,
+        cond_scale = 1.,
+        rescaled_phi = 0.,
+        remove_parallel_component = True,
+        keep_parallel_frac = 0.,
+        **kwargs
+    ):
+        logits = self.forward(*args, cond_drop_prob=0., **kwargs)
+
+        if cond_scale == 1:
+            return logits
+
+        null_logits = self.forward(*args, cond_drop_prob=1., **kwargs) # cfg
+        update = logits - null_logits
+
+        if remove_parallel_component:
+            parallel, orthog = project(update, logits)
+            update = orthog + parallel * keep_parallel_frac
+
+        scaled_logits = logits + update * (cond_scale - 1.)
+
+        if rescaled_phi == 0.:
+            return scaled_logits, null_logits
+
+        std_fn = partial(torch.std, dim = tuple(range(1, scaled_logits.ndim)), keepdim = True)
+        rescaled_logits = scaled_logits * (std_fn(logits) / std_fn(scaled_logits))
+        interpolated_rescaled_logits = rescaled_logits * rescaled_phi + scaled_logits * (1. - rescaled_phi)
+
+        return interpolated_rescaled_logits, null_logits

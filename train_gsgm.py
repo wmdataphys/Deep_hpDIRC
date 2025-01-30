@@ -109,6 +109,7 @@ def train(config, resume, overwrite = False):
     diffusion = GSGM(num_input=input_shape, 
                num_conds=cond_shape, 
                device=device, 
+               stats=stats, # for hpDIRC
                num_layers=num_layers, 
                num_steps=timesteps, 
                num_embed=num_embed, 
@@ -178,7 +179,7 @@ def train(config, resume, overwrite = False):
 
             if i % save_itter == 0 and i > 0:
                 name_output_file = config['name']+'_epoch{:02d}_save_iter_{:02d}.pth'.format(epoch, i)
-                filename = os.path.join(output_folder , exp_name , name_output_file)
+                filename = os.path.join(exp_path , name_output_file)
                 checkpoint={}
                 checkpoint['net_state_dict'] = diffusion.state_dict()
                 checkpoint['optimizer'] = optimizer.state_dict()
@@ -221,7 +222,7 @@ def train(config, resume, overwrite = False):
                 
         # Save the output file
         
-        filename = os.path.join(output_folder , exp_name , name_output_file)
+        filename = os.path.join(exp_path , name_output_file)
 
         checkpoint={}
         checkpoint['net_state_dict'] = diffusion.state_dict()

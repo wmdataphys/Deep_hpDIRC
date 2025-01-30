@@ -48,7 +48,11 @@ def main(config,args):
     else:
         print("Specify particle to generate in config file")
         exit()
-        
+
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    else:
+        raise RuntimeError("No GPU was found! Exiting the program.")
 
     num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
     input_shape = int(config['model_'+str(args.model_type)]['input_shape'])
@@ -80,13 +84,13 @@ def main(config,args):
         learned_variance = config['model_GSGM']['learned_variance']
         nonlinear_noise_schedule = int(config['model_GSGM']['nonlinear_noise_schedule'])
         
-        net = GSGM(num_input=input_shape, num_conds=cond_shape, device=device, num_layers=num_layers, num_steps=num_steps, num_embed=num_embed, mlp_dim=hidden_nodes, nonlinear_noise_schedule=nonlinear_noise_schedule, learnedvar=learned_variance)
+        net = GSGM(num_input=input_shape, num_conds=cond_shape, device=device, stats=stats, num_layers=num_layers, num_steps=num_steps, num_embed=num_embed, mlp_dim=hidden_nodes, nonlinear_noise_schedule=nonlinear_noise_schedule, learnedvar=learned_variance)
     else:
         raise ValueError("Model type not found.")
 
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
-    device = torch.device('cuda')
+    
     net.to('cuda')
     net.load_state_dict(dicte['net_state_dict'])
     n_samples = int(config['Inference']['samples'])
