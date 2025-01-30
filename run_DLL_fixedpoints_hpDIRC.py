@@ -116,6 +116,9 @@ def extract_values(file_path):
     sigmas = []
     thetas = []
     for theta, gr_value in results.items():
+        if theta == 25.0:
+            continue
+
         thetas.append(float(theta))
         sigmas.append(float(gr_value))
         
@@ -173,10 +176,10 @@ def run_plotting(out_folder,momentum,model_type):
     print("Kaon max/min: ",dll_k.max(),dll_k.min())
 
     
-    if momentum >= 6.0:
+    if momentum == 6.0:
         bins = np.linspace(-100,100,400) 
     else:
-        bins = np.linspace(-250,300,400) 
+        bins = np.linspace(-200,200,400) 
 
     ### Raw DLL
     plt.hist(dll_k,bins=bins,density=True,alpha=1.0,label=r'$\mathcal{K} - $'+str(model_type),color='red',histtype='step',lw=2)
@@ -193,7 +196,7 @@ def run_plotting(out_folder,momentum,model_type):
 
 
 
-    thetas = [30.,35.,40.,45.,50.,55.,60.,65.,70.,75.,80.,85.,90.,95.,100.,105.,110.,115.,120.,125.,130.,135.,140.,145.,150.]
+    thetas = [30.,35.,40.,45.,50.,55.,60.,65.,70.,75.,80.,85.,90.,95.,100.,105.,110.,115.,120.,125.,130.,135.,140.,145.,150.,155.]
     seps = []
     sep_err = []
     seps_cnf = []

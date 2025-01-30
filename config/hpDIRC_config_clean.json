@@ -23,7 +23,7 @@
     "alph": [1.0,10.0,1.5]
     },
     "model_FlowMatching": {
-        "num_layers":10,
+        "num_layers":3,
         "input_shape":3,
         "cond_shape":2,
         "num_blocks":2,
@@ -127,9 +127,9 @@
             "batch_size_FlowMatching": 5000
     	},
         "val": {
-            "batch_size_NF": 2048,
+            "batch_size_NF": 10000,
             "batch_size_CNF": 10000,
-            "batch_size_FlowMatching": 5000
+            "batch_size_FlowMatching": 10000
         },
         "test": {
             "batch_size": 25
@@ -149,13 +149,14 @@
             "kaon_model_path_CNF_": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_epoch05_val_loss_-24.785789.pth",
             "pion_model_path_FlowMatching_20L": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_20L_epoch99_val_loss_0.566178.pth",
             "kaon_model_path_FlowMatching_20L": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_20L_epoch99_val_loss_0.568126.pth",
-            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_OriginalDistSampling_10L___Jan-23-2025/Pion_FlowMatch_Affine_OriginalDistSampling_10L_epoch99_val_loss_0.566670.pth",
+            "pion_model_path_FlowMatching_10L": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_OriginalDistSampling_10L___Jan-23-2025/Pion_FlowMatch_Affine_OriginalDistSampling_10L_epoch99_val_loss_0.566670.pth",
+            "kaon_model_path_FlowMatching_10L": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_OriginalDistSampling_10L___Jan-21-2025/Kaon_FlowMatch_Affine_OriginalDistSampling_10L_RESUME_epoch99_val_loss_0.568800.pth",
             "pion_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_MOG40___Jan-23-2025/Pion_FlowMatch_Affine_MOG40_epoch99_val_loss_0.584035.pth",
             "kaon_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_MOG40_RESUME_V2_epoch99_val_loss_0.586034.pth",
-            "kaon_model_path_FlowMatching": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_OriginalDistSampling_10L___Jan-21-2025/Kaon_FlowMatch_Affine_OriginalDistSampling_10L_RESUME_epoch99_val_loss_0.568800.pth",
-            "fixed_point_dir": "FLowMatching_10L_nt18_6GeV",
+            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Pion_FlowMatch_3L_Test_epoch95_val_loss_0.575553.pth",
+            "fixed_point_dir": "FlowMatch_3L_TEST_nt36",
             "full_phase_space_dir": "NF_FullPhaseSpaceGen",
-            "out_dir_fixed": "Inference/NF_UpdatedSims_Jan27",
+            "out_dir_fixed": "Inference/NF_UpdatedSims_Include155_Jan29",
             "out_dir_cont": "Inference/NF_MOG40_FullPhaseSpace_Jan23"
          }
 }

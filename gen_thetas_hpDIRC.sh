@@ -1,6 +1,6 @@
 #!/bin/bash
 
-theta=30
+theta=25
 momentum=6
 model_type="FlowMatching"
 config_file="config/hpDIRC_config_clean.json"
@@ -19,7 +19,7 @@ fi
 
 output_dir="Generations/$output_dir"
 
-while [ $theta -le 150 ]
+while [ $theta -le 155 ]
 do
     if ls "${output_dir}"/*Pion*theta_${theta}* 1> /dev/null 2>&1; then
         echo "Pion file for theta $theta already exists. Skipping..."
@@ -27,11 +27,11 @@ do
         python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Pion" --model_type $model_type
     fi
 
-    if ls "${output_dir}"/*Kaon*theta_${theta}* 1> /dev/null 2>&1; then
-        echo "Kaon file for theta $theta already exists. Skipping..."
-    else
-        python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Kaon" --model_type $model_type
-    fi
+    #if ls "${output_dir}"/*Kaon*theta_${theta}* 1> /dev/null 2>&1; then
+    #    echo "Kaon file for theta $theta already exists. Skipping..."
+    #else
+    #    python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Kaon" --model_type $model_type
+    #fi
 
     theta=$((theta + 5))
 done
