@@ -34,7 +34,7 @@ class ResNetBlock(nn.Module):
 
 class FreiaNet(nn.Module):
     def __init__(self,input_shape,layers,context_shape,embedding=False,hidden_units=512,num_blocks=2,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.00,"time_min":0.0,
-            "P_max":8.5 ,"P_min":0.95 , "theta_max": 11.63,"theta_min": 0.90,"phi_max": 175.5, "phi_min":-176.0 },device='cuda'):
+            "P_max":8.5 ,"P_min":0.95 , "theta_max": 11.63,"theta_min": 0.90,"phi_max": 175.5, "phi_min":-176.0 },device='cuda',LUT_path=None):
         super(FreiaNet, self).__init__()
         self.input_shape = input_shape
         self.layers = layers
@@ -92,6 +92,14 @@ class FreiaNet(nn.Module):
                                                    218.47767857, 221.79017857, 225.10267857, 228.41517857])).to(self.device) 
         self.stats_ = stats
 
+        if LUT_path is not None:
+            print("Loading photon yield sampler.")
+            dicte = np.load(LUT_path,allow_pickle=True)
+            self.LUT = {k: v for k, v in dicte.items() if k != "global_values"}
+            self.global_values = dicte['global_values']
+            self.p_points = np.array(list(dicte.keys())[:-1]) 
+            self.theta_points = np.array(list(dicte[self.p_points[0]].keys()))
+
         if self.embedding:
             self.context_embedding = nn.Sequential(*[nn.Linear(context_shape,16),nn.ReLU(),nn.Linear(16,input_shape)])
 
@@ -113,7 +121,6 @@ class FreiaNet(nn.Module):
 
         def create_freai(input_shape,layer,cond_shape):
             inn = Ff.SequenceINN(input_shape)
-            #inn.append(InvertibleTanh)
             for k in range(layers):
                 inn.append(Fm.AllInOneBlock,cond=0,cond_shape=(cond_shape,),subnet_constructor=resnet_subnet, permute_soft=True)
 
@@ -248,12 +255,24 @@ class FreiaNet(nn.Module):
 
         return hits
 
-    def create_tracks(self,num_samples,context,plotting=False):
+    def __sample_photon_yield(self,p_value,theta_value):
+        closest_p_idx = np.argmin(np.abs(self.p_points - p_value))
+        closest_p = float(self.p_points[closest_p_idx])
+        
+        closest_theta_idx = np.argmin(np.abs(self.theta_points - theta_value))
+        closest_theta = float(self.theta_points[closest_theta_idx])
+
+        return int(np.random.choice(self.global_values,p=self.LUT[closest_p][closest_theta]))
+
+    def create_tracks(self,num_samples,context,p=None,theta=None):
+        if num_samples is None:
+            assert p is not None and theta is not None, "p and theta must be provided if num_samples is None."
+            num_samples = self.__sample_photon_yield(p,theta)
+
         hits = self.__get_track(num_samples,context)
         updated_hits = self._apply_mask(hits)
         n_resample = int(num_samples - len(updated_hits))
         
-
         self.photons_generated += len(hits)
         self.photons_resampled += n_resample
         while n_resample != 0:
@@ -264,10 +283,8 @@ class FreiaNet(nn.Module):
             self.photons_resampled += n_resample
             self.photons_generated += len(resampled_hits)
             
-
         # Use euclidean distance
         x,y = self.set_to_closest_2d(updated_hits[:,:-1])
-        #x,y = updated_hits[:,0].detach().cpu(),updated_hits[:,1].detach().cpu()
         t = updated_hits[:,2].detach().cpu()
 
         pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
@@ -282,10 +299,8 @@ class FreiaNet(nn.Module):
         Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
         Phi = 0.0
 
-        if not plotting:
-            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
-        else:
-            return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+        return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
+ 
 
     def to_noise(self,inputs,context):
         if self.embedding:

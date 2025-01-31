@@ -27,24 +27,33 @@ def main(config,args):
 
     # Setup random seed
     print("Using model type: ",str(args.model_type))
-    torch.manual_seed(config['seed'])
-    np.random.seed(config['seed'])
-    random.seed(config['seed'])
-    torch.cuda.manual_seed(config['seed'])
+    # Remove seeding, make it random.
+    seed = int(time.time())
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.cuda.manual_seed(seed)
 
     config['method'] = args.method
 
     if config['method'] == "Pion":
         print("Generating for pions.")
         dicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)])
+        if args.sample_photons:
+            sampler_path = config['Photon_Sampler']['Pion_LUT_path']
         PID = 211
     elif config['method'] == 'Kaon':
         print("Generation for kaons.")
         dicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
+        if args.sample_photons:
+            sampler_path = config['Photon_Sampler']['Kaon_LUT_path']
         PID = 321
     else:
         print("Specify particle to generate in config file")
         exit()
+
+    if not args.sample_photons:
+        sampler_path = None
         
 
     num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
@@ -55,13 +64,13 @@ def main(config,args):
     stats = config['stats']
     
     if args.model_type == "NF":
-        net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
+        net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=sampler_path)
     elif args.model_type == "CNF":
         alph = config['model_'+str(args.model_type)]['alph']
         train_T = bool(config['model_'+str(args.model_type)]['train_T'])
-        net = net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
+        net = net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=sampler_path)
     elif args.model_type == "FlowMatching":
-        net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
+        net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=sampler_path)
     else:
         raise ValueError("Model type not found.")
 
@@ -105,34 +114,59 @@ def main(config,args):
     list_to_gen = []
 
     for i in range(len(datapoints)):
-        if (datapoints[i]['Theta'] == args.theta) and (datapoints[i]['P'] == args.momentum):
+        if (datapoints[i]['Theta'] == args.theta) and (datapoints[i]['P'] == args.momentum) and (datapoints[i]['Phi'] == 0.0):
             list_to_gen.append(datapoints[i])
 
     print("Generating {0} tracks, with p={1} and theta={2}.".format(len(list_to_gen),args.momentum,args.theta))
-       
+    if args.sample_photons:
+        print("Using LUT photon yield sampling.")
+    else:
+        print("Using photon yield associated to ground truth track.")
+
     generations = []
     kbar = pkbar.Kbar(target=len(list_to_gen), width=20, always_stateful=False)
     start = time.time()
+    
     for i in range(len(list_to_gen)):   
         with torch.set_grad_enabled(False):
             p = (list_to_gen[i]['P'] - stats['P_max'])  / (stats['P_max'] - stats['P_min'])
             theta = (list_to_gen[i]['Theta'] - stats['theta_max']) / (stats['theta_max'] - stats['theta_min'])
             k = torch.tensor(np.array([p,theta])).to('cuda').float()
             
-            if list_to_gen[i]['NHits'] > 0:
-                gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0))
+            if not args.sample_photons:
+                if list_to_gen[i]['NHits'] > 0 and list_to_gen[i]['NHits'] < 300:
+                    gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0))
+                else:
+                    #print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
+                    continue
             else:
-                print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
-                continue
+                if list_to_gen[i]['NHits'] > 0 and list_to_gen[i]['NHits'] < 300:
+                    gen = net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=list_to_gen[i]['P'],theta=list_to_gen[i]['Theta'])
+                else:
+                    #print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
+                    continue
+
         
         generations.append(gen)
         kbar.update(i)
     end = time.time()
 
+    
+
     n_photons = 0
+    n_gamma = 0
 
     for i in range(len(list_to_gen)):
-        n_photons += list_to_gen[i]['NHits']
+        if list_to_gen[i]['NHits'] < 300:
+            n_photons += list_to_gen[i]['NHits']
+
+    if args.sample_photons:
+        for i in range(len(generations)):
+            n_gamma += generations[i]['NHits']
+
+    else:
+        n_gamma = n_photons
+
 
     print(" ")
     print("Number of tracks generated: ",len(generations))
@@ -140,8 +174,10 @@ def main(config,args):
     print("Number of photons resampled: ",net.photons_resampled)
     print('Percentage effect: ',net.photons_resampled * 100 / net.photons_generated)
     print("Elapsed Time: ", end - start)
-    print("Time / photon: ",(end - start) / n_photons)
+    print("Time / photon: ",(end - start) / n_gamma)
     print("Average time / track: ",(end - start) / len(list_to_gen))
+    if args.sample_photons:
+        print("True photon yield: ",n_photons," Generated photon yield: ",n_gamma)
     print(" ")
     gen_dict = {}
     gen_dict['fast_sim'] = generations
@@ -169,6 +205,7 @@ if __name__=='__main__':
     parser.add_argument('-t','--theta',default=30.0,type=float,help='Particle theta.')
     parser.add_argument('-m', '--method',default="Kaon",type=str,help='Generated particle type, Kaon or Pion.')
     parser.add_argument('-mt','--model_type',default="NF",type=str,help='Which model to use.')
+    parser.add_argument('-sp','--sample_photons', action='store_true', help="Enable verbose mode")
     args = parser.parse_args()
 
     config = json.load(open(args.config))

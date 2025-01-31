@@ -23,7 +23,7 @@
     "alph": [1.0,10.0,1.5]
     },
     "model_FlowMatching": {
-        "num_layers":3,
+        "num_layers":20,
         "input_shape":3,
         "cond_shape":2,
         "num_blocks":2,
@@ -117,16 +117,22 @@
             "pion_model_path_CNF": "Trained_Models/CNF/Pion_hpDIRC_CNF_MOG40_RESUME___Jan-19-2025/Pion_hpDIRC_CNF_MOG40_RESUME_epoch17_val_loss_-27.163671.pth",
             "kaon_model_path_CNF": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_RESUME___Jan-19-2025/Kaon_hpDIRC_CNF_MOG40_RESUME_epoch22_val_loss_-26.639817.pth",
             "kaon_model_path_CNF_": "Trained_Models/CNF/Kaon_hpDIRC_CNF_MOG40_epoch05_val_loss_-24.785789.pth",
-            "pion_model_path_FlowMatching_20L": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_20L_epoch99_val_loss_0.566178.pth",
-            "kaon_model_path_FlowMatching_20L": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_20L_epoch99_val_loss_0.568126.pth",
+            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_20L_epoch99_val_loss_0.566178.pth",
+            "kaon_model_path_FlowMatching": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_20L_epoch99_val_loss_0.568126.pth",
             "pion_model_path_FlowMatching_10L": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_OriginalDistSampling_10L___Jan-23-2025/Pion_FlowMatch_Affine_OriginalDistSampling_10L_epoch99_val_loss_0.566670.pth",
             "kaon_model_path_FlowMatching_10L": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_OriginalDistSampling_10L___Jan-21-2025/Kaon_FlowMatch_Affine_OriginalDistSampling_10L_RESUME_epoch99_val_loss_0.568800.pth",
             "pion_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_MOG40___Jan-23-2025/Pion_FlowMatch_Affine_MOG40_epoch99_val_loss_0.584035.pth",
             "kaon_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_MOG40_RESUME_V2_epoch99_val_loss_0.586034.pth",
-            "pion_model_path_FlowMatching": "Trained_Models/FlowMatching/Pion_FlowMatch_3L_Test_epoch95_val_loss_0.575553.pth",
-            "fixed_point_dir": "FlowMatch_3L_TEST_nt36",
+            "pion_model_path_FlowMatching_3L": "Trained_Models/FlowMatching/Pion_FlowMatch_3L_Test_epoch95_val_loss_0.575553.pth",
+            "fixed_point_dir": "FlowMatching_PhotonSampling",
             "full_phase_space_dir": "NF_FullPhaseSpaceGen",
-            "out_dir_fixed": "Inference/NF_UpdatedSims_Include155_Jan29",
+            "out_dir_fixed": "Inference/NF_UpdatedSims_Include155_300Photons_Jan30",
             "out_dir_cont": "Inference/NF_MOG40_FullPhaseSpace_Jan23"
-         }
+         },
+    "Photon_Sampler":{
+        "Pion_dataset": "data/Pion_Hits_Dataset.pkl",
+        "Kaon_dataset": "data/Kaon_Hits_Dataset.pkl",
+        "Pion_LUT_path": "Photon_Yield/Pion_Photon_Yield.pkl",
+        "Kaon_LUT_path": "Photon_Yield/Kaon_Photon_Yield.pkl"
+    }
 }
