@@ -155,6 +155,9 @@ class GaussianDiffusion(nn.Module):
 
         to_torch = partial(torch.tensor, dtype=torch.float32)
 
+        self.register_buffer('_allowed_x', _allowed_x)
+        self.register_buffer('_allowed_y', _allowed_y)
+        
         self.register_buffer('betas', to_torch(betas))
         self.register_buffer('alphas_cumprod', to_torch(alphas_cumprod))
         self.register_buffer('alphas_cumprod_prev', to_torch(alphas_cumprod_prev))
