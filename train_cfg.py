@@ -11,7 +11,7 @@ import json
 import pkbar
 import shutil
 
-from models.Diffusion.resnet_cfg import ResNet, EMA
+from models.Diffusion.resnet_cfg import ResNet, EMA # cfg resnet
 from models.Diffusion.classifier_free_guidance import CFGDiffusion
 
 from dataloader.create_data import hpDIRCCherenkovPhotons

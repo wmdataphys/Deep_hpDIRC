@@ -1,5 +1,5 @@
 {
-    "name": "PCFG_4L_T100",
+    "name": "PDDPM_6L_T100",
     "seed": 752022,
     "run_val":0,
     "method":"Pion",
@@ -25,7 +25,7 @@
         "gamma":0
         },
     "model_DDPM":{
-        "num_layers":12,
+        "num_layers":6,
         "input_shape":3,
         "cond_shape":2,
         "num_steps":100,
@@ -100,6 +100,7 @@
         "lr":3e-4,
         "lr_Score":3e-4,
         "lr_CFG":3e-4,
+        "lr_DDPM":3e-4,
         "lr_noise":3e-3,
         "weight_decay": 0,
         "alpha": 1e-3
@@ -109,12 +110,14 @@
         "split":[0.7,0.15,0.15],
         "train": {
             "batch_size": 2048,
+            "batch_size_DDPM":2048,
             "batch_size_Score":2048,
             "batch_size_GSGM":2048,
             "batch_size_CFG":2048
     	},
         "val": {
             "batch_size": 2048,
+            "batch_size_DDPM":2048,
             "batch_size_Score":2048,
             "batch_size_GSGM":2048,
             "batch_size_CFG":2048
@@ -132,9 +135,11 @@
             "pion_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/PScore_6L_T100_cosine___Jan-18-2025/PScore_6L_T100_cosine_epoch111_train_loss_0.228536.pth",
             "kaon_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/KScore_6L_T100_cosine___Jan-24-2025/KScore_6L_T100_cosine_epoch131_train_loss_0.229118.pth",
             "pion_model_path_GSGM":"/sciclone/data10/mcmartinez/hpDIRC_Models/PGSGM_4L_T100___Jan-23-2025/PGSGM_4L_T100_epoch121_train_loss_44.389694.pth",
-            "kaon_model_path_GSGM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KGSGM_4L_T100___Jan-28-2025/KGSGM_4L_T100_epoch96_train_loss_6.572339.pth",
+            "kaon_model_path_GSGM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KGSGM_4L_T100___Jan-28-2025/KGSGM_4L_T100_epoch104_train_loss_9.493466.pth",
+            "pion_model_path_CFG":"/sciclone/data10/mcmartinez/hpDIRC_Models/PCFG_4L_T100___Jan-29-2025/PCFG_4L_T100_epoch129_train_loss_0.224992.pth",
+            "kaon_model_path_CFG":"",
             "out_dir": "Inference/OTFlow_FullTrain_v2_6GeV_TestRevKinScale",
             "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/ParticleGun/Generated_Data/NF_Generated",
-            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/GSGM_4L_T100_3GeV"
+            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/CFG_4L_T100_6GeV"
         }
 }

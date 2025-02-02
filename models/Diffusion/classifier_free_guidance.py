@@ -342,6 +342,34 @@ class CFGDiffusion(nn.Module):
 
         register_buffer('loss_weight', loss_weight)
 
+    # --------- hpDIRC util functions --------- 
+    
+    def unscale(self,x,max_,min_):
+        return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
+
+    def unscale_conditions(self,x,max_,min_):
+        return x * (max_ - min_) + max_
+
+    def set_to_closest(self, x, allowed):
+        x = x.unsqueeze(1)  # Adding a dimension to x for broadcasting
+        diffs = torch.abs(x - allowed.to(self.device).float())
+        closest_indices = torch.argmin(diffs, dim=1)
+        closest_values = allowed[closest_indices]
+        return closest_values
+
+    def set_to_closest_2d(self,hits):
+        allowed_pairs = torch.cartesian_prod(self._allowed_x.to(self.device).float(), self._allowed_y.to(self.device).float()) 
+
+        diffs = hits.unsqueeze(1) - allowed_pairs 
+        distances = torch.norm(diffs, dim=2) 
+
+        closest_indices = torch.argmin(distances, dim=1)
+        closest_values = allowed_pairs[closest_indices]
+
+        return closest_values[:,0].detach().cpu(),closest_values[:,1].detach().cpu()
+
+    # -----------------------------------------
+
     @property
     def device(self):
         return self.betas.device
@@ -433,8 +461,8 @@ class CFGDiffusion(nn.Module):
     def p_sample_loop(self, cond, shape, cond_scale = 1.5, rescaled_phi = 0.):
         batch, device = shape[0], self.betas.device
 
-        sample = torch.randn(shape, device=device)
-
+        sample = torch.randn(shape, device=device) # of size (n_samples, input_dim)
+        
         x_start = None
 
         for t in reversed(range(0, self.num_timesteps)):
@@ -455,7 +483,7 @@ class CFGDiffusion(nn.Module):
 
         x_start = None
 
-        for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
+        for time, time_next in time_pairs:
             time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
             pred_noise, x_start, *_ = self.model_predictions(sample, time_cond, cond, cond_scale = cond_scale, rescaled_phi = rescaled_phi, clip_x_start = clip_denoised)
 
@@ -479,27 +507,11 @@ class CFGDiffusion(nn.Module):
         return sample
 
     @torch.no_grad()
-    def sample(self, cond, cond_scale = 1.5, rescaled_phi = 0.):
+    def sample(self, cond, n_samples, cond_scale = 1.5, rescaled_phi = 0.):
         batch_size, input_dim = cond.shape[0], self.input_dim
         sample_fn = self.p_sample_loop if not self.is_ddim_sampling else self.ddim_sample
-        return sample_fn(cond, (batch_size, input_dim), cond_scale, rescaled_phi)
-
-    # @torch.no_grad()
-    # def interpolate(self, x1, x2, cond, t = None, lam = 0.5): # to show smooth transitions
-    #     b, *_, device = *x1.shape, x1.device
-    #     t = default(t, self.num_timesteps - 1)
-
-    #     assert x1.shape == x2.shape
-
-    #     t_batched = torch.stack([torch.tensor(t, device = device)] * b)
-    #     xt1, xt2 = map(lambda x: self.q_sample(x, t = t_batched), (x1, x2))
-
-    #     sample = (1 - lam) * xt1 + lam * xt2
-
-    #     for i in tqdm(reversed(range(0, t)), desc = 'interpolation sample time step', total = t):
-    #         sample, _ = self.p_sample(sample, i, cond)
-
-    #     return sample
+        return sample_fn(cond, (n_samples, input_dim), cond_scale, rescaled_phi)
+        # our batch size here is n_samples per track for dirc sampling
 
     @autocast('cuda', enabled = False)
     def q_sample(self, x_start, t, noise=None):
@@ -548,3 +560,69 @@ class CFGDiffusion(nn.Module):
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
 
         return self.p_losses(x, t, cond, *args, **kwargs)
+    
+    # --------------- hpDIRC sampling ----------------
+
+    def __get_track(self,n_samples, cond):
+        batch_cond = cond.repeat(n_samples, 1)
+        samples = self.sample(
+                            batch_cond, 
+                            n_samples, 
+                            cond_scale=1.5,
+                            rescaled_phi=0.
+                            )
+        x = self.unscale(samples[:,0].flatten(),self.stats['x_max'],self.stats['x_min'])#.round()
+        y = self.unscale(samples[:,1].flatten(),self.stats['y_max'],self.stats['y_min'])#.round()
+        t = self.unscale(samples[:,2].flatten(),self.stats['time_max'],self.stats['time_min'])
+
+        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+
+    def _apply_mask(self, hits):
+        # Time > 0 
+        mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats['time_max']))
+        hits = hits[mask]
+        # Outter bounds
+        mask = torch.where((hits[:, 0] > self.stats['x_min']) & (hits[:, 0] < self.stats['x_max']) & (hits[:, 1] > self.stats['y_min']) & (hits[:, 1] < self.stats['y_max']))[0] # Acceptance mask
+        hits = hits[mask]
+
+        return hits
+
+    def create_tracks(self,num_samples,context,plotting=False): # resampling logic
+        hits = self.__get_track(num_samples,context)
+        updated_hits = self._apply_mask(hits)
+        n_resample = int(num_samples - len(updated_hits))
+        
+
+        self.photons_generated += len(hits)
+        self.photons_resampled += n_resample
+        while n_resample != 0:
+            resampled_hits = self.__get_track(n_resample,context)
+            updated_hits = torch.concat((updated_hits,resampled_hits),0)
+            updated_hits = self._apply_mask(updated_hits)
+            n_resample = int(num_samples - len(updated_hits))
+            self.photons_resampled += n_resample
+            self.photons_generated += len(resampled_hits)
+            
+
+        # Use euclidean distance
+        x,y = self.set_to_closest_2d(updated_hits[:,:-1])
+        #x,y = updated_hits[:,0].detach().cpu(),updated_hits[:,1].detach().cpu()
+        t = updated_hits[:,2].detach().cpu()
+
+        pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
+        col = (1.0/self.pixel_width) * (x - 2 - self.pixel_width/2. - (pmtID%6)*self.gapx)
+        row = (1.0/self.pixel_height) * (y - 2 - self.pixel_height/2. - self.gapy * torch.div(pmtID,torch.tensor(6,dtype=torch.int),rounding_mode='floor'))
+
+        assert(len(row) == num_samples)
+        assert(len(col) == num_samples)
+        assert(len(pmtID) == num_samples)
+
+        P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats['P_max'],self.stats['P_min'])
+        Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats['theta_max'],self.stats['theta_min'])
+        Phi = 0.0
+
+        if not plotting:
+            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
+        else:
+            return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+

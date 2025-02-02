@@ -13,12 +13,17 @@ import itertools
 import matplotlib.pyplot as plt
 import time
 from matplotlib.colors import LogNorm
+
 from models.NF.freia_models import FreiaNet
 from models.OT_Flow.ot_flow import OT_Flow
 from models.FlowMatching.flow_matching import FlowMatching
 from models.Diffusion.resnet import ResNet
+from models.Diffusion.resnet_cfg import ResNet as CFGResNet
 from models.Diffusion.continuous_diffusion import ContinuousTimeGaussianDiffusion
 from models.Diffusion.gsgm import GSGM
+from models.Diffusion.classifier_free_guidance import CFGDiffusion
+from models.Diffusion.gaussian_diffusion import GaussianDiffusion
+
 import matplotlib.colors as mcolors
 import pickle
 import warnings
@@ -85,6 +90,20 @@ def main(config,args):
         nonlinear_noise_schedule = int(config['model_GSGM']['nonlinear_noise_schedule'])
         
         net = GSGM(num_input=input_shape, num_conds=cond_shape, device=device, stats=stats, num_layers=num_layers, num_steps=num_steps, num_embed=num_embed, mlp_dim=hidden_nodes, nonlinear_noise_schedule=nonlinear_noise_schedule, learnedvar=learned_variance)
+    elif args.model_type == 'CFG':
+        num_steps = int(config['model_CFG']['num_steps'])
+        noise_schedule = config['model_CFG']['noise_schedule']
+        sampling_timesteps = config['model_CFG']['sampling_timesteps']
+        noising_level = config['model_CFG']['noising_level']
+        gamma = config['model_CFG']['gamma']
+
+        model = CFGResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
+        net = CFGDiffusion(model=model, stats=stats, timesteps=num_steps, sampling_timesteps=sampling_timesteps, beta_schedule=noise_schedule, ddim_sampling_eta = noising_level, min_snr_loss_weight = True,min_snr_gamma=gamma)
+    elif args.model_type == 'DDPM':
+        num_steps = int(config['model_DDPM']['num_steps'])
+
+        model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
+        net = GaussianDiffusion(denoise_fn=model, stats=stats, timesteps=num_steps, loss_type='l2')
     else:
         raise ValueError("Model type not found.")
 
@@ -92,7 +111,12 @@ def main(config,args):
     print("Network Parameters: ",t_params)
     
     net.to('cuda')
-    net.load_state_dict(dicte['net_state_dict'])
+
+    # For cfg testing
+    if 'model.null_classes_emb' in dicte['net_state_dict']:
+        del dicte['net_state_dict']['model.null_classes_emb']
+    
+    net.load_state_dict(dicte['net_state_dict'], strict=False)
     n_samples = int(config['Inference']['samples'])
 
     if config['method'] == 'Pion':

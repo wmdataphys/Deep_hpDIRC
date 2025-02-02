@@ -33,6 +33,8 @@ def train(config, resume, overwrite = False):
     curr_date = datetime.now()
     exp_name = config['name'] + '___' + curr_date.strftime('%b-%d-%Y___%H:%M:%S')
     exp_name = exp_name[:-11]
+    MODEL_NAME = 'DDPM'
+    print("Training",MODEL_NAME,"model.")
     print(exp_name)
 
     # Create directory structure
@@ -74,23 +76,18 @@ def train(config, resume, overwrite = False):
     val_dataset = hpDIRCCherenkovPhotons(kaon_path=config['dataset']['validation']['kaon_data_path'],
                     pion_path=config['dataset']['validation']['pion_data_path'],inference=True,mode=config['method'],stats=stats)
 
-    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config)
+    train_loader,val_loader = CreateLoaders(train_dataset,val_dataset,config, model_type=MODEL_NAME)
     
 
     num_epochs=int(config['num_epochs'])
     lr = float(config['optimizer']['lr'])
 
     # ResNet/MLP parameters
-    num_layers = int(config['model']['num_layers'])
-    input_shape = int(config['model']['input_shape'])
-    cond_shape = int(config['model']['cond_shape'])
-    hidden_dim = int(config['model']['hidden_dim']) 
-    num_steps = int(config['model']['num_steps'])
-
-    # Diffusion parameters
-    noise_schedule = config['diffusion']['noise_schedule']
-    learned_schedule_net_hidden_dim = int(config['diffusion']['learned_schedule_net_hidden_dim'])
-    gamma = int(config['diffusion']['gamma'])
+    num_layers = int(config['model_DDPM']['num_layers'])
+    input_shape = int(config['model_DDPM']['input_shape'])
+    cond_shape = int(config['model_DDPM']['cond_shape'])
+    hidden_dim = int(config['model_DDPM']['hidden_nodes']) 
+    num_steps = int(config['model_DDPM']['num_steps'])
 
     startEpoch = 0
     global_step = 0

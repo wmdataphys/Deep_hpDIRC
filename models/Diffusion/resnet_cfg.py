@@ -180,7 +180,7 @@ class ResNet(nn.Module):
             self.context_encoder =  nn.Sequential(*[nn.Linear(cond_dim,16),
                                                     nn.ReLU(),
                                                     nn.Linear(16,mlp_dim)]) # needs to be same size as time embedding to add together, 
-            self.null_classes_emb = nn.Parameter(torch.zeros(cond_dim)) # for cfg
+            self.null_classes_emb = nn.Parameter(torch.zeros(mlp_dim)) # for cfg, should be size of mlp. Same as cond_embedding
             # so we project to mlp_dim 
 
         # Residual connection after combining input and time embedding
@@ -215,14 +215,12 @@ class ResNet(nn.Module):
         if cond is None: 
             embed = time_embed
         else:
-            cond = cond.view(cond.size(0),-1)
+            # cond = cond.view(cond.size(0),-1)
             conds_embed = self.activation(self.context_encoder(cond)) if hasattr(self, 'context_encoder') else torch.zeros_like(embed)
             
             if cond_drop_prob > 0:
                 keep_mask = prob_mask_like((batch,), 1 - cond_drop_prob, device = device)
-                # print("keep mask:",keep_mask.shape)
                 null_classes_emb = repeat(self.null_classes_emb, 'd -> b d', b = batch)
-                # print("null classes:",null_classes_emb.shape)
                 conds_embed = torch.where( # randomly masking
                     rearrange(keep_mask, 'b -> b 1'),
                     conds_embed,

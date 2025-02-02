@@ -78,10 +78,10 @@ def cosine_beta_schedule(timesteps, s = 0.008):
     return np.clip(betas, a_min = 0, a_max = 0.999)
 
 
-
 class GaussianDiffusion(nn.Module):
     def __init__(self, 
                  denoise_fn, 
+                 stats,
                  timesteps=1000, 
                  loss_type='l1', 
                  betas = None):
@@ -92,6 +92,58 @@ class GaussianDiffusion(nn.Module):
             betas = betas.detach().cpu().numpy() if isinstance(betas, torch.Tensor) else betas
         else:
             betas = cosine_beta_schedule(timesteps)
+
+        # ------------ hpDIRC constants ------------
+
+        _allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
+                                                16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
+                                                30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
+                                                43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
+                                                62.54841111,  65.86091111,  69.17341111,  72.48591111,
+                                                75.79841111,  79.11091111,  82.42341111,  85.73591111,
+                                                89.04841111,  92.36091111,  95.67341111,  98.98591111,
+                                                102.29841111, 105.61091111, 108.92341111, 112.23591111,
+                                                121.44057223, 124.75307223, 128.06557223, 131.37807223,
+                                                134.69057223, 138.00307223, 141.31557223, 144.62807223,
+                                                147.94057223, 151.25307223, 154.56557223, 157.87807223,
+                                                161.19057223, 164.50307223, 167.81557223, 171.12807223,
+                                                180.33273334, 183.64523334, 186.95773334, 190.27023334,
+                                                193.58273334, 196.89523334, 200.20773334, 203.52023334,
+                                                206.83273334, 210.14523334, 213.45773334, 216.77023334,
+                                                220.08273334, 223.39523334, 226.70773334, 230.02023334,
+                                                239.22489446, 242.53739446, 245.84989446, 249.16239446,
+                                                252.47489446, 255.78739446, 259.09989446, 262.41239446,
+                                                265.72489446, 269.03739446, 272.34989446, 275.66239446,
+                                                278.97489446, 282.28739446, 285.59989446, 288.91239446,
+                                                298.11705557, 301.42955557, 304.74205557, 308.05455557,
+                                                311.36705557, 314.67955557, 317.99205557, 321.30455557,
+                                                324.61705557, 327.92955557, 331.24205557, 334.55455557,
+                                                337.86705557, 341.17955557, 344.49205557, 347.80455557]))
+        _allowed_y = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
+                                                16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
+                                                30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
+                                                43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
+                                                62.01339286,  65.32589286,  68.63839286,  71.95089286,
+                                                75.26339286,  78.57589286,  81.88839286,  85.20089286,
+                                                88.51339286,  91.82589286,  95.13839286,  98.45089286,
+                                                101.76339286, 105.07589286, 108.38839286, 111.70089286,
+                                                120.37053571, 123.68303571, 126.99553571, 130.30803571,
+                                                133.62053571, 136.93303571, 140.24553571, 143.55803571,
+                                                146.87053571, 150.18303571, 153.49553571, 156.80803571,
+                                                160.12053571, 163.43303571, 166.74553571, 170.05803571,
+                                                178.72767857, 182.04017857, 185.35267857, 188.66517857,
+                                                191.97767857, 195.29017857, 198.60267857, 201.91517857,
+                                                205.22767857, 208.54017857, 211.85267857, 215.16517857,
+                                                218.47767857, 221.79017857, 225.10267857, 228.41517857]))
+        
+        self.stats = stats
+
+        self.photons_generated = 0
+        self.photons_resampled = 0
+        self.gapx =  1.89216111455965 + 4.
+        self.gapy = 1.3571428571428572 + 4.
+        self.pixel_width = 3.3125
+        self.pixel_height = 3.3125
 
         alphas = 1. - betas
         alphas_cumprod = np.cumprod(alphas, axis=0)
@@ -124,6 +176,34 @@ class GaussianDiffusion(nn.Module):
             betas * np.sqrt(alphas_cumprod_prev) / (1. - alphas_cumprod)))
         self.register_buffer('posterior_mean_coef2', to_torch(
             (1. - alphas_cumprod_prev) * np.sqrt(alphas) / (1. - alphas_cumprod)))
+
+    # --------- hpDIRC util functions --------- 
+    
+    def unscale(self,x,max_,min_):
+        return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
+
+    def unscale_conditions(self,x,max_,min_):
+        return x * (max_ - min_) + max_
+
+    def set_to_closest(self, x, allowed):
+        x = x.unsqueeze(1)  # Adding a dimension to x for broadcasting
+        diffs = torch.abs(x - allowed.to(self.device).float())
+        closest_indices = torch.argmin(diffs, dim=1)
+        closest_values = allowed[closest_indices]
+        return closest_values
+
+    def set_to_closest_2d(self,hits):
+        allowed_pairs = torch.cartesian_prod(self._allowed_x.to(self.device).float(), self._allowed_y.to(self.device).float()) 
+
+        diffs = hits.unsqueeze(1) - allowed_pairs 
+        distances = torch.norm(diffs, dim=2) 
+
+        closest_indices = torch.argmin(distances, dim=1)
+        closest_values = allowed_pairs[closest_indices]
+
+        return closest_values[:,0].detach().cpu(),closest_values[:,1].detach().cpu()
+
+    # -----------------------------------------
 
     def q_mean_variance(self, x_start, t):
         mean = extract(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start
@@ -188,15 +268,14 @@ class GaussianDiffusion(nn.Module):
 
         # DIRC unscaling: 
 
+        # DIRC unscaling: 
+
         if unscale:
             assert input_dim >= 3
 
-            x = unscale_inputs(sample[:,0].flatten(),STATS['x_max'],STATS['x_min'])
-            y = unscale_inputs(sample[:,1].flatten(),STATS['y_max'],STATS['y_min'])
-            t = unscale_inputs(sample[:,2].flatten(),STATS['time_max'],STATS['time_min'])
-
-            x = _set_to_closest(x, ALLOWED_X, device)
-            y = _set_to_closest(y, ALLOWED_Y, device)
+            x = self.unscale(sample[:,0].flatten(),self.stats['x_max'],self.stats['x_min'])
+            y = self.unscale(sample[:,1].flatten(),self.stats['y_max'],self.stats['y_min'])
+            t = self.unscale(sample[:,2].flatten(),self.stats['time_max'],self.stats['time_min'])
 
             sample = torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1) 
 
@@ -210,44 +289,18 @@ class GaussianDiffusion(nn.Module):
     @torch.no_grad()
     def resample(self, cond, n_samples, input_dim):
         # Resampling with the DIRC detector.
-        initial = self.sample(
+        samples = self.sample(
                             cond, 
                             n_samples, 
                             input_dim,
+                            unscale=True
                             )     
-        updated = _apply_mask(initial, STATS)
-        n_resample = n_samples - len(updated)
-        while n_resample != 0:
-            resampled = self.sample(
-                                cond, 
-                                n_resample, 
-                                input_dim,
-                                )
-            updated = torch.concat((updated, resampled), 0)
-            updated = _apply_mask(updated, STATS)
-            n_resample = n_samples - len(updated)
+        
+        x = self.set_to_closest(samples[:,0],self._allowed_x,cond.device)
+        y = self.set_to_closest(samples[:,1],self._allowed_y,cond.device)
+        t = samples[:,2]
 
-        x = _set_to_closest(updated[:,0],ALLOWED_X,cond.device)
-        y = _set_to_closest(updated[:,1],ALLOWED_Y,cond.device)
-        t = updated[:,2]
-
-        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
-
-    @torch.no_grad()
-    def interpolate(self, x1, x2, t = None, lam = 0.5):
-        b, *_, device = *x1.shape, x1.device
-        t = default(t, self.num_timesteps - 1)
-
-        assert x1.shape == x2.shape
-
-        t_batched = torch.stack([torch.tensor(t, device=device)] * b)
-        xt1, xt2 = map(lambda x: self.q_sample(x, t=t_batched), (x1, x2))
-
-        img = (1 - lam) * xt1 + lam * xt2
-        for i in tqdm(reversed(range(0, t)), desc='interpolation sample time step', total=t):
-            img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long))
-
-        return img
+        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).detach().cpu().numpy()
 
     def q_sample(self, x_start, t, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))
@@ -277,5 +330,69 @@ class GaussianDiffusion(nn.Module):
         b, *_, device = *x.shape, x.device
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
         return self.p_losses(x, t, cond, *args, **kwargs)
+
+    # --------------- hpDIRC sampling ----------------
+
+    def __get_track(self,n_samples, cond, input_dim=3):
+        samples = self.sample(
+                            cond, 
+                            n_samples, 
+                            input_dim,
+                            unscale=False
+                            )
+        x = self.unscale(samples[:,0].flatten(),self.stats['x_max'],self.stats['x_min'])#.round()
+        y = self.unscale(samples[:,1].flatten(),self.stats['y_max'],self.stats['y_min'])#.round()
+        t = self.unscale(samples[:,2].flatten(),self.stats['time_max'],self.stats['time_min'])
+
+        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+
+    def _apply_mask(self, hits):
+        # Time > 0 
+        mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats['time_max']))
+        hits = hits[mask]
+        # Outter bounds
+        mask = torch.where((hits[:, 0] > self.stats['x_min']) & (hits[:, 0] < self.stats['x_max']) & (hits[:, 1] > self.stats['y_min']) & (hits[:, 1] < self.stats['y_max']))[0] # Acceptance mask
+        hits = hits[mask]
+
+        return hits
+
+    def create_tracks(self,num_samples,context,plotting=False): # resampling logic
+        hits = self.__get_track(num_samples,context)
+        updated_hits = self._apply_mask(hits)
+        n_resample = int(num_samples - len(updated_hits))
+        
+
+        self.photons_generated += len(hits)
+        self.photons_resampled += n_resample
+        while n_resample != 0:
+            resampled_hits = self.__get_track(n_resample,context)
+            updated_hits = torch.concat((updated_hits,resampled_hits),0)
+            updated_hits = self._apply_mask(updated_hits)
+            n_resample = int(num_samples - len(updated_hits))
+            self.photons_resampled += n_resample
+            self.photons_generated += len(resampled_hits)
+            
+
+        # Use euclidean distance
+        x,y = self.set_to_closest_2d(updated_hits[:,:-1])
+        #x,y = updated_hits[:,0].detach().cpu(),updated_hits[:,1].detach().cpu()
+        t = updated_hits[:,2].detach().cpu()
+
+        pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
+        col = (1.0/self.pixel_width) * (x - 2 - self.pixel_width/2. - (pmtID%6)*self.gapx)
+        row = (1.0/self.pixel_height) * (y - 2 - self.pixel_height/2. - self.gapy * torch.div(pmtID,torch.tensor(6,dtype=torch.int),rounding_mode='floor'))
+
+        assert(len(row) == num_samples)
+        assert(len(col) == num_samples)
+        assert(len(pmtID) == num_samples)
+
+        P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats['P_max'],self.stats['P_min'])
+        Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats['theta_max'],self.stats['theta_min'])
+        Phi = 0.0
+
+        if not plotting:
+            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
+        else:
+            return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
 
 
