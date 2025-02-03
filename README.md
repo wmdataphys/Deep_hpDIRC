@@ -179,6 +179,10 @@ The first run of this should spawn an Inference folder and put things in there. 
 </div>
 ---
 
+## **Updated Priors for Generation (Updated Feb 3, 2025)**
+
+I've updated new priors (apply_mask function) to alleviate that issue of pileup on the boundaries. The way its currently implemented its about a 2x speed up (could be more depending on model). You may find a better way of doing this. There are 3 new additions to the init() function of the model - num_pmts_y,num_pmts_x,num_pixels. You will need those three for the new prior to work. I have also added an argument to control whether or not you want to use fine grained priors. Consider making this false for testing your models faster.
+
 ### **Creating your own simulation**
 This is more complicated. I don't think you should need to do it so I am going to save myself from detailing this but we can talk about it if you wish. Probably easier for me to run it for you.
 

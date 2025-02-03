@@ -49,6 +49,9 @@ class FreiaNet(nn.Module):
         self.gapy = 1.3571428571428572 + 4.
         self.pixel_width = 3.3125
         self.pixel_height = 3.3125
+        self.num_pixels = 16
+        self.num_pmts_x = 6
+        self.num_pmts_y = 4
 
         self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
                                                    16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
@@ -245,13 +248,38 @@ class FreiaNet(nn.Module):
 
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
 
-    def _apply_mask(self, hits):
+    def _apply_mask(self, hits,fine_grained_prior):
         # Time > 0 
         mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats_['time_max']))
         hits = hits[mask]
         # Outter bounds
         mask = torch.where((hits[:, 0] > self.stats_['x_min']) & (hits[:, 0] < self.stats_['x_max']) & (hits[:, 1] > self.stats_['y_min']) & (hits[:, 1] < self.stats_['y_max']))[0] # Acceptance mask
         hits = hits[mask]
+
+        # Can we make this faster? Currently 2x increase.
+        if fine_grained_prior:
+            # Spacings along x
+            valid_x_mask = torch.ones(hits.shape[0], dtype=torch.bool, device=hits.device)
+            for i in range(1, self.num_pmts_x): 
+                x_low = self._allowed_x[i * self.num_pixels - 1] + self.pixel_width/2.0
+                x_high = self._allowed_x[i * self.num_pixels] - self.pixel_width/2.0
+                mask = (hits[:, 0] > x_low) & (hits[:, 0] < x_high)
+                valid_x_mask &= ~mask  
+                #print("x",i,x_low,x_high)
+
+            hits = hits[valid_x_mask]
+            
+            # Spacings along y
+            valid_y_mask = torch.ones(hits.shape[0], dtype=torch.bool, device=hits.device)
+            for i in range(1, self.num_pmts_y): 
+                y_low = self._allowed_y[i * self.num_pixels - 1] + self.pixel_height/2.0
+                y_high = self._allowed_y[i * self.num_pixels] - self.pixel_height/2.0
+                mask = (hits[:, 1] > y_low) & (hits[:, 1] < y_high)
+                valid_y_mask &= ~mask
+                #print("y",i,y_low,y_high)
+
+            hits = hits[valid_y_mask]
+
 
         return hits
 
@@ -264,21 +292,22 @@ class FreiaNet(nn.Module):
 
         return int(np.random.choice(self.global_values,p=self.LUT[closest_p][closest_theta]))
 
-    def create_tracks(self,num_samples,context,p=None,theta=None):
+    def create_tracks(self,num_samples,context,p=None,theta=None,fine_grained_prior=True):
         if num_samples is None:
             assert p is not None and theta is not None, "p and theta must be provided if num_samples is None."
             num_samples = self.__sample_photon_yield(p,theta)
 
         hits = self.__get_track(num_samples,context)
-        updated_hits = self._apply_mask(hits)
+        updated_hits = self._apply_mask(hits,fine_grained_prior=fine_grained_prior)
         n_resample = int(num_samples - len(updated_hits))
+        #print(n_resample,num_samples)
         
         self.photons_generated += len(hits)
         self.photons_resampled += n_resample
         while n_resample != 0:
             resampled_hits = self.__get_track(n_resample,context)
             updated_hits = torch.concat((updated_hits,resampled_hits),0)
-            updated_hits = self._apply_mask(updated_hits)
+            updated_hits = self._apply_mask(updated_hits,fine_grained_prior=fine_grained_prior)
             n_resample = int(num_samples - len(updated_hits))
             self.photons_resampled += n_resample
             self.photons_generated += len(resampled_hits)

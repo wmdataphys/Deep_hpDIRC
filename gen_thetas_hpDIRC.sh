@@ -24,13 +24,13 @@ do
     if ls "${output_dir}"/*Pion*theta_${theta}* 1> /dev/null 2>&1; then
         echo "Pion file for theta $theta already exists. Skipping..."
     else
-        python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Pion" --model_type $model_type --sample_photons 
+        python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Pion" --model_type $model_type 
     fi
 
     if ls "${output_dir}"/*Kaon*theta_${theta}* 1> /dev/null 2>&1; then
        echo "Kaon file for theta $theta already exists. Skipping..."
     else
-       python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Kaon" --model_type $model_type --sample_photons
+       python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Kaon" --model_type $model_type
     fi
 
     theta=$((theta + 5))

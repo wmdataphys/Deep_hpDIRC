@@ -111,6 +111,8 @@
     "Inference": {
             "gen_dir": "Figures/hpDIRC_theta90_p6",
             "samples": 1,
+            "pion_model_path_NF_10k": "Trained_Models/Pion_NF_MOG40_10kBatch_epoch99_val_loss_-2.862819.pth",
+            "kaon_model_path_NF_10k": "Trained_Models/Kaon_NF_MOG40_10kBatch_epoch99_val_loss_-2.775874.pth",
             "pion_model_path_NF": "Trained_Models/MOG/k40/Pion_hpDIRC_MoG_20L_128Node_k40_RESUME_v3_epoch95_val_loss_-2.932614.pth",
             "kaon_model_path_NF": "Trained_Models/MOG/k40/Kaon_hpDIRC_MoG_20L_128Node_k40_RESUME_v3_epoch99_val_loss_-2.844851.pth",
             "pion_model_path_CNF_": "Trained_Models/CNF/Pion_hpDIRC_CNF_MOG40_epoch04_val_loss_-26.291540.pth",
@@ -124,9 +126,9 @@
             "pion_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_MOG40___Jan-23-2025/Pion_FlowMatch_Affine_MOG40_epoch99_val_loss_0.584035.pth",
             "kaon_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_MOG40_RESUME_V2_epoch99_val_loss_0.586034.pth",
             "pion_model_path_FlowMatching_3L": "Trained_Models/FlowMatching/Pion_FlowMatch_3L_Test_epoch95_val_loss_0.575553.pth",
-            "fixed_point_dir": "FlowMatching_PhotonSampling",
+            "fixed_point_dir": "FlowMatch_Test_NewPrior_20nt",
             "full_phase_space_dir": "NF_FullPhaseSpaceGen",
-            "out_dir_fixed": "Inference/NF_UpdatedSims_Include155_300Photons_Jan30",
+            "out_dir_fixed": "Inference/NF_10kBatch_Test",
             "out_dir_cont": "Inference/NF_MOG40_FullPhaseSpace_Jan23"
          },
     "Photon_Sampler":{
