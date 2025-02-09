@@ -323,7 +323,7 @@ class FlowMatching(nn.Module):
 
         return int(np.random.choice(self.global_values,p=self.LUT[closest_p][closest_theta]))
 
-    def create_tracks(self,num_samples,context,p=None,theta=None,nt=20,fine_grained_prior=True):
+    def create_tracks(self,num_samples,context,p=None,theta=None,nt=5,fine_grained_prior=True):
         if num_samples is None:
             assert p is not None and theta is not None, "p and theta must be provided if num_samples is None."
             num_samples = self.__sample_photon_yield(p,theta)
@@ -349,7 +349,8 @@ class FlowMatching(nn.Module):
         pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
         col = (1.0/self.pixel_width) * (x - 2 - self.pixel_width/2. - (pmtID%6)*self.gapx)
         row = (1.0/self.pixel_height) * (y - 2 - self.pixel_height/2. - self.gapy * torch.div(pmtID,torch.tensor(6,dtype=torch.int),rounding_mode='floor'))
-
+        pixelID = 16 * (row - (pmtID // 6) * 16) + (col - (pmtID % 6) * 16)
+        channel = pmtID * self.num_pixels**2 + pixelID
         assert(len(row) == num_samples)
         assert(len(col) == num_samples)
         assert(len(pmtID) == num_samples)
@@ -358,5 +359,5 @@ class FlowMatching(nn.Module):
         Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
         Phi = 0.0
 
-        return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
+        return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy(),"pixelID":pixelID.numpy(),"channel":channel.numpy()}
 

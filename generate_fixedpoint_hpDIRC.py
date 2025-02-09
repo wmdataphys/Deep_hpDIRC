@@ -123,6 +123,12 @@ def main(config,args):
     else:
         print("Using photon yield associated to ground truth track.")
 
+    if args.fine_grained_prior:
+        print("Using fine grained prior for PMTs. Consider disabling for increased generation speed.")
+    else:
+        print("Fine grained prior disabled. Consider enabling for high fidelity.")
+
+
     generations = []
     kbar = pkbar.Kbar(target=len(list_to_gen), width=20, always_stateful=False)
     start = time.time()
@@ -135,13 +141,13 @@ def main(config,args):
             
             if not args.sample_photons:
                 if list_to_gen[i]['NHits'] > 0 and list_to_gen[i]['NHits'] < 300:
-                    gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0))
+                    gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0),fine_grained_prior=args.fine_grained_prior)
                 else:
                     #print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
                     continue
             else:
                 if list_to_gen[i]['NHits'] > 0 and list_to_gen[i]['NHits'] < 300:
-                    gen = net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=list_to_gen[i]['P'],theta=list_to_gen[i]['Theta'])
+                    gen = net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=list_to_gen[i]['P'],theta=list_to_gen[i]['Theta'],fine_grained_prior=args.fine_grained_prior)
                 else:
                     #print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
                     continue
@@ -206,6 +212,7 @@ if __name__=='__main__':
     parser.add_argument('-m', '--method',default="Kaon",type=str,help='Generated particle type, Kaon or Pion.')
     parser.add_argument('-mt','--model_type',default="NF",type=str,help='Which model to use.')
     parser.add_argument('-sp','--sample_photons', action='store_true', help="Enable verbose mode")
+    parser.add_argument('-f','--fine_grained_prior',action='store_true',help="Enable fine grained prior, default False.")
     args = parser.parse_args()
 
     config = json.load(open(args.config))

@@ -30,6 +30,11 @@
         "hidden_nodes": 128
     },
     "dataset": {
+        "time_imaging":{
+            "data_path_9GeV": "data/TimeImaging_9GeV/Combined_pik_9GeV_TimeImaging_PiK.pkl",
+            "data_path_6GeV": "data/TimeImaging_6GeV/Combined_pik_6GeV_TimeImaging_PiK.pkl",
+            "data_path_3GeV": "data/TimeImaging_3GeV/Combined_pik_3GeV_TimeImaging_PiK.pkl"
+        },
         "fixed_point":{
             "pion_data_path_6GeV_": "data/6GeV/mixed_pik_all_theta_Pions.pkl",
             "kaon_data_path_6GeV_": "data/6GeV/mixed_pik_all_theta_Kaons.pkl",
@@ -126,10 +131,11 @@
             "pion_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Pion_FlowMatch_Affine_MOG40___Jan-23-2025/Pion_FlowMatch_Affine_MOG40_epoch99_val_loss_0.584035.pth",
             "kaon_model_path_FlowMatching_MOG": "Trained_Models/FlowMatching/Kaon_FlowMatch_Affine_MOG40_RESUME_V2_epoch99_val_loss_0.586034.pth",
             "pion_model_path_FlowMatching_3L": "Trained_Models/FlowMatching/Pion_FlowMatch_3L_Test_epoch95_val_loss_0.575553.pth",
-            "fixed_point_dir": "FlowMatch_Test_NewPrior_20nt",
+            "fixed_point_dir": "NF_New_Prior_3GeV",
             "full_phase_space_dir": "NF_FullPhaseSpaceGen",
             "out_dir_fixed": "Inference/NF_10kBatch_Test",
-            "out_dir_cont": "Inference/NF_MOG40_FullPhaseSpace_Jan23"
+            "out_dir_cont": "Inference/NF_MOG40_FullPhaseSpace_Jan23",
+            "time_imaging_dir": "FlowMatching_TimeImaging_6GeV"
          },
     "Photon_Sampler":{
         "Pion_dataset": "data/Pion_Hits_Dataset.pkl",
