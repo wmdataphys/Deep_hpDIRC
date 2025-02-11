@@ -173,7 +173,7 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
                                                    205.22767857, 208.54017857, 211.85267857, 215.16517857,
                                                    218.47767857, 221.79017857, 225.10267857, 228.41517857])).to(self.device) 
         
-        self.stats = stats
+        self.stats_ = stats
 
         self.photons_generated = 0
         self.photons_resampled = 0
@@ -181,6 +181,9 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
         self.gapy = 1.3571428571428572 + 4.
         self.pixel_width = 3.3125
         self.pixel_height = 3.3125
+        self.num_pixels = 16
+        self.num_pmts_x = 6
+        self.num_pmts_y = 4
 
         # continuous noise schedule related stuff
         self.noise_schedule = noise_schedule
@@ -319,9 +322,9 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
         if unscale:
             assert input_dim >= 3
 
-            x = self.unscale(sample[:,0].flatten(),self.stats['x_max'],self.stats['x_min'])
-            y = self.unscale(sample[:,1].flatten(),self.stats['y_max'],self.stats['y_min'])
-            t = self.unscale(sample[:,2].flatten(),self.stats['time_max'],self.stats['time_min'])
+            x = self.unscale(sample[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
+            y = self.unscale(sample[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
+            t = self.unscale(sample[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
 
             sample = torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1) 
 
@@ -404,25 +407,64 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
                             input_dim,
                             unscale=False
                             )
-        x = self.unscale(samples[:,0].flatten(),self.stats['x_max'],self.stats['x_min'])#.round()
-        y = self.unscale(samples[:,1].flatten(),self.stats['y_max'],self.stats['y_min'])#.round()
-        t = self.unscale(samples[:,2].flatten(),self.stats['time_max'],self.stats['time_min'])
+        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])#.round()
+        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])#.round()
+        t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
 
         return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
 
-    def _apply_mask(self, hits):
+    def __sample_photon_yield(self,p_value,theta_value):
+        closest_p_idx = np.argmin(np.abs(self.p_points - p_value))
+        closest_p = float(self.p_points[closest_p_idx])
+        
+        closest_theta_idx = np.argmin(np.abs(self.theta_points - theta_value))
+        closest_theta = float(self.theta_points[closest_theta_idx])
+
+        return int(np.random.choice(self.global_values,p=self.LUT[closest_p][closest_theta]))
+    
+    def _apply_mask(self, hits,fine_grained_prior):
         # Time > 0 
-        mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats['time_max']))
+        mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats_['time_max']))
         hits = hits[mask]
         # Outter bounds
-        mask = torch.where((hits[:, 0] > self.stats['x_min']) & (hits[:, 0] < self.stats['x_max']) & (hits[:, 1] > self.stats['y_min']) & (hits[:, 1] < self.stats['y_max']))[0] # Acceptance mask
+        mask = torch.where((hits[:, 0] > self.stats_['x_min']) & (hits[:, 0] < self.stats_['x_max']) & (hits[:, 1] > self.stats_['y_min']) & (hits[:, 1] < self.stats_['y_max']))[0] # Acceptance mask
         hits = hits[mask]
+
+        # Can we make this faster? Currently 2x increase.
+        if fine_grained_prior:
+            # Spacings along x
+            valid_x_mask = torch.ones(hits.shape[0], dtype=torch.bool, device=hits.device)
+            for i in range(1, self.num_pmts_x): 
+                x_low = self._allowed_x[i * self.num_pixels - 1] + self.pixel_width/2.0
+                x_high = self._allowed_x[i * self.num_pixels] - self.pixel_width/2.0
+                mask = (hits[:, 0] > x_low) & (hits[:, 0] < x_high)
+                valid_x_mask &= ~mask  
+                #print("x",i,x_low,x_high)
+
+            hits = hits[valid_x_mask]
+            
+            # Spacings along y
+            valid_y_mask = torch.ones(hits.shape[0], dtype=torch.bool, device=hits.device)
+            for i in range(1, self.num_pmts_y): 
+                y_low = self._allowed_y[i * self.num_pixels - 1] + self.pixel_height/2.0
+                y_high = self._allowed_y[i * self.num_pixels] - self.pixel_height/2.0
+                mask = (hits[:, 1] > y_low) & (hits[:, 1] < y_high)
+                valid_y_mask &= ~mask
+                #print("y",i,y_low,y_high)
+
+            hits = hits[valid_y_mask]
+
 
         return hits
 
-    def create_tracks(self,num_samples,context,plotting=False): # resampling logic
+
+    def create_tracks(self,num_samples,context,p=None,theta=None,fine_grained_prior=True): # resampling logic
+        if num_samples is None:
+            assert p is not None and theta is not None, "p and theta must be provided if num_samples is None."
+            num_samples = self.__sample_photon_yield(p,theta)
+        
         hits = self.__get_track(num_samples,context)
-        updated_hits = self._apply_mask(hits)
+        updated_hits = self._apply_mask(hits,fine_grained_prior=fine_grained_prior)
         n_resample = int(num_samples - len(updated_hits))
         
 
@@ -431,7 +473,7 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
         while n_resample != 0:
             resampled_hits = self.__get_track(n_resample,context)
             updated_hits = torch.concat((updated_hits,resampled_hits),0)
-            updated_hits = self._apply_mask(updated_hits)
+            updated_hits = self._apply_mask(updated_hits,fine_grained_prior=fine_grained_prior)
             n_resample = int(num_samples - len(updated_hits))
             self.photons_resampled += n_resample
             self.photons_generated += len(resampled_hits)
@@ -445,17 +487,15 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
         pmtID = torch.div(x,torch.tensor(58,dtype=torch.int),rounding_mode='floor') + torch.div(y, torch.tensor(58,dtype=torch.int),rounding_mode='floor') * 6
         col = (1.0/self.pixel_width) * (x - 2 - self.pixel_width/2. - (pmtID%6)*self.gapx)
         row = (1.0/self.pixel_height) * (y - 2 - self.pixel_height/2. - self.gapy * torch.div(pmtID,torch.tensor(6,dtype=torch.int),rounding_mode='floor'))
+        pixelID = 16 * (row - (pmtID // 6) * 16) + (col - (pmtID % 6) * 16)
+        channel = pmtID * self.num_pixels**2 + pixelID
 
         assert(len(row) == num_samples)
         assert(len(col) == num_samples)
         assert(len(pmtID) == num_samples)
 
-        P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats['P_max'],self.stats['P_min'])
-        Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats['theta_max'],self.stats['theta_min'])
+        P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats_['P_max'],self.stats_['P_min'])
+        Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
         Phi = 0.0
 
-        if not plotting:
-            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
-        else:
-            return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
-
+        return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy(),"pixelID":pixelID.numpy(),"channel":channel.numpy()}

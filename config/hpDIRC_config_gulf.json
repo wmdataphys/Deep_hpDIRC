@@ -142,6 +142,6 @@
             "kaon_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KDDPM_6L_T100___Feb-02-2025/KDDPM_6L_T100_epoch149_train_loss_0.225653.pth",
             "out_dir": "Inference/OTFlow_FullTrain_v2_6GeV_TestRevKinScale",
             "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/ParticleGun/Generated_Data/NF_Generated",
-            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/DDPM_4L_T100_6GeV"
+            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_T100_cosine_3GeV"
         }
 }

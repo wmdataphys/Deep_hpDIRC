@@ -14,8 +14,6 @@ momentum=6
 model_type="Score"
 config_file="config/hpDIRC_config_gulf.json"
 momentum=3
-model_type="NF"
-config_file="config/hpDIRC_config_clean.json"
 
 output_dir=$(python -c "
 import json
