@@ -13,6 +13,9 @@ theta=25
 momentum=6
 model_type="Score"
 config_file="config/hpDIRC_config_gulf.json"
+momentum=3
+model_type="NF"
+config_file="config/hpDIRC_config_clean.json"
 
 output_dir=$(python -c "
 import json
@@ -33,13 +36,13 @@ do
     if ls "${output_dir}"/*Pion*theta_${theta}* 1> /dev/null 2>&1; then
         echo "Pion file for theta $theta already exists. Skipping..."
     else
-        python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Pion" --model_type $model_type
+        python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Pion" --model_type $model_type --fine_grained_prior
     fi
 
     if ls "${output_dir}"/*Kaon*theta_${theta}* 1> /dev/null 2>&1; then
        echo "Kaon file for theta $theta already exists. Skipping..."
     else
-       python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Kaon" --model_type $model_type
+       python generate_fixedpoint_hpDIRC.py --config "$config_file" --momentum $momentum --theta $theta --method "Kaon" --model_type $model_type --fine_grained_prior
     fi
 
     theta=$((theta + 5))

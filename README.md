@@ -1,5 +1,9 @@
 # Fast Simulation for the hpDIRC
 
+**Important update**
+
+See Photon Yield Sampling with LUT below.
+
 ![Example Hit Patterns](assets/Overlayed_hits.png)
 
 This repository contains all the necessary files for running the hpDIRC fast simulation. I've organized them in a way that should be easy to modify and generate new simulations based on your needs.
@@ -120,6 +124,31 @@ I have included code for quantitative assessment of the fast simulations. This i
 - **RMS Y:** 0.053842877274253714 
 - **RMS Time:** 0.020213269591735018
 
+---
+
+## **Photon Yield Sampling with LUT (Updated Jan 31,2025)**
+
+This is a relatively large change and will eventually need to be integrated into your code base. I have came up with a method to sample the photon yield as a function of the kinematics such that we are able to run full simulations, i.e., we no longer need to know the ground truth number of hits to generate. This is aligned with the future idea of having this in a fully containerized application for people to use. The LUT functions in bins of 100MeV in momentum, and 1 Degree in theta. For each momentum, theta bin (key, value pairs in a dictionary) we form a probability distribution over the frequency of the photon yield, convolve this with a Gaussian distribution (smoothing) and then store the probability of the yields. We can then sample through a random.choice using these probabilities. This LUT is independent of the generative models themselves, and can be improved with more data. I have added it into my model classes such that training scripts **do not** need to be modified. The files needed to create the LUT can be found at:
+
+```bash
+/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Kaon_Hits_Dataset.pkl
+
+/sciclone/data10/jgiroux/Cherenkov/hpDIRC/FullPhaseSpace/Pion_Hits_Dataset.pkl
+```
+
+Check the updated fields in the config file. You can then run (interactive job, say 8 cores, 2000mb per core, its low memory and CPU):
+
+```bash
+python photon_sampler.py --config config/hpDIRC_config_clean.json
+```
+
+Where you will use your config file. This will create a folder called Photon_Yield which contains the LUT and some plots (take a look at these plots to make sure things look right). Important files that are/need to be updated:
+
+- Your models: See one of my models for inclusion of the LUT. i.e., init() function and associated arguments, sample_photon_yield() function, modified create_tracks() function.
+- Fixed points generation file: You will see the generation portion, i.e., the loop, has been updated to support photon yield sampling. This can be toggled on and off through a new arg called --sample_photons
+- The .sh or .tcsh scripts: use the above arg to toggle on and off use of photon sampling. Off means using ground truth yield, same as what has been done.
+
+
 ## **Generation over full phase space (Updated Jan 22, 2025)**
 I added additional code for ratio plots over the full phase space, you can run it using:
 
@@ -149,6 +178,10 @@ The first run of this should spawn an Inference folder and put things in there. 
   <img src="assets/Seperation_NF_LUT_6GeV.png" alt="Figure 1: Pion Ratios" width="80%">
 </div>
 ---
+
+## **Updated Priors for Generation (Updated Feb 3, 2025)**
+
+I've updated new priors (apply_mask function) to alleviate that issue of pileup on the boundaries. The way its currently implemented its about a 2x speed up (could be more depending on model). You may find a better way of doing this. There are 3 new additions to the init() function of the model - num_pmts_y,num_pmts_x,num_pixels. You will need those three for the new prior to work. I have also added an argument to control whether or not you want to use fine grained priors. Consider making this false for testing your models faster.
 
 ### **Creating your own simulation**
 This is more complicated. I don't think you should need to do it so I am going to save myself from detailing this but we can talk about it if you wish. Probably easier for me to run it for you.
