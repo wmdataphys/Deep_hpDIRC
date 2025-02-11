@@ -103,7 +103,7 @@ def main(config,args):
         num_steps = int(config['model_DDPM']['num_steps'])
 
         model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
-        net = GaussianDiffusion(denoise_fn=model, stats=stats, timesteps=num_steps, loss_type='l2')
+        net = GaussianDiffusion(denoise_fn=model, device=device, stats=stats, timesteps=num_steps, loss_type='l2')
     else:
         raise ValueError("Model type not found.")
 

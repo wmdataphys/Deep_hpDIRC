@@ -108,9 +108,10 @@ def train(config, resume, overwrite = False):
     optimizer = optim.AdamW(model.parameters(), lr=lr)
 
     diffusion = GaussianDiffusion(model, 
-                                  stats,
-                                  timesteps=num_steps, 
-                                  loss_type='l2')
+                                device=device,
+                                stats=stats,
+                                timesteps=num_steps, 
+                                loss_type='l2')
 
     diffusion.to(device)
 

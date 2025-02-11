@@ -81,12 +81,15 @@ def cosine_beta_schedule(timesteps, s = 0.008):
 class GaussianDiffusion(nn.Module):
     def __init__(self, 
                  denoise_fn, 
+                 device,
                  stats,
                  timesteps=1000, 
                  loss_type='l1', 
                  betas = None):
         super().__init__()
+        
         self.denoise_fn = denoise_fn
+        self.device = device
 
         if exists(betas):
             betas = betas.detach().cpu().numpy() if isinstance(betas, torch.Tensor) else betas
@@ -396,6 +399,6 @@ class GaussianDiffusion(nn.Module):
         if not plotting:
             return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy()}
         else:
-            return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
+            return torch.concatv((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1)
 
 

@@ -10,8 +10,8 @@
 #SBATCH -t 72:00:00
 
 theta=25
-momentum=3
-model_type="GSGM"
+momentum=6
+model_type="Score"
 config_file="config/hpDIRC_config_gulf.json"
 
 output_dir=$(python -c "

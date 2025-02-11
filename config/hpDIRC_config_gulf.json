@@ -1,8 +1,8 @@
 {
-    "name": "PDDPM_6L_T100",
+    "name": "KDDPM_4L_T200",
     "seed": 752022,
     "run_val":0,
-    "method":"Pion",
+    "method":"Kaon",
     "datatype": "Simulation",
     "sim_type": "pgun",
     "stats": {"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},
@@ -25,10 +25,10 @@
         "gamma":0
         },
     "model_DDPM":{
-        "num_layers":6,
+        "num_layers":4,
         "input_shape":3,
         "cond_shape":2,
-        "num_steps":100,
+        "num_steps":200,
         "hidden_nodes": 128
     },
     "model_GSGM":{
@@ -48,7 +48,7 @@
         "hidden_nodes": 128,
         "num_steps":100,
         "noise_schedule":"cosine",
-        "sampling_timesteps":50,
+        "sampling_timesteps":100,
         "noising_level":0.7,
         "gamma":0
     },
@@ -137,9 +137,11 @@
             "pion_model_path_GSGM":"/sciclone/data10/mcmartinez/hpDIRC_Models/PGSGM_4L_T100___Jan-23-2025/PGSGM_4L_T100_epoch121_train_loss_44.389694.pth",
             "kaon_model_path_GSGM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KGSGM_4L_T100___Jan-28-2025/KGSGM_4L_T100_epoch104_train_loss_9.493466.pth",
             "pion_model_path_CFG":"/sciclone/data10/mcmartinez/hpDIRC_Models/PCFG_4L_T100___Jan-29-2025/PCFG_4L_T100_epoch129_train_loss_0.224992.pth",
-            "kaon_model_path_CFG":"",
+            "kaon_model_path_CFG":"/sciclone/data10/mcmartinez/hpDIRC_Models/KCFG_4L_T100___Jan-31-2025/KCFG_4L_T100_epoch99_train_loss_0.225634.pth",
+            "pion_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/PDDPM_6L_T100___Feb-01-2025/KDDPM_6L_T100_epoch116_train_loss_0.225650.pth",
+            "kaon_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KDDPM_6L_T100___Feb-02-2025/KDDPM_6L_T100_epoch149_train_loss_0.225653.pth",
             "out_dir": "Inference/OTFlow_FullTrain_v2_6GeV_TestRevKinScale",
             "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/ParticleGun/Generated_Data/NF_Generated",
-            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/CFG_4L_T100_6GeV"
+            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/DDPM_4L_T100_6GeV"
         }
 }

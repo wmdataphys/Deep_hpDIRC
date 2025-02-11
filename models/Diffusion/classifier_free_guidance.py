@@ -568,7 +568,7 @@ class CFGDiffusion(nn.Module):
         samples = self.sample(
                             batch_cond, 
                             n_samples, 
-                            cond_scale=1.5,
+                            cond_scale=1.1,
                             rescaled_phi=0.
                             )
         x = self.unscale(samples[:,0].flatten(),self.stats['x_max'],self.stats['x_min'])#.round()
