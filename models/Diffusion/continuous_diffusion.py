@@ -422,6 +422,58 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
 
         return int(np.random.choice(self.global_values,p=self.LUT[closest_p][closest_theta]))
     
+    # def _apply_mask(self, hits,fine_grained_prior):
+    #     # Time > 0 
+    #     mask_time = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats_['time_max']))[0]
+    #     hits = hits[mask_time]
+    #     # Outer bounds
+    #     mask_bounds = torch.where((hits[:, 0] > self.stats_['x_min']) & (hits[:, 0] < self.stats_['x_max']) & (hits[:, 1] > self.stats_['y_min']) & (hits[:, 1] < self.stats_['y_max']))[0] # Acceptance mask
+    #     hits = hits[mask_bounds]
+
+    #     # Can we make this faster? Currently 2x increase.
+    #     if fine_grained_prior:
+    #         # Vectorize 
+
+    #         x_lows = []
+    #         x_highs = []
+    #         for i in range(1, self.num_pmts_x):
+    #             x_low = self._allowed_x[i * self.num_pixels - 1] + self.pixel_width/2.0
+    #             x_high = self._allowed_x[i * self.num_pixels] - self.pixel_width/2.0
+    #             x_lows.append(x_low)
+    #             x_highs.append(x_high)
+            
+    #         x_lows = torch.tensor(x_lows, device=hits.device).unsqueeze(0)
+    #         x_highs = torch.tensor(x_highs, device=hits.device).unsqueeze(0)
+
+    #         hits_x = hits[:, 0].unsqueeze(1)
+
+    #         excluded_x = (hits_x > x_lows) & (hits_x < x_highs)
+    #         excluded_x_any = excluded_x.any(dim=1)
+
+            
+    #         y_lows = []
+    #         y_highs = []
+    #         for i in range(1,self.num_pmts_y):
+    #             y_low = self._allowed_y[i * self.num_pixels - 1] + self.pixel_height/2.0
+    #             y_high = self._allowed_y[i * self.num_pixels] - self.pixel_height/2.0
+    #             y_lows.append(y_low)
+    #             y_highs.append(y_high)
+            
+    #         y_lows = torch.tensor(y_lows, device = hits.device).unsqueeze(0)
+    #         y_highs = torch.tensor(y_highs, device = hits.device).unsqueeze(0)
+
+    #         hits_y = hits[:,0].unsqueeze(1)
+
+    #         excluded_y = (hits_y > y_lows) & (hits_y < y_highs)
+    #         excluded_y_any = excluded_y.any(dim=1)
+
+    #         # combine masks
+    #         excluded_mask = excluded_x_any | excluded_y_any
+    #         hits = hits[~excluded_mask]
+
+    #     return hits
+
+
     def _apply_mask(self, hits,fine_grained_prior):
         # Time > 0 
         mask = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats_['time_max']))

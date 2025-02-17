@@ -8,6 +8,17 @@ from PIL import Image
 import argparse
 import json
 
+import matplotlib.gridspec as gridspec
+from matplotlib.lines import Line2D
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
+
+from matplotlib.font_manager import FontProperties
+
+
 ####################################### hpDIRC Discretization #################################
 gapx =  1.89216111455965 + 4.
 gapy = 1.3571428571428572 + 4.
@@ -69,7 +80,7 @@ def convert_indices(pmtID,pixelID):
     
     return x,y
 
-def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=True):
+def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=True, time_cutoff=1.5e-4):
     data = np.load(file_path,allow_pickle=True)
     xs = []
     ys = []
@@ -94,67 +105,154 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
     true_ys = np.concatenate(true_ys).astype('float32')
     true_time = np.concatenate(true_time)
 
-    fig, ax = plt.subplots(2,2,figsize=(18,12))
-    ax = ax.ravel()
+    gs = gridspec.GridSpec(3, 2, height_ratios=[1.5, 0.5, 1])
+
+    fig = plt.figure(figsize=(18, 12),dpi=300)
+
+    ax1 = fig.add_subplot(gs[0, 0])  # Top-left
+    ax2 = fig.add_subplot(gs[0, 1])  # Top-right
+    ax3 = fig.add_subplot(gs[2, :])  # Bottom image, spans both columns
+
+    ax3.set_position([
+        ax1.get_position().x0 + (ax2.get_position().x0 - ax1.get_position().x0) / 2,  # Center horizontally
+        ax3.get_position().y0,  # Keep original y position
+        ax1.get_position().width * 1.2,  # Keep same width as top images
+        ax1.get_position().height  # Keep same height
+    ])
+
     if log_norm:
         norm = LogNorm()
     else:
         norm = None
-        
-    ax[0].hist2d(xs,ys,bins=[bins_x,bins_y],norm=norm,density=True)
-    ax[0].set_title(label + " Fast Simulated Hit Pattern",fontsize=20)
-    ax[0].tick_params(axis="both", labelsize=18) 
-
-    ax[1].hist(time,bins=t_bins,density=True,histtype='step',color='k')
-    ax[1].set_xlabel("Fast Simulated Time (ns)",fontsize=20)
-    ax[1].tick_params(axis="both", labelsize=18) 
-    ax[1].set_ylabel("A.U.",fontsize=20)
-    ax[1].set_title(r"$|\vec{p}|$ ="+r" {0} GeV/c,".format(momentum) + r" $\theta = {0}^o$".format(theta),fontsize=20)
     
-    ax[2].hist2d(true_xs,true_ys,bins=[bins_x,bins_y],norm=norm,density=True)
-    ax[2].set_title(label + " Geant4 Hit Pattern",fontsize=20)
-    ax[2].tick_params(axis="both", labelsize=18) 
+    title_font = FontProperties(family="Verdana", size=24)
 
-    ax[3].hist(true_time,bins=t_bins,density=True,histtype='step',color='k')
-    ax[3].set_xlabel("Geant4 Time (ns)",fontsize=20)
-    ax[3].tick_params(axis="both", labelsize=18) 
-    ax[3].set_ylabel("A.U.",fontsize=20)
-    ax[3].set_title(r"$|\vec{p}|$ ="+r" {0} GeV/c,".format(momentum) + r" $\theta = {0}^o$".format(theta),fontsize=20)
+    ax1.hist2d(xs,ys,bins=[bins_x,bins_y],norm=norm,density=True)
+    ax1.set_title(label + " Fast Simulated Hit Patterns",fontproperties=title_font)
+    ax1.tick_params(axis="both", labelsize=18) 
+    ax1.set_xlabel("X (mm)",fontsize=20)
+    ax1.set_ylabel("Y (mm)",fontsize=20)
+
+    ax2.hist2d(true_xs,true_ys,bins=[bins_x,bins_y],norm=norm,density=True)
+    ax2.set_title(label + " Geant4 Hit Pattern",fontproperties=title_font)
+    ax2.tick_params(axis="both", labelsize=18) 
+    ax2.set_xlabel("X (mm)",fontsize=20)
+    ax2.set_ylabel("Y (mm)",fontsize=20)
+
+    counts, bin_edges, _ = ax3.hist(time,bins=t_bins,label = 'FastSim', density=True,histtype='step',color='r',linewidth=1.5)
+    # Dynamic binning
+    for i in range(len(counts)-1, -1, -1):
+        if counts[i] >= time_cutoff:
+            bins_max = bin_edges[i+1]
+            break
     
-    plt.subplots_adjust(wspace=0.2,hspace=0.3)
-    save_path = os.path.join(outpath,filename[:-3]+".png")
+    tcounts, tbin_edges, _ = ax3.hist(true_time,bins=t_bins,label = 'Geant4',density=True,histtype='step',color='k',linewidth=1.5)
+    for i in range(len(tcounts)-1, -1, -1):
+        if tcounts[i] >= time_cutoff:
+            tbins_max = tbin_edges[i+1]
+            break
+
+    ax3.set_xlim(0, max(tbins_max,bins_max))
+    ax3.set_xlabel("Hit Time (ns)",fontproperties=title_font)
+    ax3.tick_params(axis="both", labelsize=18) 
+    ax3.set_ylabel("A.U.",fontsize=20)
+    # ax3.legend(["Fast Simulated","Geant4"],fontsize=20,ncol=2,frameon=True, framealpha=1)
+    handles, labels = ax3.get_legend_handles_labels()
+    line_handles = [Line2D([], [], c=h.get_edgecolor()) for h in handles]
+    legend = ax3.legend(line_handles, labels, fontsize=20, ncol=2, frameon=True, framealpha=1)
+
+    ax3.set_title("Fast Simulated Time vs. Geant4 Time",fontproperties=title_font)
+    
+    # Setting text box for momentum and theta
+    fig.canvas.draw() # updates the figure before accessing 
+    bbox = legend.get_window_extent().transformed(ax3.transAxes.inverted())
+
+    infostr = r"$|\vec{\rho}|$ ="+r" {0} GeV/c,".format(momentum) + r" $\theta = {0}^o$".format(theta)
+    props = dict(boxstyle='round', edgecolor = ax3.get_legend().get_frame().get_edgecolor(), facecolor='white',alpha=1)
+
+    inital_text = ax3.text(bbox.x1, bbox.y0-0.05, infostr, transform=ax3.transAxes, fontsize=20,
+        verticalalignment='top', bbox=props)
+    fig.canvas.draw()
+
+    text_width = inital_text.get_window_extent(renderer=fig.canvas.get_renderer()).transformed(ax3.transAxes.inverted()).width
+    
+    x_pos = bbox.x1 - text_width - 0.05
+    inital_text.set_x(x_pos)
+
+    for ax in [ax1, ax2, ax3]:
+        ax.spines['top'].set_linewidth(1.5)
+        ax.spines['right'].set_linewidth(1.5)
+        ax.spines['bottom'].set_linewidth(1.5)
+        ax.spines['left'].set_linewidth(1.5)
+        ax.spines['top'].set_color('black')
+        ax.spines['right'].set_color('black')
+        ax.spines['bottom'].set_color('black')
+        ax.spines['left'].set_color('black')
+    
+    save_path = os.path.join(outpath,filename[:-3]+".svg")
     plt.savefig(save_path,bbox_inches="tight")
     plt.close()
 
 
-def combine_images_to_pdf(image_folder, output_pdf, images_per_page=(2, 2), figure_size=(8, 6)):
-    with PdfPages(output_pdf) as pdf:
-        images = [f for f in os.listdir(image_folder) if f.endswith('.png')]
+def combine_images_to_pdf(svg_folder, output_pdf, images_per_page=(2, 2), figure_size=(8, 6), row_gap = 0.05):
+                        
+    svg_files = [f for f in os.listdir(svg_folder) if f.lower().endswith('.svg')]
+    
+    svg_files.sort(key=lambda x: float(re.search(r'theta_(\d+\.\d+)', x).group(1)))
+    
+    total_images = len(svg_files)
+    images_per_page_total = images_per_page[0] * images_per_page[1]
+    num_pages = (total_images + images_per_page_total - 1) // images_per_page_total
 
-        images.sort(key=lambda x: float(re.search(r'theta_(\d+\.\d+)', x).group(1)))
+    cell_width = figure_size[0] * inch * 0.9
+    cell_height = figure_size[1] * inch * 0.7
 
-        num_images = len(images)
-        images_per_page_total = images_per_page[0] * images_per_page[1]
-        num_pages = (num_images + images_per_page_total - 1) // images_per_page_total
+    rows, cols = images_per_page
 
-        for page in range(num_pages):
-            fig, axes = plt.subplots(images_per_page[0], images_per_page[1], figsize=(images_per_page[1] * figure_size[0], images_per_page[0] * figure_size[1]))
-            axes = axes.ravel()  
+    page_width = cols * cell_width 
+    page_height = rows * cell_height
 
-            for i, ax in enumerate(axes):
-                img_index = page * images_per_page_total + i
-                if img_index >= num_images:
-                    ax.axis('off')  
-                else:
-                    img_path = os.path.join(image_folder, images[img_index])
-                    img = Image.open(img_path)
-                    ax.imshow(img)
-                    ax.axis('off')  
+    c = canvas.Canvas(output_pdf, pagesize=(page_width, page_height))
+    
+    for page in range(num_pages):
+        for i in range(images_per_page_total):
+            img_index = page * images_per_page_total + i
+            if img_index >= total_images:
+                break
 
-            plt.tight_layout()
-            pdf.savefig(fig)  
-            plt.close(fig)
+            row = i // cols  
+            col = i % cols
 
+            if row == 0:
+                gap_above = 0
+            else:
+                gap_above = row_gap * inch
+
+            # In ReportLab the origin is bottom-left, so compute cell_y from the top:
+            cell_x = col * cell_width
+            cell_y = page_height - (row + 1) * cell_height - gap_above  # bottom of the cell
+
+            svg_path = os.path.join(svg_folder, svg_files[img_index])
+            drawing = svg2rlg(svg_path)
+
+            if drawing.width > 0 and drawing.height > 0:
+                scale = min(cell_width / drawing.width, cell_height / drawing.height)
+            else:
+                scale = 1
+
+            drawing.scale(scale, scale)
+            new_width = drawing.width * scale
+            new_height = drawing.height * scale
+
+            offset_x = (cell_width - new_width) / 2
+            offset_y = (cell_height - new_height) / 2
+
+            final_x = cell_x + offset_x
+            final_y = cell_y + offset_y
+
+            renderPDF.draw(drawing, c, final_x, final_y)
+        c.showPage()
+    c.save()
 
 def make_ratios(path_,label,momentum,outpath):
     file_counter = 0

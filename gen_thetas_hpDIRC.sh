@@ -10,10 +10,9 @@
 #SBATCH -t 72:00:00
 
 theta=25
-momentum=6
+momentum=9
 model_type="Score"
 config_file="config/hpDIRC_config_gulf.json"
-momentum=3
 
 output_dir=$(python -c "
 import json

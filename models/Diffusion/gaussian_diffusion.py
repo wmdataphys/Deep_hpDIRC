@@ -10,7 +10,6 @@ from inspect import isfunction
 from functools import partial
 
 import numpy as np
-from tqdm import tqdm
 from einops import rearrange
 
 
