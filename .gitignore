@@ -23,7 +23,7 @@ config/hpDIRC_config.json
 *run_DLL_hpDIRC.py*
 *run_DLL_fixedpoints_hpDIRC.py*
 *run_DLL_fixedpoints.sh*
-*time_imagiging_generation.py*
+*time_imaging_generation.py*
 *torch_wsl.yml*
 *gen_thetas_hpDIRC.tcsh*
 *LUT_Stats*
