@@ -7,58 +7,13 @@ from matplotlib.backends.backend_pdf import PdfPages
 from PIL import Image
 import argparse
 import json
-
-####################################### hpDIRC Discretization #################################
-gapx =  1.89216111455965 + 4.
-gapy = 1.3571428571428572 + 4.
-pixel_width = 3.3125
-pixel_height = 3.3125
-
-bins_x = [0, 3.65625 - pixel_width/2,  3.65625 + pixel_width/2 ,   6.96875 + pixel_width/2   ,  10.28125 + pixel_width/2  ,  13.59375 +  pixel_width/2   ,
-    16.90625+  pixel_width/2  ,  20.21875 + pixel_width/2  ,  23.53125 + pixel_width/2  ,  26.84375 + pixel_width/2  ,
-    30.15625 + pixel_width/2  ,  33.46875  + pixel_width/2 ,  36.78125 + pixel_width/2  ,  40.09375 + pixel_width/2  ,
-    43.40625 + pixel_width/2  ,  46.71875  + pixel_width/2 ,  50.03125+ pixel_width/2   ,  53.34375 + pixel_width/2  , 62.54841111 - pixel_width/2,
-    62.54841111+ pixel_width/2,  65.86091111+ pixel_width/2,  69.17341111+ pixel_width/2,  72.48591111+ pixel_width/2,
-    75.79841111+ pixel_width/2,  79.11091111+ pixel_width/2,  82.42341111+ pixel_width/2,  85.73591111+ pixel_width/2,
-    89.04841111+ pixel_width/2,  92.36091111+ pixel_width/2,  95.67341111+ pixel_width/2,  98.98591111+ pixel_width/2,
-    102.29841111+ pixel_width/2, 105.61091111+ pixel_width/2, 108.92341111+ pixel_width/2, 112.23591111+ pixel_width/2, 121.44057223 - pixel_width/2,
-    121.44057223+ pixel_width/2, 124.75307223+ pixel_width/2, 128.06557223+ pixel_width/2, 131.37807223+ pixel_width/2,
-    134.69057223+ pixel_width/2, 138.00307223+ pixel_width/2, 141.31557223+ pixel_width/2, 144.62807223+ pixel_width/2,
-    147.94057223+ pixel_width/2, 151.25307223+ pixel_width/2, 154.56557223+ pixel_width/2, 157.87807223+ pixel_width/2,
-    161.19057223+ pixel_width/2, 164.50307223+ pixel_width/2, 167.81557223+ pixel_width/2, 171.12807223+ pixel_width/2, 180.33273334 - pixel_width/2,
-    180.33273334+ pixel_width/2, 183.64523334+ pixel_width/2, 186.95773334+ pixel_width/2, 190.27023334+ pixel_width/2,
-    193.58273334+ pixel_width/2, 196.89523334+ pixel_width/2, 200.20773334+ pixel_width/2, 203.52023334+ pixel_width/2,
-    206.83273334+ pixel_width/2, 210.14523334+ pixel_width/2, 213.45773334+ pixel_width/2, 216.77023334+ pixel_width/2,
-    220.08273334+ pixel_width/2, 223.39523334+ pixel_width/2, 226.70773334+ pixel_width/2, 230.02023334+ pixel_width/2, 239.22489446 - pixel_width/2,
-    239.22489446+ pixel_width/2, 242.53739446+ pixel_width/2, 245.84989446+ pixel_width/2, 249.16239446+ pixel_width/2,
-    252.47489446+ pixel_width/2, 255.78739446+ pixel_width/2, 259.09989446+ pixel_width/2, 262.41239446+ pixel_width/2,
-    265.72489446+ pixel_width/2, 269.03739446+ pixel_width/2, 272.34989446+ pixel_width/2, 275.66239446+ pixel_width/2,
-    278.97489446+ pixel_width/2, 282.28739446+ pixel_width/2, 285.59989446+ pixel_width/2, 288.91239446+ pixel_width/2, 298.11705557 - pixel_width/2,
-    298.11705557+ pixel_width/2, 301.42955557+ pixel_width/2, 304.74205557+ pixel_width/2, 308.05455557+ pixel_width/2,
-    311.36705557+ pixel_width/2, 314.67955557+ pixel_width/2, 317.99205557+ pixel_width/2, 321.30455557+ pixel_width/2,
-    324.61705557+ pixel_width/2, 327.92955557+ pixel_width/2, 331.24205557+ pixel_width/2, 334.55455557+ pixel_width/2,
-    337.86705557+ pixel_width/2, 341.17955557+ pixel_width/2, 344.49205557+ pixel_width/2, 347.80455557+ pixel_width/2, 347.80455557 + pixel_width/2 + 2]
-
-bins_y = [0, 3.65625 - pixel_height/2,  3.65625 + pixel_height/2, 6.96875+ pixel_height/2   ,  10.28125+ pixel_height/2   ,  13.59375+ pixel_height/2   ,
-    16.90625+ pixel_height/2   ,  20.21875+ pixel_height/2   ,  23.53125+ pixel_height/2   ,  26.84375+ pixel_height/2   ,
-    30.15625+ pixel_height/2   ,  33.46875+ pixel_height/2   ,  36.78125+ pixel_height/2   ,  40.09375+ pixel_height/2   ,
-    43.40625+ pixel_height/2   ,  46.71875+ pixel_height/2   ,  50.03125+ pixel_height/2   ,  53.34375+ pixel_height/2   , 62.01339286 - pixel_height/2.,
-    62.01339286+ pixel_height/2,  65.32589286+ pixel_height/2,  68.63839286+ pixel_height/2,  71.95089286+ pixel_height/2,
-    75.26339286+ pixel_height/2,  78.57589286+ pixel_height/2,  81.88839286+ pixel_height/2,  85.20089286+ pixel_height/2,
-    88.51339286+ pixel_height/2,  91.82589286+ pixel_height/2,  95.13839286+ pixel_height/2,  98.45089286+ pixel_height/2,
-    101.76339286+ pixel_height/2, 105.07589286+ pixel_height/2, 108.38839286+ pixel_height/2, 111.70089286+ pixel_height/2, 120.37053571 - pixel_height/2.,
-    120.37053571+ pixel_height/2, 123.68303571+ pixel_height/2, 126.99553571+ pixel_height/2, 130.30803571+ pixel_height/2,
-    133.62053571+ pixel_height/2, 136.93303571+ pixel_height/2, 140.24553571+ pixel_height/2, 143.55803571+ pixel_height/2,
-    146.87053571+ pixel_height/2, 150.18303571+ pixel_height/2, 153.49553571+ pixel_height/2, 156.80803571+ pixel_height/2,
-    160.12053571+ pixel_height/2, 163.43303571+ pixel_height/2, 166.74553571+ pixel_height/2, 170.05803571+ pixel_height/2, 178.72767857 - pixel_height/2.,
-    178.72767857+ pixel_height/2, 182.04017857+ pixel_height/2, 185.35267857+ pixel_height/2, 188.66517857+ pixel_height/2,
-    191.97767857+ pixel_height/2, 195.29017857+ pixel_height/2, 198.60267857+ pixel_height/2, 201.91517857+ pixel_height/2,
-    205.22767857+ pixel_height/2, 208.54017857+ pixel_height/2, 211.85267857+ pixel_height/2, 215.16517857+ pixel_height/2,
-    218.47767857+ pixel_height/2, 221.79017857+ pixel_height/2, 225.10267857+ pixel_height/2, 228.41517857+ pixel_height/2, 228.41517857 + pixel_height/2 + 2 ]
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.gridspec as gridspec
+from matplotlib.lines import Line2D
+from pdf2image import convert_from_path 
+from utils.hpDIRC import bins_x,bins_y,gapx,gapy,pixel_width,pixel_height
 
 t_bins = np.arange(0.0,157.0,0.5)
-####################################### hpDIRC Discretization #################################
-
 
 def convert_indices(pmtID,pixelID): 
     row = (pmtID//6) * 16 + pixelID//16 
@@ -94,62 +49,133 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
     true_ys = np.concatenate(true_ys).astype('float32')
     true_time = np.concatenate(true_time)
 
-    fig, ax = plt.subplots(2,2,figsize=(18,12))
-    ax = ax.ravel()
     if log_norm:
         norm = LogNorm()
     else:
         norm = None
-        
-    ax[0].hist2d(xs,ys,bins=[bins_x,bins_y],norm=norm,density=True)
-    ax[0].set_title(label + " Fast Simulated Hit Pattern",fontsize=20)
-    ax[0].tick_params(axis="both", labelsize=18) 
 
-    ax[1].hist(time,bins=t_bins,density=True,histtype='step',color='k')
-    ax[1].set_xlabel("Fast Simulated Time (ns)",fontsize=20)
-    ax[1].tick_params(axis="both", labelsize=18) 
-    ax[1].set_ylabel("A.U.",fontsize=20)
-    ax[1].set_title(r"$|\vec{p}|$ ="+r" {0} GeV/c,".format(momentum) + r" $\theta = {0}^o$".format(theta),fontsize=20)
-    
-    ax[2].hist2d(true_xs,true_ys,bins=[bins_x,bins_y],norm=norm,density=True)
-    ax[2].set_title(label + " Geant4 Hit Pattern",fontsize=20)
-    ax[2].tick_params(axis="both", labelsize=18) 
+    gs = gridspec.GridSpec(3, 2, height_ratios=[1.5, 0.5, 1])
 
-    ax[3].hist(true_time,bins=t_bins,density=True,histtype='step',color='k')
-    ax[3].set_xlabel("Geant4 Time (ns)",fontsize=20)
-    ax[3].tick_params(axis="both", labelsize=18) 
-    ax[3].set_ylabel("A.U.",fontsize=20)
-    ax[3].set_title(r"$|\vec{p}|$ ="+r" {0} GeV/c,".format(momentum) + r" $\theta = {0}^o$".format(theta),fontsize=20)
+    fig = plt.figure(figsize=(18, 12))
+    ax1 = fig.add_subplot(gs[0, 0])  # Top-left
+    ax2 = fig.add_subplot(gs[0, 1])  # Top-right
+    ax3 = fig.add_subplot(gs[2, :])  # Bottom image, spans both columns
+
+    ax3.set_position([
+        ax1.get_position().x0 - 0.05 + (ax2.get_position().x0 - ax1.get_position().x0) / 2,  # Center horizontally
+        ax3.get_position().y0 - 0.02,  # Keep original y position
+        ax1.get_position().width * 1.2,  # Keep same width as top images
+        ax1.get_position().height  # Keep same height
+    ])
+
+    # FastSim 2D Hit Pattern
+    h_fs, xedges, yedges, im1 = ax1.hist2d(xs, ys, bins=[bins_x, bins_y], norm=norm, density=True)
+    ax1.set_title(label + r" Fast Simulated Hit Pattern", fontsize=30)
+    ax1.tick_params(axis="both", labelsize=28)
+    ax1.set_xlabel("X (mm)",fontsize=30,labelpad=15)
+    ax1.set_ylabel("Y (mm)",fontsize=30,labelpad=15)
+    # Geant4 2D Hit Pattern
+    h_g, xedges, yedges, im2 = ax2.hist2d(true_xs, true_ys, bins=[bins_x, bins_y], norm=norm, density=True)
+    ax2.set_title(label + r" Geant4 Hit Pattern", fontsize=30)
+    ax2.tick_params(axis="both", labelsize=28)
+    ax2.set_xlabel("X (mm)",fontsize=30,labelpad=15)   
+
+    # Bottom row: Combined Time Distribution
+    ax3.hist(true_time, bins=t_bins, density=True, histtype='step', color='k', label="Geant4",linewidth=2)
+    ax3.hist(time, bins=t_bins, density=True, histtype='step', color='r', label="FastSim.",linewidth=2)
     
-    plt.subplots_adjust(wspace=0.2,hspace=0.3)
-    save_path = os.path.join(outpath,filename[:-3]+".png")
+    ax3.set_xlabel("Time (ns)", fontsize=30)
+    ax3.tick_params(axis="both", labelsize=28)
+    ax3.set_ylabel("A.U.", fontsize=30)
+    ax3.set_yscale('log')
+    ax3.set_ylim(1e-5, 10e-1)
+    ax3.text(108, 0.015, r"$|\vec{p}|$" + f" = {int(momentum)} GeV/c" "\n" r"$\theta =$"+ f"{int(theta)}" +r"$^\circ$".format(momentum, theta), fontsize=24,
+    verticalalignment='top',  # Align text at the top
+    bbox=dict(facecolor='white', edgecolor='grey', boxstyle='round,pad=0.3'))
+    legend_lines = [
+        Line2D([0], [0], color='k', linewidth=2, label="Geant4"),
+        Line2D([0], [0], color='r', linewidth=2, label="FastSim.")
+    ]
+    
+    ax3.legend(handles=legend_lines, fontsize=24,loc='upper right')
+    save_path = os.path.join(outpath,filename[:-3]+"pdf")
     plt.savefig(save_path,bbox_inches="tight")
     plt.close()
 
+    # Make new folder for radius plots in same directory
+    out_path_radius = os.path.join(outpath,"RadiusPlots")
+    os.makedirs(out_path_radius,exist_ok=True)
+
+    # Radius vs Time.
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+    ax = axes[0]
+    hist1 = ax.hist2d(np.sqrt(true_xs**2 + true_ys**2), true_time, bins=200, range=[[0, 417], [0, 100]], norm=LogNorm(), cmap='magma')
+    ax.set_xlabel("Radius (mm)", fontsize=25,labelpad=10)
+    ax.set_ylabel("Time (ns)", fontsize=25)
+    ax.set_xticks(np.linspace(0, 400, 5))
+    ax.tick_params(axis='x', labelsize=22, rotation=0)
+    ax.tick_params(axis='y', labelsize=22)
+    ax.set_title("Geant4", fontsize=30)
+
+    if label == "Pion":
+        ax.text(0.03, 0.965, r"$\pi^{+-}$" "\n" rf"{int(momentum)} GeV/c " "\n" rf"${int(float(theta))}^\degree$" , 
+                transform=ax.transAxes, fontsize=22, verticalalignment='top', horizontalalignment='left',  
+                bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3'))
+    elif label == "Kaon":
+         ax.text(0.03, 0.965, r"$\mathcal{K}^{+-}$" "\n" rf"{int(momentum)} GeV/c " "\n" rf"${int(float(theta))}^\degree$" , 
+                transform=ax.transAxes, fontsize=22, verticalalignment='top', horizontalalignment='left',  
+                bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3'))   
+    else:
+        pass    
+
+    ax = axes[1]
+    hist2 = ax.hist2d(np.sqrt(xs**2 + ys**2), time, bins=200, range=[[0, 417], [0, 100]], norm=LogNorm(), cmap='magma')
+    ax.set_xlabel("Radius (mm)", fontsize=25,labelpad=10)
+    ax.tick_params(axis='x', labelsize=22, rotation=0)
+    ax.set_title("Fast Simulated", fontsize=30)
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = fig.colorbar(hist2[3], cax=cax, orientation='vertical', pad=0.02)
+    cbar.set_label('Counts', fontsize=25)
+    cbar.ax.tick_params(labelsize=22)
+
+    plt.tight_layout()
+    save_path = os.path.join(out_path_radius,filename[:-3]+"_RadiusVsTime.pdf")
+    plt.savefig(save_path,bbox_inches='tight')
+    plt.close()
 
 def combine_images_to_pdf(image_folder, output_pdf, images_per_page=(2, 2), figure_size=(8, 6)):
+    images = [f for f in os.listdir(image_folder) if f.endswith('.pdf') and "theta" in f]
+    
+    if not images:
+        print("No matching PDF files found.")
+        return
+
+    images.sort(key=lambda x: float(re.search(r'theta_(\d+\.\d+)', x).group(1)))
+
+    num_images = len(images)
+    images_per_page_total = images_per_page[0] * images_per_page[1]
+    num_pages = (num_images + images_per_page_total - 1) // images_per_page_total
+
     with PdfPages(output_pdf) as pdf:
-        images = [f for f in os.listdir(image_folder) if f.endswith('.png')]
-
-        images.sort(key=lambda x: float(re.search(r'theta_(\d+\.\d+)', x).group(1)))
-
-        num_images = len(images)
-        images_per_page_total = images_per_page[0] * images_per_page[1]
-        num_pages = (num_images + images_per_page_total - 1) // images_per_page_total
-
         for page in range(num_pages):
-            fig, axes = plt.subplots(images_per_page[0], images_per_page[1], figsize=(images_per_page[1] * figure_size[0], images_per_page[0] * figure_size[1]))
-            axes = axes.ravel()  
+            fig, axes = plt.subplots(images_per_page[0], images_per_page[1], 
+                                     figsize=(images_per_page[1] * figure_size[0], 
+                                              images_per_page[0] * figure_size[1]))
+            axes = axes.ravel()
 
             for i, ax in enumerate(axes):
                 img_index = page * images_per_page_total + i
                 if img_index >= num_images:
-                    ax.axis('off')  
+                    ax.axis('off')
                 else:
                     img_path = os.path.join(image_folder, images[img_index])
-                    img = Image.open(img_path)
-                    ax.imshow(img)
-                    ax.axis('off')  
+
+                    images_from_pdf = convert_from_path(img_path, first_page=1, last_page=1)
+                    if images_from_pdf:
+                        ax.imshow(images_from_pdf[0])  
+                    ax.axis('off')
 
             plt.tight_layout()
             pdf.savefig(fig)  
@@ -199,12 +225,6 @@ def make_ratios(path_,label,momentum,outpath):
     
     fig, ax = plt.subplots(2, 3, figsize=(18, 8), gridspec_kw={'height_ratios': [4, 1]}, sharex='col',sharey='row')
     ax = ax.ravel()
-    
-    #lower_limit = 1e-5  # Define your lower limit 
-    #upper_limit = 5e-1   # Define an upper limit
-
-    #for i in range(3):
-    #    ax[i].set_ylim([lower_limit, upper_limit])
 
     # Time PDF
     n_true_t, _ = np.histogram(t_true, bins=t_bins, density=True)
@@ -296,9 +316,9 @@ def make_ratios(path_,label,momentum,outpath):
     print("Y: ", np.average(ratio_y,weights=n_true_y))
     print("Time: ",np.average(ratio_t,weights=n_true_t))
 
-    print("RMS X: ",np.sqrt(np.average((ratio_x -1)**2,weights=n_true_x)))
-    print("RMS Y: ", np.sqrt(np.average((ratio_y - 1)**2,weights=n_true_y)))
-    print("RMS Time: ",np.sqrt(np.average((ratio_t - 1)**2,weights=n_true_t)))
+    print("RMS X: ",np.sqrt(np.average((ratio_x -1)**2,weights=n_true_x))/np.sqrt(len(ratio_x)))
+    print("RMS Y: ", np.sqrt(np.average((ratio_y - 1)**2,weights=n_true_y))/np.sqrt(len(ratio_y)))
+    print("RMS Time: ",np.sqrt(np.average((ratio_t - 1)**2,weights=n_true_t)) / np.sqrt(len(ratio_t)))
     print(" ")
         
 
@@ -322,7 +342,7 @@ def main(config,args):
                 
             match = re.search(r'theta_(\d+\.\d+)', file)
             if match:
-                theta_value = match.group(1)
+                theta_value = float(match.group(1))
                 file_path = os.path.join(file_folder,file)
                 make_plots_fastsim(file_path=file_path,label=label,momentum=args.momentum,theta=theta_value,outpath=outpath,filename=file)
                 print("Made plot for ", label, " at theta=",theta_value," momentum=",args.momentum)
@@ -337,6 +357,9 @@ def main(config,args):
     pdf_output = os.path.join(outpath,"Combined_FastSim_Plots.pdf")
     combine_images_to_pdf(outpath,pdf_output,images_per_page=(2,3),figure_size=(8,8))
     print(" ")
+
+    pdf_output = os.path.join(outpath,"Combined_FastSim_Plots_Radius.pdf")
+    combine_images_to_pdf(os.path.join(outpath,"RadiusPlots"),pdf_output,images_per_page=(3,2),figure_size=(8,4))
     
     print("Making ratio plots at ",args.momentum," integrated over theta for Pions.")
     make_ratios(path_=file_folder,label="Pion",momentum=args.momentum,outpath=os.path.join(outpath,"Ratios_Pion.pdf"))
