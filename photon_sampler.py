@@ -80,10 +80,12 @@ def plots(dicte,p,theta,nhits,PID):
     plt.close(fig)
 
     fig = plt.figure(figsize=(8,6))
-    plt.hist2d(theta,nhits,bins=[np.arange(25, 155, 0.06),300],density=True,norm=LogNorm(),range=[[25,155],[0,300]])
+    plt.hist2d(theta,nhits,bins=[np.arange(25, 155, 1.0),300],density=True,norm=LogNorm(),range=[[25,155],[0,300]])
     plt.xlabel("Polar Angle [Degrees]",fontsize=25)
     plt.ylabel("Photon Yield",fontsize=25)
-    plt.title("True {0}".format(str(PID)),fontsize=25)
+    plt.title("True {0}s".format(str(PID)),fontsize=25)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
     plt.savefig(f"Photon_Yield/{PID}_polar_angle.pdf",bbox_inches="tight")
     plt.close(fig)
 
@@ -91,15 +93,19 @@ def plots(dicte,p,theta,nhits,PID):
     plt.hist2d(p,nhits,bins=[100,300],density=True,norm=LogNorm(),range=[[1,10],[0,300]])
     plt.xlabel("Momentum [GeV/c]",fontsize=25)
     plt.ylabel("Photon Yield",fontsize=25)
-    plt.title("True {0}".format(str(PID)),fontsize=25)
+    plt.title("True {0}s".format(str(PID)),fontsize=25)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
     plt.savefig(f"Photon_Yield/{PID}_momentum.pdf",bbox_inches="tight")
     plt.close(fig)
 
     fig = plt.figure(figsize=(8,6))
-    plt.hist2d(theta,sampled_hits,bins=[np.arange(25, 155, 0.06),300],density=True,norm=LogNorm(),range=[[25,155],[0,300]])
+    plt.hist2d(theta,sampled_hits,bins=[np.arange(25, 155, 1.0),300],density=True,norm=LogNorm(),range=[[25,155],[0,300]])
     plt.xlabel("Polar Angle [Degrees]",fontsize=25)
     plt.ylabel("Photon Yield",fontsize=25)
-    plt.title("Sampled {0}".format(PID),fontsize=25)
+    plt.title("Sampled {0}s".format(PID),fontsize=25)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
     plt.savefig(f"Photon_Yield/{PID}_sampled_polar_angle.pdf",bbox_inches="tight")
     plt.close(fig)
 
@@ -107,15 +113,17 @@ def plots(dicte,p,theta,nhits,PID):
     plt.hist2d(p,sampled_hits,bins=[100,300],density=True,norm=LogNorm(),range=[[1,10],[0,300]])
     plt.xlabel("Momentum [GeV/c]",fontsize=25)
     plt.ylabel("Photon Yield",fontsize=25)
-    plt.title("Sampled {0}".format(PID),fontsize=25)
+    plt.title("Sampled {0}s".format(PID),fontsize=25)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
     plt.savefig(f"Photon_Yield/{PID}_sampled_momentum.pdf",bbox_inches="tight")
     plt.close(fig)
 
 def create_LUT(file_path,PID,stats):
     data = np.load(file_path,allow_pickle=True)
     p,theta,nhits = extract_data(data,stats)
-    delta_p = 0.1
-    delta_theta = 1.0
+    delta_p = 0.1 # 100 MeV
+    delta_theta = 1.0 # 1 Degree
     p_bins = np.arange(0.5,10.0 + delta_p,delta_p)
     theta_bins = np.arange(25.0,155.0 + delta_theta,delta_theta)
     global_values = np.arange(np.min(nhits),np.max(nhits)+1,1)
@@ -138,6 +146,7 @@ def create_LUT(file_path,PID,stats):
             p_mid = p_mid.astype('float32')
             theta_mid = theta_mid.astype('float32')
 
+            # Just smooth the probability distribution a bit
             smoothed_frequency = gaussian_filter1d(frequency.astype(float), sigma=sigma)
             smoothed_prob = smoothed_frequency / smoothed_frequency.sum()
 

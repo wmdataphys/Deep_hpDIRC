@@ -3,6 +3,7 @@ import pandas as pd
 import random
 from torch.utils.data import Dataset
 import torch
+import os
 
 def unscale(x,max_,min_):
     return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
@@ -20,17 +21,57 @@ def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_ma
     return np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
 
 class hpDIRC_DLL_Dataset(Dataset):
-    def __init__(self,file_path,stats={"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},time_cuts=None,n_photons=300,n_particles=400000):
-        data = np.load(file_path,allow_pickle=True)[:n_particles] # Useful for testing
-        self.data = []
-        print(len(data))
+    def __init__(self,path_,stats={"x_max": 350.0,"x_min":2.0,"y_max":230.1,"y_min":2.0,"time_max":157.00,"time_min":0.0,"P_max":10.0 ,"P_min":0.5 ,"theta_max": 160.0,"theta_min": 25.0},time_cuts=None,n_photons=300,n_particles=200000,fast_sim_comp=False,fast_sim_type=None,geant=True):
         self.stats = stats
-        for i in range(len(data)):
-            theta__ = data[i]['Theta']
-            p__ = data[i]['P']
-            n_hits = data[i]['NHits']
-            if ((theta__ > self.stats['theta_min']) and (theta__ < self.stats['theta_max']) and (p__ > self.stats['P_min']) and (p__ < self.stats['P_max']) and (n_hits > 0)):
-                self.data.append(data[i])
+        self.geant = geant
+        if not fast_sim_comp: # path_ is a .pkl file here
+            data = np.load(path_,allow_pickle=True)[:n_particles] # Useful for testing
+            self.data = []
+            print(len(data))
+            for i in range(len(data)):
+                theta__ = data[i]['Theta']
+                p__ = data[i]['P']
+                n_hits = data[i]['NHits']
+                if ((theta__ > self.stats['theta_min']) and (theta__ < self.stats['theta_max']) and (p__ > self.stats['P_min']) and (p__ < self.stats['P_max']) and (n_hits > 0)):
+                    self.data.append(data[i])
+
+        elif fast_sim_comp and fast_sim_type is not None and not geant: # Use fast sim file structure, provide PID, dont use geant4 data
+            data = []
+            files = os.listdir(path_) # path_ is a directory here
+            for file in files:
+                if ".pkl" in file:
+                    if fast_sim_type in file:
+                        print("Loading file: ",file)
+                        d_ = np.load(os.path.join(path_,file),allow_pickle=True)
+                        for i in range(len(d_['fast_sim'])):
+                            d_['fast_sim'][i]['PDG'] = d_['truth'][i]['PDG']
+            
+                        data += d_['fast_sim']
+                else:
+                    continue
+            
+            self.data = data[:n_particles]
+            del data
+            print(len(self.data))
+
+        elif fast_sim_comp and fast_sim_type is not None and geant: # Use fast sim file structure, provide PID, use geant
+            data = []
+            files = os.listdir(path_) # path_ is a directory here
+            for file in files:
+                if ".pkl" in file:
+                    if fast_sim_type in file:
+                        print("Loading file: ",file)
+                        d_ = np.load(os.path.join(path_,file),allow_pickle=True)
+                        data += d_['truth']
+                else:
+                    continue
+            
+            self.data = data[:n_particles]
+            del data
+            print(len(self.data))      
+
+        else:
+            raise ValueError("Fast Sim Comp is set true, but have not provided the type. Set as either Pion or Kaon. Check geant arg.")
 
 
         self.n_photons = n_photons
@@ -63,30 +104,28 @@ class hpDIRC_DLL_Dataset(Dataset):
         PID = data['PDG']
         LL_k = 0.0
         LL_pi = 0.0
-        barID = data['BarID']
-        barX = data['X']
-        barY = data['Y']
         pmtID = np.array(data['pmtID'])
-        event_num = data['EventID']
         if data['NHits'] == 0:
             print("Stop.",NHits)
 
-        pixelID = np.array(data['pixelID'])
+        if self.geant:
 
-        row = (pmtID//6) * 16 + pixelID//16 
-        col = (pmtID%6) * 16 + pixelID%16
-        
-        x = 2 + col * self.pixel_width + (pmtID % 6) * self.gapx + (self.pixel_width) / 2. # Center at middle
-        y = 2 + row * self.pixel_height + (pmtID // 6) * self.gapy + (self.pixel_height) / 2. # Center at middle
+            pixelID = np.array(data['pixelID'])
+
+            row = (pmtID//6) * 16 + pixelID//16 
+            col = (pmtID%6) * 16 + pixelID%16
+            
+            x = 2 + col * self.pixel_width + (pmtID % 6) * self.gapx + (self.pixel_width) / 2. # Center at middle
+            y = 2 + row * self.pixel_height + (pmtID // 6) * self.gapy + (self.pixel_height) / 2. # Center at middle
+
+        else:
+            x = data['x']
+            y = data['y']
 
         time = np.array(data['leadTime'])      
 
-
         pos_time = np.where((time > 0) & (time < self.stats['time_max']))[0]
-        row = row[pos_time]
-        col = col[pos_time]
         time = time[pos_time]
-        pmtID = pmtID[pos_time]
         x = x[pos_time]
         y = y[pos_time]
 
@@ -96,17 +135,12 @@ class hpDIRC_DLL_Dataset(Dataset):
         if len(time) > self.n_photons:
 
             time_idx = np.argsort(time)[:self.n_photons]
-            row = row[time_idx]
-            col = col[time_idx]
             time = time[time_idx]
-            pmtID = pmtID[time_idx]
             x = x[time_idx]
             y = y[time_idx]
 
-            
-        assert len(row) == len(time)
-        assert len(x) == len(row)
-        assert len(y) == len(col)
+        assert len(x) == len(time)
+        assert len(y) == len(time)
 
         hits = np.concatenate([np.c_[x],np.c_[y],np.c_[time]],axis=1)
         hits = self.scale_data(hits,self.stats)

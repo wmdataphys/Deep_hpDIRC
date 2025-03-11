@@ -178,6 +178,7 @@ def main(config,args):
     generations = []
     kbar = pkbar.Kbar(target=len(list_to_gen), width=20, always_stateful=False)
     start = time.time()
+    truth = []
     
     for i in range(len(list_to_gen)):   
         with torch.set_grad_enabled(False):
@@ -188,12 +189,14 @@ def main(config,args):
             if not args.sample_photons:
                 if list_to_gen[i]['NHits'] > 0 and list_to_gen[i]['NHits'] < 300:
                     gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0),fine_grained_prior=args.fine_grained_prior)
+                    truth.append(list_to_gen[i])
                 else:
                     #print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
                     continue
             else:
                 if list_to_gen[i]['NHits'] > 0 and list_to_gen[i]['NHits'] < 300:
                     gen = net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=list_to_gen[i]['P'],theta=list_to_gen[i]['Theta'],fine_grained_prior=args.fine_grained_prior)
+                    truth.append(list_to_gen[i])
                 else:
                     #print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
                     continue
@@ -208,16 +211,12 @@ def main(config,args):
     n_photons = 0
     n_gamma = 0
 
-    for i in range(len(list_to_gen)):
-        if list_to_gen[i]['NHits'] < 300:
-            n_photons += list_to_gen[i]['NHits']
+    for i in range(len(truth)):
+        if truth[i]['NHits'] < 300:
+            n_photons += truth[i]['NHits']
 
-    if args.sample_photons:
-        for i in range(len(generations)):
-            n_gamma += generations[i]['NHits']
-
-    else:
-        n_gamma = n_photons
+    for i in range(len(generations)):
+        n_gamma += generations[i]['NHits']
 
 
     print(" ")
@@ -227,13 +226,12 @@ def main(config,args):
     print('Percentage effect: ',net.photons_resampled * 100 / net.photons_generated)
     print("Elapsed Time: ", end - start)
     print("Time / photon: ",(end - start) / n_gamma)
-    print("Average time / track: ",(end - start) / len(list_to_gen))
-    if args.sample_photons:
-        print("True photon yield: ",n_photons," Generated photon yield: ",n_gamma)
+    print("Average time / track: ",(end - start) / len(truth))
+    print("True photon yield: ",n_photons," Generated photon yield: ",n_gamma)
     print(" ")
     gen_dict = {}
     gen_dict['fast_sim'] = generations
-    gen_dict['truth'] = list_to_gen
+    gen_dict['truth'] = truth
 
     os.makedirs("Generations",exist_ok=True)
     out_folder = os.path.join("Generations",config['Inference']['fixed_point_dir'])

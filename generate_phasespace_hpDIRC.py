@@ -38,14 +38,31 @@ def main(config,args):
     if config['method'] == "Pion":
         print("Generating for pions.")
         dicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)])
+        if args.sample_photons:
+            sampler_path = config['Photon_Sampler']['Pion_LUT_path']
         PID = 211
     elif config['method'] == 'Kaon':
         print("Generation for kaons.")
         dicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
+        if args.sample_photons:
+            sampler_path = config['Photon_Sampler']['Kaon_LUT_path']
         PID = 321
     else:
         print("Specify particle to generate in config file")
         exit()
+
+    if not args.sample_photons:
+        sampler_path = None
+
+    if args.sample_photons:
+        print("Using LUT photon yield sampling.")
+    else:
+        print("Using photon yield associated to ground truth track.")
+
+    if args.fine_grained_prior:
+        print("Using fine grained prior for PMTs. Consider disabling for increased generation speed.")
+    else:
+        print("Fine grained prior disabled. Consider enabling for high fidelity.")
         
 
     num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
@@ -56,13 +73,13 @@ def main(config,args):
     stats = config['stats']
     
     if args.model_type == "NF":
-        net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
+        net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=sampler_path)
     elif args.model_type == "CNF":
         alph = config['model_'+str(args.model_type)]['alph']
         train_T = bool(config['model_'+str(args.model_type)]['train_T'])
-        net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
+        net = net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=sampler_path)
     elif args.model_type == "FlowMatching":
-        net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
+        net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=sampler_path)
     else:
         raise ValueError("Model type not found.")
 
@@ -80,7 +97,7 @@ def main(config,args):
 
     elif config['method'] == 'Kaon':
         print("Generating Kaons over entire phase space.")
-        print("Using first {0} pions for comparison.".format(args.n_particles))
+        print("Using first {0} kaons for comparison.".format(args.n_particles))
         datapoints = np.load(config['dataset']['full_phase_space']["kaon_data_path"],allow_pickle=True)[:args.n_particles]
             
     else:
@@ -90,22 +107,48 @@ def main(config,args):
     kbar = pkbar.Kbar(target=len(datapoints), width=20, always_stateful=False)
     start = time.time()
     n_photons = 0
+    truth = []
     for i in range(len(datapoints)):   
         with torch.set_grad_enabled(False):
             if datapoints[i]['Phi'] != 0 or datapoints[i]['P'] > stats['P_max'] or datapoints[i]['P'] < stats['P_min'] or datapoints[i]['Theta'] > stats['theta_max'] or datapoints[i]['Theta'] < stats['theta_min'] or datapoints[i]['Phi'] != 0.0 or datapoints[i]['NHits'] <= 0:
                 continue
 
-            p = (datapoints[i]['P'] - stats['P_max'])  / (stats['P_max'] - stats['P_min'])
-            theta = (datapoints[i]['Theta'] - stats['theta_max']) / (stats['theta_max'] - stats['theta_min'])
-            k = torch.tensor(np.array([p,theta])).to('cuda').float()
-            
-            gen = net.create_tracks(num_samples=datapoints[i]['NHits'],context=k.unsqueeze(0))
-            n_photons += datapoints[i]['NHits']
+            else:
+                p = (datapoints[i]['P'] - stats['P_max'])  / (stats['P_max'] - stats['P_min'])
+                theta = (datapoints[i]['Theta'] - stats['theta_max']) / (stats['theta_max'] - stats['theta_min'])
+                k = torch.tensor(np.array([p,theta])).to('cuda').float()
+                if not args.sample_photons:
+                    if datapoints[i]['NHits'] > 0 and datapoints[i]['NHits'] < 300:
+                        gen = net.create_tracks(num_samples=datapoints[i]['NHits'],context=k.unsqueeze(0),fine_grained_prior=args.fine_grained_prior)
+                        truth.append(datapoints[i])
+                    else:
+                        continue
+                else:
+                    if datapoints[i]['NHits'] > 0 and datapoints[i]['NHits'] < 300:
+                        gen = net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=datapoints[i]['P'],theta=datapoints[i]['Theta'],fine_grained_prior=args.fine_grained_prior)
+                        truth.append(datapoints[i])
+                    else:
+                        continue
   
         
         generations.append(gen)
         kbar.update(i)
     end = time.time()
+
+    n_photons = 0
+    n_gamma = 0
+
+    for i in range(len(truth)):
+        if truth[i]['NHits'] < 300:
+            n_photons += truth[i]['NHits']
+
+    if args.sample_photons:
+        for i in range(len(generations)):
+            n_gamma += generations[i]['NHits']
+
+    else:
+        n_gamma = n_photons
+
 
     print(" ")
     print("Number of tracks generated: ",len(generations))
@@ -113,12 +156,15 @@ def main(config,args):
     print("Number of photons resampled: ",net.photons_resampled)
     print('Percentage effect: ',net.photons_resampled * 100 / net.photons_generated)
     print("Elapsed Time: ", end - start)
-    print("Time / photon: ",(end - start) / n_photons)
-    print("Average time / track: ",(end - start) / len(datapoints))
+    print("Time / photon: ",(end - start) / n_gamma)
+    print("Average time / track: ",(end - start) / len(truth))
+    if args.sample_photons:
+        print("True photon yield: ",n_photons," Generated photon yield: ",n_gamma)
     print(" ")
     gen_dict = {}
     gen_dict['fast_sim'] = generations
-    gen_dict['truth'] = datapoints
+    gen_dict['truth'] = truth
+
 
     os.makedirs("Generations",exist_ok=True)
     out_folder = os.path.join("Generations",config['Inference']['full_phase_space_dir'])
@@ -138,7 +184,6 @@ def main(config,args):
     make_ratios(path_=out_folder,label=args.method,momentum="1-10",outpath=os.path.join(out_folder,f"Ratios_{args.method}.pdf"))
 
 
-
 if __name__=='__main__':
     # PARSE THE ARGS
     parser = argparse.ArgumentParser(description='FastSim Generation')
@@ -147,6 +192,8 @@ if __name__=='__main__':
     parser.add_argument('-nt', '--n_particles', default=2e5,type=int,help='Number of particles to generate. Take the first n_particles. -1 is all tracks available.')
     parser.add_argument('-m', '--method',default="Kaon",type=str,help='Generated particle type, Kaon or Pion.')
     parser.add_argument('-mt','--model_type',default="NF",type=str,help='Which model to use.')
+    parser.add_argument('-sp','--sample_photons', action='store_true', help="Enable verbose mode")
+    parser.add_argument('-f','--fine_grained_prior',action='store_true',help="Enable fine grained prior, default False.")
     args = parser.parse_args()
 
     args.n_particles = int(args.n_particles)

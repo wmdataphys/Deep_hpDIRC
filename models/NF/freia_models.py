@@ -15,6 +15,7 @@ from nflows.utils import torchutils
 from typing import Union, Iterable, Tuple
 import scipy
 from models.MADE import MixtureOfGaussiansMADE
+from utils.hpDIRC import ALLOWED_X,ALLOWED_Y
 
 class ResNetBlock(nn.Module):
     def __init__(self, hidden_units):
@@ -53,46 +54,8 @@ class FreiaNet(nn.Module):
         self.num_pmts_x = 6
         self.num_pmts_y = 4
 
-        self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
-                                                   16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
-                                                   30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
-                                                   43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
-                                                   62.54841111,  65.86091111,  69.17341111,  72.48591111,
-                                                   75.79841111,  79.11091111,  82.42341111,  85.73591111,
-                                                   89.04841111,  92.36091111,  95.67341111,  98.98591111,
-                                                   102.29841111, 105.61091111, 108.92341111, 112.23591111,
-                                                   121.44057223, 124.75307223, 128.06557223, 131.37807223,
-                                                   134.69057223, 138.00307223, 141.31557223, 144.62807223,
-                                                   147.94057223, 151.25307223, 154.56557223, 157.87807223,
-                                                   161.19057223, 164.50307223, 167.81557223, 171.12807223,
-                                                   180.33273334, 183.64523334, 186.95773334, 190.27023334,
-                                                   193.58273334, 196.89523334, 200.20773334, 203.52023334,
-                                                   206.83273334, 210.14523334, 213.45773334, 216.77023334,
-                                                   220.08273334, 223.39523334, 226.70773334, 230.02023334,
-                                                   239.22489446, 242.53739446, 245.84989446, 249.16239446,
-                                                   252.47489446, 255.78739446, 259.09989446, 262.41239446,
-                                                   265.72489446, 269.03739446, 272.34989446, 275.66239446,
-                                                   278.97489446, 282.28739446, 285.59989446, 288.91239446,
-                                                   298.11705557, 301.42955557, 304.74205557, 308.05455557,
-                                                   311.36705557, 314.67955557, 317.99205557, 321.30455557,
-                                                   324.61705557, 327.92955557, 331.24205557, 334.55455557,
-                                                   337.86705557, 341.17955557, 344.49205557, 347.80455557])).to(self.device)
-        self._allowed_y = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
-                                                   16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
-                                                   30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
-                                                   43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
-                                                   62.01339286,  65.32589286,  68.63839286,  71.95089286,
-                                                   75.26339286,  78.57589286,  81.88839286,  85.20089286,
-                                                   88.51339286,  91.82589286,  95.13839286,  98.45089286,
-                                                   101.76339286, 105.07589286, 108.38839286, 111.70089286,
-                                                   120.37053571, 123.68303571, 126.99553571, 130.30803571,
-                                                   133.62053571, 136.93303571, 140.24553571, 143.55803571,
-                                                   146.87053571, 150.18303571, 153.49553571, 156.80803571,
-                                                   160.12053571, 163.43303571, 166.74553571, 170.05803571,
-                                                   178.72767857, 182.04017857, 185.35267857, 188.66517857,
-                                                   191.97767857, 195.29017857, 198.60267857, 201.91517857,
-                                                   205.22767857, 208.54017857, 211.85267857, 215.16517857,
-                                                   218.47767857, 221.79017857, 225.10267857, 228.41517857])).to(self.device) 
+        self._allowed_x = torch.tensor(np.array(ALLOWED_X)).to(self.device)
+        self._allowed_y = torch.tensor(np.array(ALLOWED_Y)).to(self.device) 
         self.stats_ = stats
 
         if LUT_path is not None:
@@ -110,7 +73,7 @@ class FreiaNet(nn.Module):
                                 features=input_shape,
                                 hidden_features=128,
                                 context_features=context_shape,
-                                num_blocks=2,
+                                num_blocks=6,
                                 num_mixture_components=40,
                                 use_residual_blocks=True,
                                 random_mask=False,
@@ -202,7 +165,7 @@ class FreiaNet(nn.Module):
                 embedded_context, num_reps=num_samples
             )
     
-        samples, _ = self.sequence.forward(noise,rev=True,c=[embedded_context])
+        samples, _= self.sequence.forward(noise,rev=True,c=[embedded_context])
 
         return samples
 
@@ -230,16 +193,6 @@ class FreiaNet(nn.Module):
 
         return closest_values[:,0].detach().cpu(),closest_values[:,1].detach().cpu()
             
-    def _sample(self,num_samples,context):
-        samples = self.__sample(num_samples,context)
-        x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])
-        y = self.unscale(samples[:,1].flatten(),self.stats_['y_max'],self.stats_['y_min'])
-        t = self.unscale(samples[:,2].flatten(),self.stats_['time_max'],self.stats_['time_min'])
-
-        x = self.set_to_closest(x,self._allowed_x)
-        y = self.set_to_closest(y,self._allowed_y)
-        return torch.concat((x.unsqueeze(1),y.unsqueeze(1),t.unsqueeze(1)),1).detach().cpu().numpy()
-
     def __get_track(self,num_samples,context):
         samples = self.__sample(num_samples,context)
         x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])#.round()
@@ -268,7 +221,7 @@ class FreiaNet(nn.Module):
                 #print("x",i,x_low,x_high)
 
             hits = hits[valid_x_mask]
-            
+
             # Spacings along y
             valid_y_mask = torch.ones(hits.shape[0], dtype=torch.bool, device=hits.device)
             for i in range(1, self.num_pmts_y): 
@@ -279,7 +232,6 @@ class FreiaNet(nn.Module):
                 #print("y",i,y_low,y_high)
 
             hits = hits[valid_y_mask]
-
 
         return hits
 
@@ -332,7 +284,6 @@ class FreiaNet(nn.Module):
         return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy(),"pixelID":pixelID.numpy(),"channel":channel.numpy()}
 
 
-
     def to_noise(self,inputs,context):
         if self.embedding:
             embedded_context = self.context_embedding(context)
@@ -342,30 +293,8 @@ class FreiaNet(nn.Module):
 
         return noise
 
-    def sample_and_log_prob(self,num_samples,context):
-        if self.embedding:
-            embedded_context = self._embedding_net(context)
-        else:
-            embedded_context = context
 
-        noise, log_prob = self.distribution.sample_and_log_prob(
-            num_samples, context=embedded_context
-        )
- 
-        if embedded_context is not None:
-            # Merge the context dimension with sample dimension in order to apply the transform.
-            noise = torchutils.merge_leading_dims(noise, num_dims=2)
-            embedded_context = torchutils.repeat_rows(
-                embedded_context, num_reps=num_samples
-            )
-        samples, logabsdet = self.sequence.forward(noise,rev=True,c=[embedded_context])
 
-        if embedded_context is not None:
-            # Split the context dimension from sample dimension.
-            samples = torchutils.split_leading_dim(samples, shape=[-1, num_samples])
-            logabsdet = torchutils.split_leading_dim(logabsdet, shape=[-1, num_samples])
-
-        return samples, log_prob - logabsdet
 
         
  

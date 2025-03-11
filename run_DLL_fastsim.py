@@ -18,6 +18,8 @@ import time
 import pickle
 from dataloader.create_data import hpDIRC_DLL_Dataset
 from models.NF.freia_models import FreiaNet
+from models.OT_Flow.ot_flow import OT_Flow
+from models.FlowMatching.flow_matching import FlowMatching
 from sklearn.metrics import roc_curve, auc,roc_auc_score
 from sklearn import metrics
 from scipy.optimize import curve_fit
@@ -68,9 +70,6 @@ def efficiency_func_momentum(probabilities, labels, momentum, method, out_dir):
         interp_eff = interp_(x)
         plt.plot(x, interp_eff, color=colors[i], label='{0:.1f}%'.format(fprs[i] * 100),
                  linestyle='-', linewidth=1)
-        #print(method,eff_)
-        #plt.plot(bin_centers, eff_, color=colors[i], label='{0:.1f}%'.format(fprs[i] * 100),
-        #linestyle='-', linewidth=2)
         plt.ylim(0,1)
 
     if method == 'NF':
@@ -99,9 +98,9 @@ def compute_efficiency_rejection(delta_log_likelihood, true_labels):
     TN = np.sum((predicted_labels == 0) & (true_labels == 0), axis=1)
     FN = np.sum((predicted_labels == 0) & (true_labels == 1), axis=1)
 
-    efficiencies = TP / (TP + FN)  # Efficiency (True Positive Rate)
-    rejections = TN / (TN + FP)  # Rejection (True Negative Rate)
-    auc = np.trapz(y=np.flip(rejections),x=np.flip(efficiencies))
+    efficiencies = TP / (TP + FN)  
+    rejections = TN / (TN + FP)  
+    auc = np.trapezoid(y=np.flip(rejections),x=np.flip(efficiencies))
 
     return efficiencies,rejections,auc
 
@@ -125,8 +124,6 @@ def merge_PDF(out_dir):
 def perform_fit(dll_k,dll_p,bins=200):
     hist_k, bin_edges_k = np.histogram(dll_k, bins=bins, density=True)
     bin_centers_k = (bin_edges_k[:-1] + bin_edges_k[1:]) / 2
-    #print(hist_k)
-    #print(bin_edges_k)
     try:
         popt_k, pcov_k = curve_fit(gaussian, bin_centers_k, hist_k, p0=[1, np.mean(dll_k), np.std(dll_k)],maxfev=1000,bounds = ([0, -np.inf, 1e-9], [np.inf, np.inf, np.inf]))
         amplitude_k, mean_k, stddev_k = popt_k
@@ -165,10 +162,9 @@ def fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder,dll_k_geom,dll_p_geom,ki
     print(kin_k.shape,kin_p.shape)
     if sim_type == "pgun":
         bounds = list(np.arange(np.min(kin_k[:,0]),np.max(kin_k[:,0]),0.1))
-        #bounds = list(np.arange(0.5,10.0,0.01))
         bounds = np.array(bounds + [10.0])
     elif sim_type == "decays":
-        bounds = list(np.arange(2.0,8.1,0.1))
+        bounds = list(np.arange(1.0,10.1,0.1))
 
     bound_centers = []
     sigma_NF = []
@@ -195,11 +191,8 @@ def fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder,dll_k_geom,dll_p_geom,ki
         max_ = np.maximum.reduce([np.max(dll_k[k_idx]),np.max(dll_p[p_idx])])
         min_ = max(-500,min_)
         max_ = min(500,max_)
-        #min_ = -250
-        #max_ = 250
-        #print(min_,max_)
+
         bins = np.linspace(min_,max_,400)
-        #print(bins)
         popt_k_NF,popt_p_NF,sep_NF,bin_centers_k_NF,bin_centers_p_NF = perform_fit(dll_k[k_idx],dll_p[p_idx],bins)
         sigma_NF.append(sep_NF)
         print(upper,lower,sep_NF)
@@ -216,23 +209,18 @@ def fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder,dll_k_geom,dll_p_geom,ki
 
         fig,ax = plt.subplots(1,2,figsize=(12,4))
         ax = ax.ravel()
-        #print(dll_k[k_idx],dll_p[p_idx])
         min_ = np.minimum.reduce([np.min(dll_k[k_idx]), np.min(dll_p[p_idx])])
         max_ = np.maximum.reduce([np.max(dll_k[k_idx]),np.max(dll_p[p_idx])])
         min_ = max(-500,min_)
         max_ = min(500,max_)
         ax[0].hist(dll_k[k_idx],bins=400,density=True,alpha=1.,range=[min_,max_],label=r'$\mathcal{K}_{NF.}$',color='red',histtype='step',lw=3)
         ax[0].hist(dll_p[p_idx],bins=400,density=True,range=[min_,max_],alpha=1.0,label=r'$\pi$',color='blue',histtype='step',lw=3)
-        #ax[0].hist(dll_k_geom[k_idx_geom],bins=bins,density=True,alpha=1.,range=[np.min(dll_k_geom[k_idx_geom]),np.max(dll_k_geom[k_idx_geom])],label=r'$\mathcal{K}_{geom.}$',color='k',histtype='step',lw=3)
-        #ax[0].hist(dll_p_geom[p_idx_geom],bins=bins,density=True,range=[np.min(dll_p_geom[p_idx_geom]),np.max(dll_p_geom[p_idx_geom])],alpha=1.0,label=r'$\pi_{geom.}$',color='magenta',histtype='step',lw=3)
         ax[0].set_xlabel('Loglikelihood Difference',fontsize=25)
         ax[0].set_ylabel('A.U.',fontsize=25)
         ax[0].set_title(r'$ \Delta \mathcal{L}_{K \pi}$' + r'$|\vec{p}| \in $'+'({0:.2f},{1:.2f}) GeV'.format(lower,upper),fontsize=25)
 
         ax[1].plot(bin_centers_k_NF, gaussian(bin_centers_k_NF, *popt_k_NF),color='red', label=r"$\mathcal{K}_{NF.}$: " +r"$\mu={0:.2f}, \sigma={1:.2f}$".format(popt_k_NF[1],popt_k_NF[2]))
         ax[1].plot(bin_centers_p_NF, gaussian(bin_centers_p_NF, *popt_p_NF),color='blue', label=r"$\pi_{NF.}$: " +r"$\mu={0:.2f}, \sigma={1:.2f}$".format(popt_p_NF[1],popt_p_NF[2]))
-        #ax[1].plot(bin_centers_k_geom, gaussian(bin_centers_k_geom, *popt_k_geom),color='k', label=r"$\mathcal{K}_{geom.}$: " +r"$\mu={0:.2f}, \sigma={1:.2f}$".format(popt_k_geom[1],popt_k_geom[2]))
-        #ax[1].plot(bin_centers_p_geom, gaussian(bin_centers_p_geom, *popt_p_geom),color='magenta', label=r"$\pi_{geom.}$: " +r"$\mu={0:.2f}, \sigma={1:.2f}$".format(popt_p_geom[1],popt_p_geom[2]))
         ax[1].set_xlabel('Fitted Loglikelihood Difference',fontsize=25)
         ax[1].set_ylabel('A.U.',fontsize=25)
         ax[1].legend(fontsize=20,loc=(1.01,0.4))
@@ -245,7 +233,8 @@ def fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder,dll_k_geom,dll_p_geom,ki
 
     return sigma_NF, sigma_geom,bound_centers
 
-def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
+def plot_DLL(kaons,pions,out_folder,datatype,sim_type,extension):
+    print(out_folder)
     #     # This function is gross need to rewrite it
     #     # Kaon label = 1
     #     # Pion label = 0
@@ -277,7 +266,7 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
         ll_k.append(np.array(kaons[i]['hyp_kaon']).flatten())
         kin_k.append(kaons[i]['Kins'])
         nhits_k.append(kaons[i]['Nhits'])
-        #print(kaons[i]['Kins'].shape)
+
 
     for i in range(len(pions)):
         dll_p.append((np.array(pions[i]['hyp_kaon']) - np.array(pions[i]['hyp_pion'])).flatten())
@@ -323,7 +312,7 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
         dll_p = dll_p[idx_]
         kin_p = kin_p[idx_]
 
-        # Geom 
+        # Geom - defaults to zero as of now
         idx_ = np.where((kin_k_geom[:,0] > 1.0) & (kin_k_geom[:,0] < 10.))
         dll_k_geom = dll_k_geom[idx_]
         kin_k_geom = kin_k_geom[idx_]
@@ -336,32 +325,26 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
     sep_NF, sep_geom,bound_centers = fine_grained_DLL(dll_k,dll_p,kin_k,kin_p,out_folder,dll_k_geom,dll_p_geom,kin_k_geom,kin_p_geom,sim_type)
     merge_PDF(out_folder)
 
-    #swin = np.load("/sciclone/home/jgiroux/Cherenkov_Transformer/Figures/hpDIRC_Full_PhaseSpace_with_Seeds/Swin_Sigma_Sep.pkl",allow_pickle=True)
-    #swin_sep = swin['swin_sep']
     plt.plot(bound_centers,sep_NF,label=r"$\sigma_{NF.}$",color='red',marker='o')
-    #plt.plot(bound_centers,swin_sep,label=r"$\sigma_{Swin.}$",color='k',marker='o')
-    #plt.plot(bound_centers,sep_geom,label=r"$\sigma_{geom.}$",color='k',marker='o')
     plt.legend(loc='upper right',fontsize=20)
     plt.xlabel("Momentum [GeV/c]",fontsize=20)
     plt.ylabel(r"$\sigma$",fontsize=20)
-    plt.xticks(fontsize=18)  # adjust fontsize as needed
-    plt.yticks(fontsize=18)  # adjust fontsize as needed
+    plt.xticks(fontsize=18)  
+    plt.yticks(fontsize=18) 
     plt.title(r"$\sigma_{sep.}$ as a function of Momentum",fontsize=20)
-    plt.savefig(os.path.join(out_folder,'Seperation_Average.pdf'),bbox_inches='tight')
+    plt.savefig(os.path.join(out_folder,f'Seperation_Average_{extension}.pdf'),bbox_inches='tight')
     plt.close()
 
     # DLL over phase space
     plt.hist(dll_k,bins=100,density=True,alpha=1.,range=[-250,250],label=r'$\mathcal{K}_{NF.}$',color='red',histtype='step',lw=2)
     plt.hist(dll_p,bins=100,density=True,range=[-250,250],alpha=1.0,label=r'$\pi_{NF.}$',color='blue',histtype='step',lw=2)
-    #plt.hist(dll_k_geom,bins=100,density=True,alpha=1.,range=[-250,250],label=r'$\mathcal{K}_{geom.}$',color='k',histtype='step',lw=2)
-    #plt.hist(dll_p_geom,bins=100,density=True,range=[-250,250],alpha=1.0,label=r'$\pi_{geom.}$',color='magenta',histtype='step',lw=2)
     plt.xlabel('Loglikelihood Difference',fontsize=25)
     plt.ylabel('A.U.',fontsize=25)
     plt.legend(fontsize=20)
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     plt.title(r'$ \Delta \mathcal{L}_{\mathcal{K} \pi}$',fontsize=30)
-    out_path_DLL = os.path.join(out_folder,"DLL_piK.pdf")
+    out_path_DLL = os.path.join(out_folder,f"DLL_piK_{extension}.pdf")
     plt.savefig(out_path_DLL,bbox_inches='tight')
     plt.close()
 
@@ -369,7 +352,7 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
     if real:
         r = [(0,250),(-500,100)]
     else:
-        r = [(0,250),(-150,250)]
+        r = [(0,230),(-50,600)]
     plt.hist2d(nhits_k, ll_k, bins=[100,50], cmap='plasma', norm=LogNorm(), range=r)
     plt.title(r'$\log \mathcal{L}_{\mathcal{K}}$ as a function of $N_{\gamma_c}$', fontsize=30, pad=10)
     plt.xlabel(r'$N_{\gamma_c}$', fontsize=25)
@@ -380,7 +363,7 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
     text_bbox = plt.text(text_x, text_y, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes, fontsize=30, bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.2'))
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
-    out_path_khits = os.path.join(out_folder,"Kaons_LL_function_of_NHits.pdf")
+    out_path_khits = os.path.join(out_folder,f"Kaons_LL_function_of_NHits_{extension}.pdf")
     plt.savefig(out_path_khits,bbox_inches="tight")
     plt.close()
 
@@ -395,7 +378,7 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
     text_bbox = plt.text(text_x, text_y, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes, fontsize=30, bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.2'))
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
-    out_path_phits = os.path.join(out_folder,"Pions_DLL_function_of_NHits.pdf")
+    out_path_phits = os.path.join(out_folder,f"Pions_DLL_function_of_NHits_{extension}.pdf")
     plt.savefig(out_path_phits,bbox_inches="tight")
     plt.close()
 
@@ -428,22 +411,16 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
 
     efficiencies_geom, rejections_geom, auc_geom = compute_efficiency_rejection(delta_log_likelihood_geom, true_labels_geom)
 
-    # swin_ = np.load("/sciclone/home/jgiroux/Cherenkov_Transformer/Figures/hpDIRC_Full_PhaseSpace_with_Seeds/Swin_eff_rej_auc.pkl",allow_pickle=True)
-    # eff_swin = swin_['efficiencies']
-    # rej_swin = swin_['rejections']
-    # auc_swin = swin_['auc']
+    dicte_ = {"eff":efficiencies,"rej":rejections,"auc":auc}
+
+    with open(os.path.join(out_folder,f"ROC_AUC_{extension}.pkl"),"wb") as file:
+        pickle.dump(dicte_,file)
+
 
     # ROC Curve
     plt.figure(figsize=(8,8))
-    #plt.plot(rejections_geom,efficiencies_geom, color='blue', lw=2, label='Geometric Method. AUC = %0.3f' % auc_geom)
     plt.plot(rejections,efficiencies,color='red', lw=2, label='NF-DLL. AUC = %0.3f' % auc)
-   # plt.plot(rej_swin,eff_swin,color='k',lw=2,label='Swin. AUC = %0.3f' % auc_swin)
     plot_swin = False
-    if plot_swin:
-       swin_default = np.load("/sciclone/home/jgiroux/Cherenkov_Transformer/swin_results.pkl",allow_pickle=True)
-       #swin_NF = np.load("/sciclone/home/jgiroux/Cherenkov_Transformer/swin_results_NF_Trained.pkl",allow_pickle=True)
-       plt.plot(swin_default['rejections'],swin_default['efficiencies'],color='k',lw=2,label='Swin. AUC = %0.3f' % swin_default['auc'])
-       #plt.plot(swin_NF['rejections'],swin_NF['efficiencies'],color='magenta',lw=2,label=r'Swin$._{NF.}$ Area = %0.2f' % swin_NF['auc'])
     plt.plot([0, 1], [1, 0], color='grey', lw=2, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
@@ -451,9 +428,9 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
     plt.ylabel(r'pion rejection',fontsize=30,labelpad=10) 
     plt.legend(loc="lower left",fontsize=18)
     plt.ylim(0,1)
-    plt.xticks(fontsize=20)  # adjust fontsize as needed
+    plt.xticks(fontsize=20)  
     plt.yticks(fontsize=20)
-    out_path_DLL_ROC = os.path.join(out_folder,"DLL_piK_ROC.pdf")
+    out_path_DLL_ROC = os.path.join(out_folder,f"DLL_piK_ROC_{extension}.pdf")
     plt.savefig(out_path_DLL_ROC,bbox_inches='tight')
     plt.close()
 
@@ -510,8 +487,8 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
             eff_geom_ = np.random.normal(eff_geom,sigma_eff_geom)
             rej_geom_ = np.random.normal(rej_geom,sigma_rej_geom)
 
-            AUC.append(np.trapz(y=np.flip(rej_),x=np.flip(eff_)))
-            AUC_geom.append(np.trapz(y=np.flip(rej_geom_),x=np.flip(eff_geom_)))
+            AUC.append(np.trapezoid(y=np.flip(rej_),x=np.flip(eff_)))
+            AUC_geom.append(np.trapezoid(y=np.flip(rej_geom_),x=np.flip(eff_geom_)))
 
 
         aucs.append(np.mean(AUC))
@@ -526,23 +503,15 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
         print("Geom. -> Mean AUC: ",np.mean(AUC_geom)," 95%",np.percentile(AUC_geom,2.5),"-",np.percentile(AUC_geom,97.5))
 
     fig = plt.figure(figsize=(8,8))
-    if plot_swin:
-        swin = np.load("/sciclone/home/jgiroux/Cherenkov_Transformer/auc_func_p_swin.pkl",allow_pickle=True)
-
-    #swin = np.load("/sciclone/home/jgiroux/Cherenkov_Transformer/Figures/hpDIRC_Full_PhaseSpace_with_Seeds/Swin_eff_rej_func_p.pkl",allow_pickle=True)
-    #plt.errorbar(centers,aucs_geom,yerr=[np.array(aucs_geom) - np.array(aucs_geom_lower),np.array(aucs_geom_upper) - np.array(aucs_geom)],label=r"$AUC_{Geometric.}$",color='blue',marker='o',capsize=5)
     plt.errorbar(centers,aucs,yerr=[np.array(aucs) - np.array(aucs_lower),np.array(aucs_upper) - np.array(aucs)],label=r"$AUC_{NF-DLL.}$",color='red',marker='o',capsize=5)
-    #if plot_swin:
-    #plt.errorbar(centers,swin['aucs'],yerr=[np.array(swin['aucs']) - np.array(swin['lowers']),np.array(swin['uppers']) - np.array(swin['aucs'])],label=r"$AUC_{Swin.}$",color='k',marker='o',capsize=5)
     legend1 = plt.legend(loc='lower left', fontsize=24)
-    legend1.get_frame().set_facecolor('white')  # Set legend facecolor
-    legend1.get_frame().set_edgecolor('grey')  # Set legend edgecolor
-    legend1.get_frame().set_alpha(1.0)  # Set legend alpha
+    legend1.get_frame().set_facecolor('white')  
+    legend1.get_frame().set_edgecolor('grey')  
+    legend1.get_frame().set_alpha(1.0)  
     plt.xlabel("momentum [GeV/c]",fontsize=30,labelpad=10)
     plt.ylabel("AUC",fontsize=30,labelpad=10)
-    plt.xticks(fontsize=22)  # adjust fontsize as needed
-    plt.yticks(fontsize=22)  # adjust fontsize as needed
-    #plt.title("AUC as function of momentum",fontsize=32)
+    plt.xticks(fontsize=22)  
+    plt.yticks(fontsize=22)  
     if np.min(aucs) < np.min(aucs_geom):
         min_aucs = np.min(aucs)
     else:
@@ -553,7 +522,6 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
         max_aucs = np.max(aucs_geom)
 
     plt.ylim(min_aucs - 0.05,max_aucs + 0.05)
-    #plt.ylim(np.min(aucs) - 0.05,np.max(aucs) + 0.05)
 
     ax2 = plt.twinx()
 
@@ -563,12 +531,19 @@ def plot_DLL(kaons,pions,out_folder,datatype,sim_type):
     ax2.set_ylabel('Counts', fontsize=30,labelpad=10)
     ax2.tick_params(axis='y', labelsize=20)
     legend2 = ax2.legend(loc='upper right', fontsize=24)
-    legend2.get_frame().set_facecolor('white')  # Set legend facecolor
-    legend2.get_frame().set_edgecolor('grey')  # Set legend edgecolor
-    legend2.get_frame().set_alpha(1.0)  # Set legend alpha
-    out_path_AUC_func_P = os.path.join(out_folder,"DLL_AUC_func_P.pdf")
+    legend2.get_frame().set_facecolor('white')  
+    legend2.get_frame().set_edgecolor('grey')  
+    legend2.get_frame().set_alpha(1.0)  
+    out_path_AUC_func_P = os.path.join(out_folder,f"DLL_AUC_func_P_{extension}.pdf")
     plt.savefig(out_path_AUC_func_P,bbox_inches='tight')
     plt.close()
+
+
+    dicte_ = {"n_pions":n_pions,"n_kaons":n_kaons,
+             "aucs":aucs,"aucs_lower":aucs_lower,"aucs_upper":aucs_upper}
+
+    with open(os.path.join(out_folder,f"DLL_AUC_func_P_{extension}.pkl"),"wb") as file:
+        pickle.dump(dicte_,file)
 
 def drop_and_sum(x,batch_size):
     lls = []
@@ -577,7 +552,6 @@ def drop_and_sum(x,batch_size):
         ll = x[b]
         mask = torch.isnan(ll)
         lls.append(ll[~mask].sum().detach().cpu().numpy())
-
     return lls
 
 
@@ -595,14 +569,11 @@ def run_inference_seperate(pions,kaons,pion_net,kaon_net):
         h = h.reshape(int(b*n_photons),3).to('cuda').float()
         n_hits = data[3].numpy()
         c = data[1].reshape(int(b*n_photons),2).to('cuda').float()
-        #print(h)
-        #print(c)
         PID = data[2].numpy()
         unsc = data[4].numpy()[:,0,:]
         LL_k_geom = data[5].numpy()
         LL_pi_geom = data[6].numpy()
-        #print(c.shape,unsc.shape)
-        #invMass = data[5].numpy()
+ 
 
         
         with torch.set_grad_enabled(False):
@@ -656,8 +627,6 @@ def run_inference_seperate(pions,kaons,pion_net,kaon_net):
         LL_Kaon.append({"hyp_kaon":kaon_hyp_kaon,"hyp_pion":kaon_hyp_pion,"Truth":PID,"Kins":unsc,"Nhits":n_hits,"hyp_pion_geom":LL_pi_geom,"hyp_kaon_geom":LL_k_geom})#,"invMass":invMass})
 
         kbar.update(i)
-        #if i == 5000:
-        #    break
 
     end = time.time()
     print(" ")
@@ -675,92 +644,159 @@ def main(config,args):
     random.seed(config['seed'])
     torch.cuda.manual_seed(config['seed'])
     print("Running inference")
-    assert config["method"] in ["Combined","Pion","Kaon"]
+    assert config["method"] in ["Pion","Kaon"]
 
     datatype = config['datatype']
-    num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
-    input_shape = int(config['model_'+str(args.model_type)]['input_shape'])
-    cond_shape = int(config['model_'+str(args.model_type)]['cond_shape'])
-    num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
-    hidden_nodes = int(config['model_'+str(args.model_type)]['hidden_nodes'])
+    num_layers = int(config['model_CNF']['num_layers'])
+    input_shape = int(config['model_CNF']['input_shape'])
+    cond_shape = int(config['model_CNF']['cond_shape'])
+    num_blocks = int(config['model_CNF']['num_blocks'])
+    hidden_nodes = int(config['model_CNF']['hidden_nodes'])
     stats = config['stats']
+
+    alph = config['model_CNF']['alph']
+    train_T = bool(config['model_CNF']['train_T'])
+    pion_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
+    kaon_net  = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
+    device = torch.device('cuda')
+    pion_net.to('cuda')
+    dicte = torch.load(config['Inference']['pion_model_path_CNF'])
+    pion_net.load_state_dict(dicte['net_state_dict'])
+
+    kaon_net.to('cuda')
+    dicte = torch.load(config['Inference']['kaon_model_path_CNF'])
+    kaon_net.load_state_dict(dicte['net_state_dict'])
 
     if not os.path.exists("Inference"):
         os.makedirs("Inference")
 
-    if os.path.exists(os.path.join(config['Inference']['out_dir_cont'],"Kaon_DLL_Results.pkl")) and os.path.exists(os.path.join(config['Inference']['out_dir_cont'],"Pion_DLL_Results.pkl")):
-        print("Found existing inference files. Skipping inference and only plotting.")
-        sim_type = config['sim_type']
-        LL_Kaon = np.load(os.path.join(config['Inference']['out_dir_cont'],"Kaon_DLL_Results.pkl"),allow_pickle=True)#[:10000]
-        LL_Pion = np.load(os.path.join(config['Inference']['out_dir_cont'],"Pion_DLL_Results.pkl"),allow_pickle=True)#[:10000]
-        print('Stats:',len(LL_Kaon),len(LL_Pion))
-        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir_cont'],datatype,sim_type)
-
+    if args.momentum == -1:
+        nested_dir = "FullPhaseSpace"
     else:
-        #test_pions = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['pion_data_path'],time_cuts=args.time,stats=stats)
-        #test_kaons = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['kaon_data_path'],time_cuts=args.time,stats=stats)
-        test_pions = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['pion_data_path'],time_cuts=args.time,stats=stats)
-        test_kaons = hpDIRC_DLL_Dataset(file_path=config['dataset']['testing']['DLL']['kaon_data_path'],time_cuts=args.time,stats=stats)
+        nested_dir = str(args.momentum)
 
+
+    # Run for Fast Simulated Data.
+    print("------------------ Fast Simulation -----------------")
+    pion_exist = os.path.exists(os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Pion_DLL_Results_FastSim.pkl"))
+    kaon_exist = os.path.exists(os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Kaon_DLL_Results_FastSim.pkl"))
+    
+    if not pion_exist and kaon_exist:
+        if args.momentum == 9.0:
+            test_pions = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_9GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Pion",geant=False)
+            test_kaons = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_9GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Kaon",geant=False)
+        elif args.momentum == 6.0:
+            test_pions = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_6GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Pion",geant=False)
+            test_kaons = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_6GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Kaon",geant=False)
+        elif args.momentum == 3.0:
+            test_pions = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_3GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Pion",geant=False)
+            test_kaons = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_3GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Kaon",geant=False)
+        elif args.momentum == -1:
+            test_pions = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_full"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Pion",geant=False)
+            test_kaons = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_full"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Kaon",geant=False)       
+        else:
+            raise ValueError("Momentum value not found.")
+            
         print("# of Pions: ",len(test_pions))
         print("# of Kaons: ",len(test_kaons))
 
-        pions = CreateInferenceLoader(test_pions,config) # Batch size is 1 untill I figure out a better way
+        pions = CreateInferenceLoader(test_pions,config) 
         kaons = CreateInferenceLoader(test_kaons,config)
 
-        if args.model_type == 'NF':
-            pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
-            kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats)
-        elif args.model_type == 'CNF':
-            alph = config['model_'+str(args.model_type)]['alph']
-            train_T = bool(config['model_'+str(args.model_type)]['train_T'])
-            pion_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
-            kaon_net  = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph)
-        elif args.model_type == 'FlowMatching':
-            pion_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
-            kaon_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats)
-        else:
-            raise ValueError("Model type not found.")
-
-        device = torch.device('cuda')
-        pion_net.to('cuda')
-        dicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)])
-        pion_net.load_state_dict(dicte['net_state_dict'])
-
-        
-        kaon_net.to('cuda')
-        dicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
-        kaon_net.load_state_dict(dicte['net_state_dict'])
-
         LL_Pion,LL_Kaon = run_inference_seperate(pions,kaons,pion_net,kaon_net)
-        
-        if not os.path.exists(config['Inference']['out_dir_cont']):
-            print('Inference plots can be found in: ' + config['Inference']['out_dir_cont'])
-            os.mkdir(config['Inference']['out_dir_cont'])
 
-        pion_path = os.path.join(config['Inference']['out_dir_cont'],"Pion_DLL_Results.pkl")
+        print('Inference data can be found in: ' + config['Inference']['out_dir_fixed'])
+        os.makedirs(config['Inference']['out_dir_fixed'],exist_ok=True)
+        os.makedirs(os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir)),exist_ok=True)
+
+        pion_path = os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Pion_DLL_Results_FastSim.pkl")
         with open(pion_path,"wb") as file:
             pickle.dump(LL_Pion,file)
 
-        kaon_path = os.path.join(config['Inference']['out_dir_cont'],"Kaon_DLL_Results.pkl")
+        kaon_path = os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Kaon_DLL_Results_FastSim.pkl")
         with open(kaon_path,"wb") as file:
             pickle.dump(LL_Kaon,file)
 
-        sim_type = config['sim_type']
-        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir_cont'],datatype,sim_type)
+        print(" ")
 
+    else:
+        print("Found existing inference files for fast sim.")
+        pion_path = os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Pion_DLL_Results_FastSim.pkl")
+        LL_Pion = np.load(pion_path,allow_pickle=True)
+        kaon_path = os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Kaon_DLL_Results_FastSim.pkl")
+        LL_Kaon = np.load(kaon_path,allow_pickle=True)
+
+    if args.full_phase_space:
+        sim_type = config['sim_type']
+        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir_fixed'],datatype,sim_type,extension="FastSim")
+
+
+    print("------------------ Geant4 -----------------")
+    pion_exist = os.path.exists(os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Pion_DLL_Results_Geant.pkl"))
+    kaon_exist = os.path.exists(os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Kaon_DLL_Results_Geant.pkl"))
+    
+    if not pion_exist and kaon_exist:
+        if args.momentum == 9.0:
+            test_pions = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_9GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Pion",geant=True)
+            test_kaons = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_9GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Kaon",geant=True)
+        elif args.momentum == 6.0:
+            test_pions = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_6GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Pion",geant=True)
+            test_kaons = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_6GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Kaon",geant=True)
+        elif args.momentum == 3.0:
+            test_pions = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_3GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Pion",geant=True)
+            test_kaons = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_3GeV"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Kaon",geant=True)
+        elif args.momentum == -1:
+            test_pions = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_full"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Pion",geant=True)
+            test_kaons = hpDIRC_DLL_Dataset(path_=config['dataset']['fixed_point_fs']["data_path_full"],time_cuts=args.time,stats=stats,fast_sim_comp=True,fast_sim_type="Kaon",geant=True)       
+        else:
+            raise ValueError("Momentum value not found.")
+            
+        print("# of Pions: ",len(test_pions))
+        print("# of Kaons: ",len(test_kaons))
+
+        pions = CreateInferenceLoader(test_pions,config) 
+        kaons = CreateInferenceLoader(test_kaons,config)
+
+        
+        LL_Pion,LL_Kaon = run_inference_seperate(pions,kaons,pion_net,kaon_net)
+        
+        print('Inference data can be found in: ' + config['Inference']['out_dir_fixed'])
+        os.makedirs(config['Inference']['out_dir_fixed'],exist_ok=True)
+
+
+        os.makedirs(os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir)),exist_ok=True)
+
+        pion_path = os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Pion_DLL_Results_Geant.pkl")
+        with open(pion_path,"wb") as file:
+            pickle.dump(LL_Pion,file)
+
+        kaon_path = os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Kaon_DLL_Results_Geant.pkl")
+        with open(kaon_path,"wb") as file:
+            pickle.dump(LL_Kaon,file)
+
+    else:
+        print("Found existing inference file for Geant.")
+        pion_path = os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Pion_DLL_Results_Geant.pkl")
+        LL_Pion = np.load(pion_path,allow_pickle=True)
+        kaon_path = os.path.join(config['Inference']['out_dir_fixed'],str(nested_dir),"Kaon_DLL_Results_Geant.pkl")
+        LL_Kaon = np.load(kaon_path,allow_pickle=True)
+
+    if args.full_phase_space:
+        sim_type = config['sim_type']
+        plot_DLL(LL_Kaon,LL_Pion,config['Inference']['out_dir_fixed'],datatype,sim_type,extension="Geant")
+
+        
 
 
 if __name__=='__main__':
     # PARSE THE ARGS
-    parser = argparse.ArgumentParser(description='FastSim Training')
+    parser = argparse.ArgumentParser(description='DLL at fixed kinematics.')
     parser.add_argument('-c', '--config', default='config.json',type=str,
                         help='Path to the config file (default: config.json)')
-    parser.add_argument('-r', '--resume', default=None, type=str,
-                        help='Path to the .pth model checkpoint to resume training')
     parser.add_argument('-t','--time',default=None,type=float,
                         help='Maximum hit time for Cherenkov photons')
-    parser.add_argument('-m','--model_type',default='NF',type=str,help='Type of model to use.')
+    parser.add_argument('-p','--momentum',default=-1,type=float,help='Momentum value.')
+    parser.add_argument('-f','--full_phase_space', action='store_false', help="DLL over continuous phase space.")
     args = parser.parse_args()
 
     config = json.load(open(args.config))

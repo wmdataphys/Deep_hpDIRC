@@ -352,17 +352,11 @@ class MixtureOfGaussiansMADE(MADE):
         )
         return log_prob
 
-    def sample(self, num_samples, context=None,device='cuda',inference=True):
-
-        if context is not None and inference:
+    def sample(self, num_samples, context=None,device='cuda'):
+        if context is not None:
            context = torchutils.repeat_rows(context, num_samples).to(context.device)
 
-        if inference:
-            scope_ = torch.no_grad()
-        else:
-            scope_ = torch.set_grad_enabled(True)
-
-        with scope_:
+        with torch.no_grad():
 
             samples = torch.zeros(context.shape[0], self.features).to(device)
 
@@ -377,20 +371,30 @@ class MixtureOfGaussiansMADE(MADE):
                     outputs[:, feature, :, 1],
                     outputs[:, feature, :, 2],
                 )
+                
                 logits = torch.log_softmax(logits, dim=-1)
                 stds = F.softplus(unconstrained_stds) + self.epsilon
 
                 component_distribution = distributions.Categorical(logits=logits)
                 components = component_distribution.sample((1,)).reshape(-1, 1)
+            
                 means, stds = (
                     means.gather(1, components).reshape(-1),
                     stds.gather(1, components).reshape(-1),
                 )
+    
                 samples[:, feature] = (
-                    means + torch.randn(context.shape[0]).to(means.device) * stds
+                    means + torch.randn(context.shape[0]).to(means.device) * stds 
                 ).detach()
 
         return samples.reshape(-1, num_samples, self.features)
+
+    def sample_and_log_prob(self, num_samples, context=None,device='cuda'):
+
+        samples = self.sample(num_samples,context=context,device=device)
+        log_prob = self.log_prob(samples, context=context)
+
+        return samples.reshape(-1, num_samples, self.features),log_prob.detach()
 
     def _initialize(self):
         # Initialize mixture coefficient logits to near zero so that mixture coefficients
