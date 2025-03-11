@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Define the support values for Geant PDF with k suffix
-#geant_support_values=("100k" "200k" "400k" "500k" "800k")
-geant_support_values=("10k")
+geant_support_values=("100k" "200k" "400k" "500k" "800k")
 
 # JSON config file path
 CONFIG_FILE="config/hpDIRC_config_clean.json"
@@ -43,7 +42,7 @@ print(kde_dir)
         --config "$CONFIG_FILE" \
         --momentum $momentum \
         --fine_grained_prior \
-        --fs_support 10000 \
+        --fs_support 800000 \
         --geant_support ${geant_support_full}
 done
 

@@ -19,7 +19,7 @@ fi
 
 output_dir="Generations/$output_dir"
 
-while [ $theta -le 25 ]
+while [ $theta -le 155 ]
 do
     if ls "${output_dir}"/*Pion*theta_${theta}* 1> /dev/null 2>&1; then
         echo "Pion file for theta $theta already exists. Skipping..."
