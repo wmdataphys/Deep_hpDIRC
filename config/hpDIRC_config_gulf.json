@@ -28,7 +28,7 @@
         "num_layers":4,
         "input_shape":3,
         "cond_shape":2,
-        "num_steps":200,
+        "num_steps":100,
         "hidden_nodes": 128
     },
     "model_GSGM":{
@@ -133,15 +133,15 @@
             "gen_dir": "Figures/hpDIRC_CNF_KaonTest_Small",
             "samples": 1,
             "pion_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/PScore_6L_T100_cosine___Jan-18-2025/PScore_6L_T100_cosine_epoch111_train_loss_0.228536.pth",
-            "kaon_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/KScore_6L_T100_cosine___Jan-24-2025/KScore_6L_T100_cosine_epoch131_train_loss_0.229118.pth",
+            "kaon_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/KScore_6L_T100_cosine___Jan-24-2025/KScore_6L_T100_cosine_epoch148_train_loss_0.229109.pth",
             "pion_model_path_GSGM":"/sciclone/data10/mcmartinez/hpDIRC_Models/PGSGM_4L_T100___Jan-23-2025/PGSGM_4L_T100_epoch121_train_loss_44.389694.pth",
             "kaon_model_path_GSGM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KGSGM_4L_T100___Jan-28-2025/KGSGM_4L_T100_epoch104_train_loss_9.493466.pth",
             "pion_model_path_CFG":"/sciclone/data10/mcmartinez/hpDIRC_Models/PCFG_4L_T100___Jan-29-2025/PCFG_4L_T100_epoch129_train_loss_0.224992.pth",
             "kaon_model_path_CFG":"/sciclone/data10/mcmartinez/hpDIRC_Models/KCFG_4L_T100___Jan-31-2025/KCFG_4L_T100_epoch99_train_loss_0.225634.pth",
-            "pion_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/PDDPM_6L_T100___Feb-01-2025/KDDPM_6L_T100_epoch116_train_loss_0.225650.pth",
+            "pion_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/PDDPM_6L_T100___Feb-01-2025/PDDPM_6L_T100_epoch76_train_loss_0.225088.pth",
             "kaon_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KDDPM_6L_T100___Feb-02-2025/KDDPM_6L_T100_epoch149_train_loss_0.225653.pth",
             "out_dir": "Inference/OTFlow_FullTrain_v2_6GeV_TestRevKinScale",
             "generation_dir": "/sciclone/data10/jgiroux/Cherenkov/ParticleGun/Generated_Data/NF_Generated",
-            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_T100_cosine_9GeV"
+            "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_T100_cosine_3GeV"
         }
 }
