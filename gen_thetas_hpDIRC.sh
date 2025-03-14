@@ -12,7 +12,7 @@
 theta=25
 momentum=3
 model_type="Score"
-config_file="config/hpDIRC_config_gulf.json"
+config_file="config/hpDIRC_config_clean.json"
 
 output_dir=$(python -c "
 import json

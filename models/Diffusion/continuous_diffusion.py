@@ -1,4 +1,8 @@
+# ported directly from LucidRains: 
+# https://github.com/lucidrains/denoising-diffusion-pytorch/blob/5989f4c77eafcdc6be0fb4739f0f277a6dd7f7d8/denoising_diffusion_pytorch/denoising_diffusion_pytorch.py#L281
+
 import math
+import numpy as np
 import torch
 from torch import sqrt
 from torch import nn, einsum
@@ -10,9 +14,9 @@ from tqdm import tqdm
 from einops import rearrange, repeat, reduce
 from einops.layers.torch import Rearrange
 
-import numpy as np
-# helpers
+from utils.hpDIRC import ALLOWED_X,ALLOWED_Y
 
+# helpers
 
 def exists(val):
     return val is not None
@@ -124,7 +128,8 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
         learned_schedule_net_hidden_dim = 1024,
         learned_noise_schedule_frac_gradient = 1.,   # between 0 and 1, determines what percentage of gradients go back, so one can update the learned noise schedule more slowly
         min_snr_loss_weight = False,
-        min_snr_gamma = 1
+        min_snr_gamma = 1,
+        LUT_path=None
     ):
         super().__init__()
 
@@ -132,48 +137,18 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
 
         # ------------ hpDIRC constants ------------
 
-        self._allowed_x = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
-                                                   16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
-                                                   30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
-                                                   43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
-                                                   62.54841111,  65.86091111,  69.17341111,  72.48591111,
-                                                   75.79841111,  79.11091111,  82.42341111,  85.73591111,
-                                                   89.04841111,  92.36091111,  95.67341111,  98.98591111,
-                                                   102.29841111, 105.61091111, 108.92341111, 112.23591111,
-                                                   121.44057223, 124.75307223, 128.06557223, 131.37807223,
-                                                   134.69057223, 138.00307223, 141.31557223, 144.62807223,
-                                                   147.94057223, 151.25307223, 154.56557223, 157.87807223,
-                                                   161.19057223, 164.50307223, 167.81557223, 171.12807223,
-                                                   180.33273334, 183.64523334, 186.95773334, 190.27023334,
-                                                   193.58273334, 196.89523334, 200.20773334, 203.52023334,
-                                                   206.83273334, 210.14523334, 213.45773334, 216.77023334,
-                                                   220.08273334, 223.39523334, 226.70773334, 230.02023334,
-                                                   239.22489446, 242.53739446, 245.84989446, 249.16239446,
-                                                   252.47489446, 255.78739446, 259.09989446, 262.41239446,
-                                                   265.72489446, 269.03739446, 272.34989446, 275.66239446,
-                                                   278.97489446, 282.28739446, 285.59989446, 288.91239446,
-                                                   298.11705557, 301.42955557, 304.74205557, 308.05455557,
-                                                   311.36705557, 314.67955557, 317.99205557, 321.30455557,
-                                                   324.61705557, 327.92955557, 331.24205557, 334.55455557,
-                                                   337.86705557, 341.17955557, 344.49205557, 347.80455557])).to(self.device)
-        self._allowed_y = torch.tensor(np.array([  3.65625   ,   6.96875   ,  10.28125   ,  13.59375   ,
-                                                   16.90625   ,  20.21875   ,  23.53125   ,  26.84375   ,
-                                                   30.15625   ,  33.46875   ,  36.78125   ,  40.09375   ,
-                                                   43.40625   ,  46.71875   ,  50.03125   ,  53.34375   ,
-                                                   62.01339286,  65.32589286,  68.63839286,  71.95089286,
-                                                   75.26339286,  78.57589286,  81.88839286,  85.20089286,
-                                                   88.51339286,  91.82589286,  95.13839286,  98.45089286,
-                                                   101.76339286, 105.07589286, 108.38839286, 111.70089286,
-                                                   120.37053571, 123.68303571, 126.99553571, 130.30803571,
-                                                   133.62053571, 136.93303571, 140.24553571, 143.55803571,
-                                                   146.87053571, 150.18303571, 153.49553571, 156.80803571,
-                                                   160.12053571, 163.43303571, 166.74553571, 170.05803571,
-                                                   178.72767857, 182.04017857, 185.35267857, 188.66517857,
-                                                   191.97767857, 195.29017857, 198.60267857, 201.91517857,
-                                                   205.22767857, 208.54017857, 211.85267857, 215.16517857,
-                                                   218.47767857, 221.79017857, 225.10267857, 228.41517857])).to(self.device) 
-        
+        self._allowed_x = torch.tensor(np.array(ALLOWED_X)).to(self.device)
+        self._allowed_y = torch.tensor(np.array(ALLOWED_Y)).to(self.device)
+                
         self.stats_ = stats
+
+        if LUT_path is not None:
+            print("Loading photon yield sampler.")
+            dicte = np.load(LUT_path,allow_pickle=True)
+            self.LUT = {k: v for k, v in dicte.items() if k != "global_values"}
+            self.global_values = dicte['global_values']
+            self.p_points = np.array(list(dicte.keys())[:-1]) 
+            self.theta_points = np.array(list(dicte[self.p_points[0]].keys()))
 
         self.photons_generated = 0
         self.photons_resampled = 0
@@ -421,58 +396,6 @@ class ContinuousTimeGaussianDiffusion(nn.Module):
         closest_theta = float(self.theta_points[closest_theta_idx])
 
         return int(np.random.choice(self.global_values,p=self.LUT[closest_p][closest_theta]))
-    
-    # def _apply_mask(self, hits,fine_grained_prior):
-    #     # Time > 0 
-    #     mask_time = torch.where((hits[:,2] > 0) & (hits[:,2] < self.stats_['time_max']))[0]
-    #     hits = hits[mask_time]
-    #     # Outer bounds
-    #     mask_bounds = torch.where((hits[:, 0] > self.stats_['x_min']) & (hits[:, 0] < self.stats_['x_max']) & (hits[:, 1] > self.stats_['y_min']) & (hits[:, 1] < self.stats_['y_max']))[0] # Acceptance mask
-    #     hits = hits[mask_bounds]
-
-    #     # Can we make this faster? Currently 2x increase.
-    #     if fine_grained_prior:
-    #         # Vectorize 
-
-    #         x_lows = []
-    #         x_highs = []
-    #         for i in range(1, self.num_pmts_x):
-    #             x_low = self._allowed_x[i * self.num_pixels - 1] + self.pixel_width/2.0
-    #             x_high = self._allowed_x[i * self.num_pixels] - self.pixel_width/2.0
-    #             x_lows.append(x_low)
-    #             x_highs.append(x_high)
-            
-    #         x_lows = torch.tensor(x_lows, device=hits.device).unsqueeze(0)
-    #         x_highs = torch.tensor(x_highs, device=hits.device).unsqueeze(0)
-
-    #         hits_x = hits[:, 0].unsqueeze(1)
-
-    #         excluded_x = (hits_x > x_lows) & (hits_x < x_highs)
-    #         excluded_x_any = excluded_x.any(dim=1)
-
-            
-    #         y_lows = []
-    #         y_highs = []
-    #         for i in range(1,self.num_pmts_y):
-    #             y_low = self._allowed_y[i * self.num_pixels - 1] + self.pixel_height/2.0
-    #             y_high = self._allowed_y[i * self.num_pixels] - self.pixel_height/2.0
-    #             y_lows.append(y_low)
-    #             y_highs.append(y_high)
-            
-    #         y_lows = torch.tensor(y_lows, device = hits.device).unsqueeze(0)
-    #         y_highs = torch.tensor(y_highs, device = hits.device).unsqueeze(0)
-
-    #         hits_y = hits[:,0].unsqueeze(1)
-
-    #         excluded_y = (hits_y > y_lows) & (hits_y < y_highs)
-    #         excluded_y_any = excluded_y.any(dim=1)
-
-    #         # combine masks
-    #         excluded_mask = excluded_x_any | excluded_y_any
-    #         hits = hits[~excluded_mask]
-
-    #     return hits
-
 
     def _apply_mask(self, hits,fine_grained_prior):
         # Time > 0 

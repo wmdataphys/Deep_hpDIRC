@@ -99,8 +99,8 @@
             "kaon_data_path_6GeV": "data/6GeV_setP_Jan27/merged_pik_6GeV_Kaons.pkl",
             "pion_data_path_9GeV": "data/9GeV_setP_Jan27/merged_pik_9GeV_Pions.pkl",
             "kaon_data_path_9GeV": "data/9GeV_setP_Jan27/merged_pik_9GeV_Kaons.pkl",
-            "pion_data_path_3GeV": "data/3GeV_setP_Jan27/merged_pik_3GeV_Pions.pkl",
-            "kaon_data_path_3GeV": "data/3GeV_setP_Jan27/merged_pik_3GeV_Kaons.pkl"
+            "pion_data_path_3GeV": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/fixed_thetas/3GeV/merged_pik_3GeV_Pions.pkl",
+            "kaon_data_path_3GeV": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/fixed_thetas/3GeV/merged_pik_3GeV_Kaons.pkl"
         },
         "full_phase_space": {
             "pion_data_path": "data/Testing_Pions_hpDIRC.pkl",
@@ -182,7 +182,7 @@
         "kaon_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KDDPM_6L_T100___Feb-02-2025/KDDPM_6L_T100_epoch149_train_loss_0.225653.pth",
         "pion_model_path_FlowMatching": "Trained_Models/Pion_FlowMatching_Model.pth",
         "kaon_model_path_FlowMatching": "Trained_Models/Kaon_FlowMatching_Model.pth",
-        "fixed_point_dir": "Test",
+        "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_T100_cosine_3GeV",
         "full_phase_space_dir": "NF_FullPhaseSpace_NOPhotonSampling",
         "out_dir_fixed": "Inference/NF_PhotonSampling",
         "out_dir_cont": "Inference/NF_FastSimulated_FPS_PhotonSampling",

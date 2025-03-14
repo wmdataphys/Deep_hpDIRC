@@ -102,21 +102,6 @@ class FlowMatching(nn.Module):
 
         self.NN = ResNN(nTh=self.layers,m=self.hidden_units,d=self.input_shape,conditional_dim=self.context_shape)
         self.path = AffineProbPath(scheduler=CondOTScheduler())
-        # self.distribution = MixtureOfGaussiansMADE(
-        #                 features=input_shape,
-        #                 hidden_features=128,
-        #                 context_features=context_shape,
-        #                 num_blocks=2,
-        #                 num_mixture_components=40,
-        #                 use_residual_blocks=True,
-        #                 random_mask=False,
-        #                 activation=F.relu,
-        #                 dropout_probability=0.0,
-        #                 use_batch_norm=False,
-        #                 epsilon=1e-2,
-        #                 custom_initialization=True,
-        #                 ).to(self.device)
-        # print("Using MOG 40.")
 
         self._allowed_x = torch.tensor(np.array(ALLOWED_X)).to(self.device)
         self._allowed_y = torch.tensor(np.array(ALLOWED_Y)).to(self.device)
@@ -138,7 +123,6 @@ class FlowMatching(nn.Module):
             embedded_context = context
 
         x_0 = torch.randn_like(x_1).to(x_1.device)
-        #x_0 = self.distribution.sample(x_1.shape[0],context=embedded_context,inference=False).squeeze(0)
 
         t = torch.rand(x_1.shape[0]).to(x_1.device) 
 
@@ -156,21 +140,20 @@ class FlowMatching(nn.Module):
             embedded_context = context
  
         wrapped_vf = WrappedModel(self.NN)
-        #step_size = 1.0 / (2*nt)
-        #T = torch.linspace(0,1,nt).to(self.device)
-        #x_init = self.distribution.sample(num_samples,context=embedded_context,inference=True)
+        step_size = 1.0 / (2*nt)
+        T = torch.linspace(0,1,nt).to(self.device)
 
         if embedded_context is not None:
-            #x_init = torchutils.merge_leading_dims(x_init, num_dims=2)
             embedded_context = torchutils.repeat_rows(
                 embedded_context, num_reps=num_samples
             )
 
+        
         x_init = torch.randn((num_samples, self.input_shape), dtype=torch.float32, device=self.device)
         solver = ODESolver(velocity_model=wrapped_vf) 
-        #sol = solver.sample(time_grid=T, x_init=x_init, method='midpoint', step_size=step_size, return_intermediates=False,model_extras={"c": embedded_context})
-        time_grid = torch.tensor([0.0, 1.0], device=self.device)
-        sol = solver.sample(time_grid=time_grid,x_init=x_init,method='dopri5',step_size=None,atol=1e-5,rtol=1e-5,return_intermediates=False,model_extras={"c": embedded_context})
+        sol = solver.sample(time_grid=T, x_init=x_init, method='midpoint', step_size=step_size, return_intermediates=False,model_extras={"c": embedded_context})
+        #time_grid = torch.tensor([0.0, 1.0], device=self.device)
+        #sol = solver.sample(time_grid=time_grid,x_init=x_init,method='dopri5',step_size=None,atol=1e-5,rtol=1e-5,return_intermediates=False,model_extras={"c": embedded_context})
         return sol
 
     def log_prob(self,inputs,context,nt=10):
@@ -324,4 +307,3 @@ class FlowMatching(nn.Module):
         Phi = 0.0
 
         return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy(),"pixelID":pixelID.numpy(),"channel":channel.numpy()}
-

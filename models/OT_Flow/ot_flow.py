@@ -290,4 +290,3 @@ class OT_Flow(nn.Module):
             logabsdet = torchutils.split_leading_dim(logabsdet, shape=[-1, num_samples])
 
         return samples, log_prob - logabsdet
-

@@ -13,7 +13,7 @@ from matplotlib.lines import Line2D
 from pdf2image import convert_from_path 
 from utils.hpDIRC import bins_x,bins_y,gapx,gapy,pixel_width,pixel_height
 
-t_bins = np.arange(0.0,157.0,0.5)
+t_bins = np.arange(9.0,157.0,0.5)
 
 def convert_indices(pmtID,pixelID): 
     row = (pmtID//6) * 16 + pixelID//16 
@@ -24,7 +24,7 @@ def convert_indices(pmtID,pixelID):
     
     return x,y
 
-def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=True, time_cutoff=1.5e-4):
+def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=True):
     data = np.load(file_path,allow_pickle=True)
     xs = []
     ys = []
@@ -231,7 +231,7 @@ def make_ratios(path_,label,momentum,outpath):
     n_gen_t, _ = np.histogram(t, bins=t_bins, density=True)
     alea_t,_ = np.histogram(t,bins=t_bins,density=False)
     alea_t = np.sqrt(alea_t) / (alea_t.sum() * (t_bins[1] - t_bins[0]))
-    ratio_err_t = alea_t / (n_true_t + 1e-50)
+    ratio_err_t = 3*alea_t / (n_true_t + 1e-50)
     ax[0].hist(t_true, density=True, color='k', label='Truth', bins=t_bins, histtype='step', lw=2)
     ax[0].hist(t, density=True, color='red', label='Generated', bins=t_bins, histtype='step', linestyle='dashed', lw=2)
     ax[0].set_xlabel("Hit Time (ns)", fontsize=20, labelpad=10)
@@ -242,17 +242,17 @@ def make_ratios(path_,label,momentum,outpath):
     n_gen_x, _ = np.histogram(x, bins=bins_x, density=True)
     alea_x,_ = np.histogram(x,bins=bins_x,density=False)
     alea_x = np.sqrt(alea_x) / (alea_x.sum() * (bins_x[1] - bins_x[0]))
-    ratio_err_x = alea_x / (n_true_x + 1e-10)
+    ratio_err_x = 3*alea_x / (n_true_x + 1e-10)
     ax[1].hist(x_true, density=True, color='k', label='Truth', bins=bins_x, histtype='step', lw=2)
     ax[1].hist(x, density=True, color='red', label='Generated', bins=bins_x, histtype='step', linestyle='dashed', lw=2)
     ax[1].set_xlabel("X (mm)", fontsize=20, labelpad=10)
-    ax[1].set_title(str(label)+r" - $|\vec{p}|$ ="+r" {0} GeV/c".format(momentum),fontsize=25)
+    ax[1].set_title(str(label)+r" - $|\vec{p}|$ ="+r" {0} GeV/c".format(int(momentum)),fontsize=25)
 
     # Y PDF
     n_true_y, _ = np.histogram(y_true, bins=bins_y, density=True)
     alea_y, _ = np.histogram(y,bins=bins_y,density=False)
     alea_y = np.sqrt(alea_y) / (alea_y.sum() * (bins_y[1] - bins_y[0]))
-    ratio_err_y = alea_y / (n_true_y + 1e-10)
+    ratio_err_y = 3*alea_y / (n_true_y + 1e-10)
     n_gen_y, _ = np.histogram(y, bins=bins_y, density=True)
     ax[2].hist(y_true, density=True, color='k', label='Truth', bins=bins_y, histtype='step', lw=2)
     ax[2].hist(y, density=True, color='red', label='Generated', bins=bins_y, histtype='step', linestyle='dashed', lw=2)
@@ -263,8 +263,8 @@ def make_ratios(path_,label,momentum,outpath):
     ratio_t[np.where(n_gen_t == n_true_t)[0]] = 1.0
     ratio_t_upper = ratio_t + ratio_err_t
     ratio_t_lower = ratio_t - ratio_err_t
-    #ax[3].errorbar(t_bins[:-1], ratio_t, yerr=ratio_err_t, color='red', ls='none', capsize=3, marker='.', ms=8)
-    ax[3].fill_between((t_bins[:-1] + t_bins[1:]) / 2, ratio_t_lower, ratio_t_upper, color='red', alpha=0.7, step='mid')
+    ax[3].step((t_bins[:-1] + t_bins[1:]) /2, ratio_t, color='red',linestyle='-',linewidth=1)
+    ax[3].fill_between((t_bins[:-1] + t_bins[1:])/2 , ratio_t_lower, ratio_t_upper, color='red', alpha=0.3, step='pre')
     ax[3].set_ylabel('Ratio', fontsize=15)
     ax[3].set_ylim([0, 2])
     ax[3].set_yticks([0.5, 1, 1.5])
@@ -276,8 +276,8 @@ def make_ratios(path_,label,momentum,outpath):
     ratio_x[np.where(n_gen_x == n_true_x)[0]] = 1.0
     ratio_x_upper = ratio_x + ratio_err_x
     ratio_x_lower = ratio_x - ratio_err_x
-    #ax[4].errorbar(bins_x[:-1], ratio_x, yerr=ratio_err_x, color='red', ls='none', capsize=3, marker='.', ms=8)
-    ax[4].fill_between(bin_centers_x, ratio_x_lower, ratio_x_upper, color='red', alpha=0.7, step='mid')
+    ax[4].step(bin_centers_x, ratio_x,color='red',linestyle='-',linewidth=1)
+    ax[4].fill_between(bin_centers_x, ratio_x_lower, ratio_x_upper, color='red', alpha=0.3, step='pre')
     ax[4].set_ylim([0, 2])
     ax[4].set_yticks([0.5, 1, 1.5])
     ax[4].axhline(1.0, color='black', linestyle='--', lw=1)
@@ -288,14 +288,19 @@ def make_ratios(path_,label,momentum,outpath):
     ratio_y[np.where(n_gen_y == n_true_y)[0]] = 1.0
     ratio_y_upper = ratio_y + ratio_err_y
     ratio_y_lower = ratio_y - ratio_err_y
-    #ax[5].errorbar(bins_y[:-1], ratio_y, yerr=ratio_err_y, color='red', ls='none', capsize=3, marker='.', ms=8)
-    ax[5].fill_between(bin_centers_y, ratio_y_lower, ratio_y_upper, color='red', alpha=0.7, step='mid')
+    ax[5].step(bin_centers_y, ratio_y, color='red',linestyle='-',linewidth=1)
+    ax[5].fill_between(bin_centers_y, ratio_y_lower, ratio_y_upper, color='red', alpha=0.3, step='pre')
     ax[5].set_ylim([0, 2])
     ax[5].set_yticks([0.5, 1, 1.5])
     ax[5].axhline(1.0, color='black', linestyle='--', lw=1)
 
     # Format
-    ax[1].legend(loc="best", fontsize=18.5, ncol=2, handlelength=2, handleheight=-.5)
+    legend_lines = [
+        Line2D([0], [0], color='k', linewidth=2, label="Geant4",linestyle='-'),
+        Line2D([0], [0], color='r', linewidth=2, label="FastSim.",linestyle='--')
+    ]
+    
+    ax[1].legend(handles=legend_lines,loc="upper center", fontsize=18.5,)
     for i in range(3):
         ax[i].tick_params(axis='both', which='major', labelsize=18)
         ax[i].set_yscale('log')
