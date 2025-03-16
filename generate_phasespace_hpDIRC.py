@@ -13,15 +13,25 @@ import itertools
 import matplotlib.pyplot as plt
 import time
 from matplotlib.colors import LogNorm
-from models.NF.freia_models import FreiaNet
-from models.OT_Flow.ot_flow import OT_Flow
-from models.FlowMatching.flow_matching import FlowMatching
 import matplotlib.colors as mcolors
 import pickle
 import warnings
 from make_plots import make_ratios
 
+import re
+import sys
+
 warnings.filterwarnings("ignore", message=".*weights_only.*")
+
+from models.NF.freia_models import FreiaNet
+from models.OT_Flow.ot_flow import OT_Flow
+from models.FlowMatching.flow_matching import FlowMatching
+from models.Diffusion.resnet import ResNet
+from models.Diffusion.resnet_cfg import ResNet as CFGResNet
+from models.Diffusion.continuous_diffusion import ContinuousTimeGaussianDiffusion
+from models.Diffusion.gsgm import GSGM
+from models.Diffusion.classifier_free_guidance import CFGDiffusion
+from models.Diffusion.gaussian_diffusion import GaussianDiffusion
 
 
 def main(config,args):
@@ -32,6 +42,26 @@ def main(config,args):
     np.random.seed(config['seed'])
     random.seed(config['seed'])
     torch.cuda.manual_seed(config['seed'])
+
+    # Setting up directory structure
+    os.makedirs("Generations",exist_ok=True)
+    out_folder = os.path.join("Generations",config['Inference']['full_phase_space_dir'])
+    os.makedirs(out_folder,exist_ok=True)
+
+    # Checking for existing data files
+    exists = False
+    out_files = os.listdir(out_folder)
+    for file in out_files:
+        match = re.search(rf'{args.method}_ntracks_{args.n_particles}\.pkl', file)
+        if match:
+            exists = True
+            break
+    
+    if exists:
+        print(f"Found existing .pkl files for {args.method} {args.model_type} for {args.n_particles} particles.")
+        print("Making ratio plots.")
+        make_ratios(path_=out_folder,label=args.method,momentum="1-10",outpath=os.path.join(out_folder,f"Ratios_{args.method}.pdf"))
+        sys.exit()
 
     config['method'] = args.method
 
@@ -68,11 +98,11 @@ def main(config,args):
     num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
     input_shape = int(config['model_'+str(args.model_type)]['input_shape'])
     cond_shape = int(config['model_'+str(args.model_type)]['cond_shape'])
-    num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
     hidden_nodes = int(config['model_'+str(args.model_type)]['hidden_nodes'])
     stats = config['stats']
     
     if args.model_type == "NF":
+        num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=sampler_path)
     elif args.model_type == "CNF":
         alph = config['model_'+str(args.model_type)]['alph']
@@ -80,6 +110,35 @@ def main(config,args):
         net = net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=sampler_path)
     elif args.model_type == "FlowMatching":
         net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=sampler_path)
+    elif args.model_type == 'Score':
+        num_steps = int(config['model_Score']['num_steps'])
+        noise_schedule = config['model_Score']['noise_schedule']
+        learned_schedule_net_hidden_dim = int(config['model_Score']['learned_schedule_net_hidden_dim'])
+        gamma = int(config['model_Score']['gamma'])
+
+        model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
+        net = ContinuousTimeGaussianDiffusion(model=model, stats=stats,num_sample_steps=num_steps, noise_schedule=noise_schedule, learned_schedule_net_hidden_dim=learned_schedule_net_hidden_dim, min_snr_loss_weight = True, min_snr_gamma=gamma,LUT_path=sampler_path)
+    elif args.model_type == 'GSGM':
+        num_steps = int(config['model_GSGM']['num_steps'])
+        num_embed = int(config['model_GSGM']['num_embed'])
+        learned_variance = config['model_GSGM']['learned_variance']
+        nonlinear_noise_schedule = int(config['model_GSGM']['nonlinear_noise_schedule'])
+        
+        net = GSGM(num_input=input_shape, num_conds=cond_shape, device=device, stats=stats, num_layers=num_layers, num_steps=num_steps, num_embed=num_embed, mlp_dim=hidden_nodes, nonlinear_noise_schedule=nonlinear_noise_schedule, learnedvar=learned_variance,LUT_path=sampler_path)
+    elif args.model_type == 'CFG':
+        num_steps = int(config['model_CFG']['num_steps'])
+        noise_schedule = config['model_CFG']['noise_schedule']
+        sampling_timesteps = config['model_CFG']['sampling_timesteps']
+        noising_level = config['model_CFG']['noising_level']
+        gamma = config['model_CFG']['gamma']
+
+        model = CFGResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
+        net = CFGDiffusion(model=model, stats=stats, timesteps=num_steps, sampling_timesteps=sampling_timesteps, beta_schedule=noise_schedule, ddim_sampling_eta = noising_level, min_snr_loss_weight = True,min_snr_gamma=gamma,LUT_path=sampler_path)
+    elif args.model_type == 'DDPM':
+        num_steps = int(config['model_DDPM']['num_steps'])
+
+        model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
+        net = GaussianDiffusion(denoise_fn=model, device=device, stats=stats, timesteps=num_steps, loss_type='l2',LUT_path=sampler_path)
     else:
         raise ValueError("Model type not found.")
 
@@ -166,16 +225,12 @@ def main(config,args):
     gen_dict['truth'] = truth
 
 
-    os.makedirs("Generations",exist_ok=True)
-    out_folder = os.path.join("Generations",config['Inference']['full_phase_space_dir'])
-    os.makedirs(out_folder,exist_ok=True)
     print("Outputs can be found in " + str(out_folder))
 
     out_path_ = os.path.join(out_folder,str(config['method'])+f"_ntracks_{len(datapoints)}.pkl")
     
     with open(out_path_,"wb") as file:
         pickle.dump(gen_dict,file)
-
 
     print("Making ratio plots.")
     del gen_dict,datapoints 

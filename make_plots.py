@@ -56,6 +56,8 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
 
     gs = gridspec.GridSpec(3, 2, height_ratios=[1.5, 0.5, 1])
 
+    text_momentum = int(momentum) if momentum.isdigit() else momentum
+
     fig = plt.figure(figsize=(18, 12))
     ax1 = fig.add_subplot(gs[0, 0])  # Top-left
     ax2 = fig.add_subplot(gs[0, 1])  # Top-right
@@ -89,7 +91,7 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
     ax3.set_ylabel("A.U.", fontsize=30)
     ax3.set_yscale('log')
     ax3.set_ylim(1e-5, 10e-1)
-    ax3.text(108, 0.015, r"$|\vec{p}|$" + f" = {int(momentum)} GeV/c" "\n" r"$\theta =$"+ f"{int(theta)}" +r"$^\circ$".format(momentum, theta), fontsize=24,
+    ax3.text(108, 0.015, r"$|\vec{p}|$" + f" = {text_momentum} GeV/c" "\n" r"$\theta =$"+ f"{int(theta)}" +r"$^\circ$".format(momentum, theta), fontsize=24,
     verticalalignment='top',  # Align text at the top
     bbox=dict(facecolor='white', edgecolor='grey', boxstyle='round,pad=0.3'))
     legend_lines = [
@@ -118,11 +120,11 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
     ax.set_title("Geant4", fontsize=30)
 
     if label == "Pion":
-        ax.text(0.03, 0.965, r"$\pi^{+-}$" "\n" rf"{int(momentum)} GeV/c " "\n" rf"${int(float(theta))}^\degree$" , 
+        ax.text(0.03, 0.965, r"$\pi^{+-}$" "\n" rf"{text_momentum} GeV/c " "\n" rf"${int(float(theta))}^\degree$" , 
                 transform=ax.transAxes, fontsize=22, verticalalignment='top', horizontalalignment='left',  
                 bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3'))
     elif label == "Kaon":
-         ax.text(0.03, 0.965, r"$\mathcal{K}^{+-}$" "\n" rf"{int(momentum)} GeV/c " "\n" rf"${int(float(theta))}^\degree$" , 
+         ax.text(0.03, 0.965, r"$\mathcal{K}^{+-}$" "\n" rf"{text_momentum} GeV/c " "\n" rf"${int(float(theta))}^\degree$" , 
                 transform=ax.transAxes, fontsize=22, verticalalignment='top', horizontalalignment='left',  
                 bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3'))   
     else:
@@ -226,6 +228,8 @@ def make_ratios(path_,label,momentum,outpath):
     fig, ax = plt.subplots(2, 3, figsize=(18, 8), gridspec_kw={'height_ratios': [4, 1]}, sharex='col',sharey='row')
     ax = ax.ravel()
 
+    text_momentum = int(momentum) if momentum.isdigit() else momentum
+
     # Time PDF
     n_true_t, _ = np.histogram(t_true, bins=t_bins, density=True)
     n_gen_t, _ = np.histogram(t, bins=t_bins, density=True)
@@ -246,7 +250,7 @@ def make_ratios(path_,label,momentum,outpath):
     ax[1].hist(x_true, density=True, color='k', label='Truth', bins=bins_x, histtype='step', lw=2)
     ax[1].hist(x, density=True, color='red', label='Generated', bins=bins_x, histtype='step', linestyle='dashed', lw=2)
     ax[1].set_xlabel("X (mm)", fontsize=20, labelpad=10)
-    ax[1].set_title(str(label)+r" - $|\vec{p}|$ ="+r" {0} GeV/c".format(int(momentum)),fontsize=25)
+    ax[1].set_title(str(label)+r" - $|\vec{p}|$ ="+r" {0} GeV/c".format(text_momentum),fontsize=25)
 
     # Y PDF
     n_true_y, _ = np.histogram(y_true, bins=bins_y, density=True)
@@ -338,6 +342,8 @@ def main(config,args):
     outpath = os.path.join(file_folder,"Plots")
     os.makedirs(outpath,exist_ok=True)
 
+    plot_files = os.listdir(outpath)
+
     for file in file_list:
         if ".pkl" in file:
             if "Kaon" in file:
@@ -348,6 +354,18 @@ def main(config,args):
             match = re.search(r'theta_(\d+\.\d+)', file)
             if match:
                 theta_value = float(match.group(1))
+
+                already_processed = False
+                for out_file in plot_files:
+                    out_match = re.search(r'theta_(\d+\.\d+)', out_file)
+                    if out_match and float(out_match.group(1)) == theta_value:
+                        already_processed = True
+                        break
+                
+                if already_processed:
+                    print(f"File with theta {theta_value} already exists in {outpath}. Skipping {file}.")
+                    continue
+
                 file_path = os.path.join(file_folder,file)
                 make_plots_fastsim(file_path=file_path,label=label,momentum=args.momentum,theta=theta_value,outpath=outpath,filename=file)
                 print("Made plot for ", label, " at theta=",theta_value," momentum=",args.momentum)

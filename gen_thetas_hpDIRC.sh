@@ -10,9 +10,9 @@
 #SBATCH -t 72:00:00
 
 theta=25
-momentum=3
-model_type="Score"
-config_file="config/hpDIRC_config_clean.json"
+momentum=6
+model_type="DDPM"
+config_file="config/hpDIRC_config_copy.json"
 
 output_dir=$(python -c "
 import json
