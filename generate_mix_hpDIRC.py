@@ -67,7 +67,7 @@ def main(config,args):
     else:
         raise RuntimeError("No GPU was found! Exiting the program.")
         
-    assert args.n_dump <= args.n_tracks
+    assert args.n_dump <= args.n_tracks, "total n_tracks must be at least n_dump, the number of tracks to dump per .pkl file. Got n_tracks of {} and n_dump of {} instead.".format(args.n_tracks, args.n_dump)
 
     num_layers = int(config['model_'+str(args.model_type)]['num_layers'])
     input_shape = int(config['model_'+str(args.model_type)]['input_shape'])
@@ -80,7 +80,7 @@ def main(config,args):
         if config['method'] in ['Kaon','MixPK']:
             kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=Ksampler_path)
         if config['method'] in ['Pion','MixPK']:
-            kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=Psampler_path)
+            pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=Psampler_path)
     elif args.model_type == "CNF":
         num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         alph = config['model_'+str(args.model_type)]['alph']
@@ -147,9 +147,9 @@ def main(config,args):
     else:
         print("Fine grained prior disabled. Consider enabling for high fidelity.")
 
-    if args.method == 'Kaon' or 'MixPK':
+    if config['method'] in ['Kaon','MixPK']:
         kaon_net.load_state_dict(Kdicte['net_state_dict'], strict=False)
-    if args.method == 'Pion' or 'MixPK':
+    if config['method'] in ['Pion','MixPK']:
         pion_net.load_state_dict(Pdicte['net_state_dict'], strict=False)
 
     generations = []
@@ -164,7 +164,7 @@ def main(config,args):
         p_low = float(match.group(1))
         p_high = float(match.group(2))
     else:
-        raise ValueError('Momentum format is p1-p2, where p1, p2 are between 0 and 10 (e.g. 3.5-10).')
+        raise ValueError('Momentum format is p_low-p2, where p1, p2 are between 0 and 10 (e.g. 3.5-10).')
     
     if re.fullmatch(r"\d+(?:\.\d+)?", args.theta):
         theta_low = int(args.theta)
@@ -176,13 +176,13 @@ def main(config,args):
     else:
         raise ValueError('Theta format is theta1-theta2, where theta1, theta2 are between 25 and 155 (e.g. 70.5-80)')
     
-    assert 0 <= p_low <= 10 and 0 <= p_high <= 10
-    assert 25 <= theta_low <= 155 and 25 <= theta_high <= 155
+    assert 0 <= p_low <= 10 and 0 <= p_high <= 10, "momentum range must be between 0 and 10, got {}, {} instead.".format(p_low, p_high)
+    assert 25 <= theta_low <= 155 and 25 <= theta_high <= 155, "theta range must be between 25 and 155, got {}, {} instead.".format(theta_low, theta_high)
     
     running_gen = 0
     file_count = 1
     while running_gen < args.n_tracks:
-        if args.method == 'Kaon' or 'MixPK':
+        if config['method'] in ['Kaon','MixPK']:
             with torch.set_grad_enabled(False):
                 p = np.random.uniform(low = p_low, high = p_high, size = None)
                 theta = np.random.uniform(low = theta_low, high = theta_high, size = None)
@@ -216,7 +216,7 @@ def main(config,args):
                 gen_dict = {}
                 file_count += 1
 
-        if args.method == 'Pion' or 'MixPK':
+        if config['method'] in ['Pion','MixPK']:
             with torch.set_grad_enabled(False):
                 p = np.random.uniform(low = p_low, high = p_high, size = None)
                 theta = np.random.uniform(low = theta_low, high = theta_high, size = None)
