@@ -101,6 +101,8 @@ def main(config,args):
     hidden_nodes = int(config['model_'+str(args.model_type)]['hidden_nodes'])
     stats = config['stats']
     
+    device = torch.device('cuda')
+    
     if args.model_type == "NF":
         num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=sampler_path)
@@ -144,7 +146,6 @@ def main(config,args):
 
     t_params = sum(p.numel() for p in net.parameters())
     print("Network Parameters: ",t_params)
-    device = torch.device('cuda')
     net.to('cuda')
     net.load_state_dict(dicte['net_state_dict'])
     n_samples = int(config['Inference']['samples'])
@@ -227,7 +228,10 @@ def main(config,args):
 
     print("Outputs can be found in " + str(out_folder))
 
-    out_path_ = os.path.join(out_folder,str(config['method'])+f"_ntracks_{len(datapoints)}.pkl")
+    if args.sample_photons:
+        out_path_ = os.path.join(out_folder,str(config['method'])+f"_ntracks_{len(datapoints)}_LUT.pkl")
+    else:
+        out_path_ = os.path.join(out_folder,str(config['method'])+f"_ntracks_{len(datapoints)}.pkl")
     
     with open(out_path_,"wb") as file:
         pickle.dump(gen_dict,file)
@@ -235,8 +239,10 @@ def main(config,args):
     print("Making ratio plots.")
     del gen_dict,datapoints 
 
+    ratio_title = f"Ratios_{args.method}_{args.n_particles}_LUT.pdf" if args.sample_photons else f"Ratios_{args.method}_{args.n_particles}.pdf"
+    # pkl_label = args.method + 
 
-    make_ratios(path_=out_folder,label=args.method,momentum="1-10",outpath=os.path.join(out_folder,f"Ratios_{args.method}.pdf"))
+    make_ratios(path_=out_folder,label=args.method,momentum="1-10",outpath=os.path.join(out_folder,ratio_title))
 
 
 if __name__=='__main__':

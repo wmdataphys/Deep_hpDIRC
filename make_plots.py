@@ -15,6 +15,17 @@ from utils.hpDIRC import bins_x,bins_y,gapx,gapy,pixel_width,pixel_height
 
 t_bins = np.arange(9.0,157.0,0.5)
 
+def label_mom(rho):
+    # works when rho is a range or if rho is just a float. 
+    try:
+        fvalue = float(rho)
+        if fvalue.is_integer():
+            return str(int(fvalue))
+        else:
+            return str(fvalue)
+    except ValueError:
+        return str(rho)
+
 def convert_indices(pmtID,pixelID): 
     row = (pmtID//6) * 16 + pixelID//16 
     col = (pmtID%6) * 16 + pixelID%16
@@ -56,7 +67,7 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
 
     gs = gridspec.GridSpec(3, 2, height_ratios=[1.5, 0.5, 1])
 
-    text_momentum = int(momentum) if momentum.isdigit() else momentum
+    text_momentum = label_mom(momentum)
 
     fig = plt.figure(figsize=(18, 12))
     ax1 = fig.add_subplot(gs[0, 0])  # Top-left
@@ -228,7 +239,7 @@ def make_ratios(path_,label,momentum,outpath):
     fig, ax = plt.subplots(2, 3, figsize=(18, 8), gridspec_kw={'height_ratios': [4, 1]}, sharex='col',sharey='row')
     ax = ax.ravel()
 
-    text_momentum = int(momentum) if momentum.isdigit() else momentum
+    text_momentum = label_mom(momentum)
 
     # Time PDF
     n_true_t, _ = np.histogram(t_true, bins=t_bins, density=True)
@@ -381,8 +392,8 @@ def main(config,args):
     combine_images_to_pdf(outpath,pdf_output,images_per_page=(2,3),figure_size=(8,8))
     print(" ")
 
-    pdf_output = os.path.join(outpath,"Combined_FastSim_Plots_Radius.pdf")
-    combine_images_to_pdf(os.path.join(outpath,"RadiusPlots"),pdf_output,images_per_page=(3,2),figure_size=(8,4))
+    # pdf_output = os.path.join(outpath,"Combined_FastSim_Plots_Radius.pdf")
+    # combine_images_to_pdf(os.path.join(outpath,"RadiusPlots"),pdf_output,images_per_page=(3,2),figure_size=(8,4))
     
     print("Making ratio plots at ",args.momentum," integrated over theta for Pions.")
     make_ratios(path_=file_folder,label="Pion",momentum=args.momentum,outpath=os.path.join(outpath,"Ratios_Pion.pdf"))

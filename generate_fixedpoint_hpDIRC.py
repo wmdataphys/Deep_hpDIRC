@@ -16,6 +16,7 @@ from matplotlib.colors import LogNorm
 
 from models.NF.freia_models import FreiaNet
 from models.OT_Flow.ot_flow import OT_Flow
+
 from models.FlowMatching.flow_matching import FlowMatching
 from models.Diffusion.resnet import ResNet
 from models.Diffusion.resnet_cfg import ResNet as CFGResNet
@@ -27,6 +28,8 @@ from models.Diffusion.gaussian_diffusion import GaussianDiffusion
 import matplotlib.colors as mcolors
 import pickle
 import warnings
+import re
+import sys
 
 warnings.filterwarnings("ignore", message=".*weights_only.*")
 
@@ -41,6 +44,12 @@ def main(config,args):
     np.random.seed(seed)
     random.seed(seed)
     torch.cuda.manual_seed(seed)
+
+    # Setting up directory structure
+    os.makedirs("Generations",exist_ok=True)
+    out_folder = os.path.join("Generations",config['Inference']['fixed_point_dir'])
+    os.makedirs(out_folder,exist_ok=True)
+    print("Outputs can be found in " + str(out_folder))
 
     config['method'] = args.method
 
@@ -75,6 +84,7 @@ def main(config,args):
     stats = config['stats']
     
     if args.model_type == "NF":
+        num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=sampler_path)
     elif args.model_type == "CNF":
         num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
@@ -119,10 +129,6 @@ def main(config,args):
     print("Network Parameters: ",t_params)
     
     net.to('cuda')
-
-    # For cfg testing
-    if 'model.null_classes_emb' in dicte['net_state_dict']:
-        del dicte['net_state_dict']['model.null_classes_emb']
     
     net.load_state_dict(dicte['net_state_dict'], strict=False)
     n_samples = int(config['Inference']['samples'])
@@ -162,6 +168,22 @@ def main(config,args):
     for i in range(len(datapoints)):
         if (datapoints[i]['Theta'] == args.theta) and (datapoints[i]['P'] == args.momentum) and (datapoints[i]['Phi'] == 0.0):
             list_to_gen.append(datapoints[i])
+
+    out_path_ = os.path.join(out_folder,str(config['method'])+f"_p_{args.momentum}_theta_{args.theta}_PID_{config['method']}_ntracks_{len(list_to_gen)}.pkl")
+
+    # Checking for existing data files
+    exists = False
+    out_files = os.listdir(out_folder)
+    for file in out_files:
+        match = re.search(rf"{config['method']}_p_{args.momentum}_theta_{args.theta}_PID_{config['method']}_ntracks_{len(list_to_gen)}.pkl", file)
+        if match:
+            exists = True
+            break
+    
+    if exists:
+        print(f"Found existing .pkl files for {args.method} {args.model_type} for {len(list_to_gen)} tracks at momentum {args.momentum} and theta {args.theta}.")
+        print("Skipping...\n")
+        sys.exit()
 
     print("Generating {0} tracks, with p={1} and theta={2}.".format(len(list_to_gen),args.momentum,args.theta))
     if args.sample_photons:
@@ -233,13 +255,7 @@ def main(config,args):
     gen_dict['fast_sim'] = generations
     gen_dict['truth'] = truth
 
-    os.makedirs("Generations",exist_ok=True)
-    out_folder = os.path.join("Generations",config['Inference']['fixed_point_dir'])
-    os.makedirs(out_folder,exist_ok=True)
-    print("Outputs can be found in " + str(out_folder))
 
-    out_path_ = os.path.join(out_folder,str(config['method'])+f"_p_{args.momentum}_theta_{args.theta}_PID_{config['method']}_ntracks_{len(list_to_gen)}.pkl")
-    
     with open(out_path_,"wb") as file:
         pickle.dump(gen_dict,file)
 

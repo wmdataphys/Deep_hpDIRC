@@ -12,7 +12,7 @@
 theta=25
 momentum=6
 model_type="DDPM"
-config_file="config/hpDIRC_config_copy.json"
+config_file="config/hpDIRC_config_clean.json"
 
 output_dir=$(python -c "
 import json

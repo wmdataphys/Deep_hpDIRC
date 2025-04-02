@@ -9,4 +9,4 @@
 #SBATCH --gpus=1
 #SBATCH -t 72:00:00
 
-python generate_phasespace_hpDIRC.py --config config/hpDIRC_config_clean.json --n_particles 50000 --method Pion --model_type CNF --fine_grained_prior
+python generate_phasespace_hpDIRC.py --config config/hpDIRC_config_clean.json --n_particles 50000 --method Pion --model_type GSGM --fine_grained_prior
