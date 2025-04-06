@@ -31,6 +31,3 @@ class TabShiftPredictor(nn.Module):
 
     def forward(self, x):
         return self.predictor(x)
-
-        # linspace
-        # return torch.matmul(x, self.mean_matrix).reshape(-1, self.image_channel, self.image_size, self.image_size)

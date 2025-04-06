@@ -108,19 +108,17 @@ def train(config, resume, overwrite = False):
                    num_layer=num_layers
                    )
 
-    model.to(device)
-
     shift_predictor = TabShiftPredictor(device=device,
                                         input_dim=input_shape, 
                                         cond_dim=cond_shape, 
                                         hidden_dim=hidden_dim)
     
-    shift_predictor.to(device)
-    
     optimizer = optim.AdamW(model.parameters(), lr=lr)
 
     diffusion = ShiftGaussianDiffusion(
                                 device=device,
+                                denoise_fn=model,
+                                shift_predictor=shift_predictor,
                                 stats=stats,
                                 timesteps=num_steps, 
                                 noise_schedule=noise_schedule,
@@ -165,8 +163,6 @@ def train(config, resume, overwrite = False):
             conds = data[1].to(device).float()
 
             loss = diffusion.shift_train_one_batch(
-                denoise_fn=model, 
-                shift_predictor=shift_predictor,
                 x_0=inp,
                 condition=conds
                 )['prediction_loss']

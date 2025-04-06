@@ -33,6 +33,7 @@ def train(config, resume, overwrite = False):
     curr_date = datetime.now()
     exp_name = config['name'] + '___' + curr_date.strftime('%b-%d-%Y___%H:%M:%S')
     exp_name = exp_name[:-11]
+    config_name = config['name']
     MODEL_NAME = 'DDPM'
     print("Training",MODEL_NAME,"model.")
     print(exp_name)
@@ -41,6 +42,7 @@ def train(config, resume, overwrite = False):
     output_folder = config['output']['dir']
     if resume:
         exp_path = os.path.dirname(resume)
+        config_name = exp_name.split('___')[0]
     else:
         exp_path = os.path.join(output_folder,exp_name)
     version_num = 0
@@ -80,7 +82,7 @@ def train(config, resume, overwrite = False):
     
 
     num_epochs=int(config['num_epochs'])
-    lr = float(config['optimizer']['lr'])
+    lr = float(config['optimizer']['lr_DDPM'])
 
     # ResNet/MLP parameters
     num_layers = int(config['model_DDPM']['num_layers'])
@@ -193,15 +195,16 @@ def train(config, resume, overwrite = False):
 
             val_kbar.add(1, values=[("val_loss", epoch_val_loss)])
 
-            name_output_file = config['name']+'_epoch{:02d}_val_loss_{:.6f}.pth'.format(epoch, epoch_val_loss)
+            name_output_file = config_name+'_epoch{:02d}_val_loss_{:.6f}.pth'.format(epoch, epoch_val_loss)
         else:
             #kbar.add(1,values=[('val_loss',0.)])
-            name_output_file = config['name']+'_epoch{:02d}_train_loss_{:.6f}.pth'.format(epoch, running_loss / len(train_loader.dataset))
+            name_output_file = config_name+'_epoch{:02d}_train_loss_{:.6f}.pth'.format(epoch, running_loss / len(train_loader.dataset))
+
                 
         # Save the output file
 
         # kbar.add(1,values=[('val_loss',0.)])
-        # name_output_file = config['name']+'_epoch{:02d}_train_loss_{:.6f}.pth'.format(epoch, running_loss / len(train_loader.dataset))
+        # name_output_file = config_name+'_epoch{:02d}_train_loss_{:.6f}.pth'.format(epoch, running_loss / len(train_loader.dataset))
         
         filename = os.path.join(exp_path, name_output_file)
 

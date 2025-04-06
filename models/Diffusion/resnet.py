@@ -117,8 +117,6 @@ class ResNet(nn.Module):
         # Initial layers for processing input and time embedding
         self.input_dense = nn.Linear(input_dim, mlp_dim)
 
-        # from https://github.com/lucidrains/denoising-diffusion-pytorch/blob/main/denoising_diffusion_pytorch/classifier_free_guidance.py
-
         # self.random_or_learned_sinusoidal_cond = learned_sinusoidal_cond or random_fourier_features
 
         # if self.random_or_learned_sinusoidal_cond:
@@ -126,36 +124,53 @@ class ResNet(nn.Module):
         #     fourier_dim = learned_sinusoidal_dim + 1
         # else:
 
-        self.time_dense = nn.Linear(1, mlp_dim)
+        self.projection = self.GaussianFourierProjection(scale = 16)
+        self.time_dense = nn.Linear(32, mlp_dim)
 
         if cond_dim:
             self.context_encoder =  nn.Sequential(*[nn.Linear(cond_dim,16),
                                                     nn.ReLU(),
                                                     nn.Linear(16,mlp_dim)]) # needs to be same size as time embedding to add together, 
 
-        # Residual connection after combining input and time embedding
+        # combining input and time embedding
         self.initial_residual_dense1 = nn.Linear(mlp_dim, mlp_dim)
         self.initial_residual_dense2 = nn.Linear(mlp_dim, mlp_dim)
 
-        # Residual blocks
         self.blocks = nn.ModuleList([
             ResNetDenseBlock(hidden_size=mlp_dim, nlayers=1, dropout_rate=0.1, activation=self.activation)
             for _ in range(num_layer - 1)
         ])
 
         # Final layers
-        self.final_dense = nn.Linear(mlp_dim, 2 * mlp_dim)
+        self.final_dense = nn.Linear(mlp_dim, end_dim)
         self.output_dense = nn.Linear(2 * mlp_dim, end_dim)
+
+    def GaussianFourierProjection(self, scale = 30):
+        half_dim = 16
+        emb = torch.log(torch.tensor(10000.0, dtype=torch.float32)) / (half_dim - 1)
+        freq = torch.exp(-emb* torch.arange(start=0, end=half_dim, dtype=torch.float32))
+        return freq
+
+    def Embedding(self,inputs,projection):
+        projection = projection.to(inputs.device)
+        print(inputs.shape)
+        print(projection.unsqueeze(0).shape)
+        angle = inputs * projection.unsqueeze(0) * 1000
+        embedding = torch.cat([torch.sin(angle),torch.cos(angle)],dim=1)
+
+        embedding = self.time_dense(embedding)
+        embedding = self.activation(embedding)
+        return embedding
 
     def forward(self, 
                 inputs, 
                 t, 
-                cond=None,):
+                cond=None):
         # Process time embedding and conds
 
         time_embed = self.activation(self.time_dense(t.view(-1,1).float()))
+        # time_embed = self.Embedding(t, self.projection)
 
-        # cfg code taken from LucidRains https://github.com/lucidrains/denoising-diffusion-pytorch/blob/main/denoising_diffusion_pytorch/classifier_free_guidance.py
         batch, device = inputs.shape[0], inputs.device
         # .squeeze removes the singleton dimension at index 1 if it is of size 1
        
@@ -171,20 +186,17 @@ class ResNet(nn.Module):
         
         # Check shapes here for conditional embedding        
 
-        # Process inputs 
         inputs_dense = self.activation(self.input_dense(inputs))
 
-        # Initial residual connection
         residual = self.activation(self.initial_residual_dense1(inputs_dense + embed))
         residual = self.initial_residual_dense2(residual)
 
-        # Apply residual blocks
         layer = residual
         for block in self.blocks: # num_layer-1
             layer = block(layer)
 
-        # Final processing
         layer = self.activation(self.final_dense(residual + layer))
+        
         outputs = self.output_dense(layer)
 
         return outputs

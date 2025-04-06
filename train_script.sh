@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --export=ALL
-#SBATCH --job-name=KDDPM_hpDIRC
+#SBATCH --job-name=PShift
 #SBATCH --nodes=1
 #SBATCH --tasks=20
 #SBATCH --mem-per-cpu=4000
@@ -13,4 +13,4 @@ module load miniconda3
 module load cuda
 source activate torch_linux
 
-python /sciclone/home/mcmartinez/Deep_hpDIRC/train_ddpm.py --config /sciclone/home/mcmartinez/Deep_hpDIRC/config/hpDIRC_config_gulf.json 
+python train_ddpm.py --config config/hpDIRC_config_test.json

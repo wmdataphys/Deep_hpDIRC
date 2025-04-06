@@ -8,7 +8,6 @@ import os
 def unscale(x,max_,min_):
     return x*0.5*(max_ - min_) + min_ + (max_-min_)/2
 
-
 def scale_data(hits,stats={"x_max": 898,"x_min":0,"y_max":298,"y_min":0,"time_max":380.0,"time_min":0.0}):
     x = hits[:,0]
     y = hits[:,1]
