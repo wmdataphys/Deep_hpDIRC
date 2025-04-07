@@ -179,7 +179,7 @@
         "kaon_model_path_Shift":"/sciclone/data10/mcmartinez/hpDIRC_Models/KShift_4L_T125___Mar-31-2025_v3/KShift_4L_T125_epoch174_train_loss_0.278269.pth",
         "pion_model_path_FlowMatching": "/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Pion_FlowMatching_Model.pth",
         "kaon_model_path_FlowMatching": "/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Kaon_FlowMatching_Model.pth",
-        "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Shift_4L_T125_6GeV",
+        "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_T100_cosine_3GeV_new",
         "full_phase_space_dir": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseGen/GSGM_4L_T100",
         "out_dir_fixed": "Inference/NF_PhotonSampling",
         "out_dir_cont": "Inference/NF_FastSimulated_FPS_PhotonSampling",

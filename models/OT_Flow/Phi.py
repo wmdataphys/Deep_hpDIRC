@@ -195,4 +195,3 @@ class Phi(nn.Module):
 
         return grad.t(), trH + torch.trace(symA[0:d,0:d])
         # indexed version of: return grad.t() ,  trH + torch.trace( torch.mm( E.t() , torch.mm(  symA , E) ) )
-

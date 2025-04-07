@@ -152,8 +152,6 @@ class FlowMatching(nn.Module):
         x_init = torch.randn((num_samples, self.input_shape), dtype=torch.float32, device=self.device)
         solver = ODESolver(velocity_model=wrapped_vf) 
         sol = solver.sample(time_grid=T, x_init=x_init, method='midpoint', step_size=step_size, return_intermediates=False,model_extras={"c": embedded_context})
-        #time_grid = torch.tensor([0.0, 1.0], device=self.device)
-        #sol = solver.sample(time_grid=time_grid,x_init=x_init,method='dopri5',step_size=None,atol=1e-5,rtol=1e-5,return_intermediates=False,model_extras={"c": embedded_context})
         return sol
 
     def log_prob(self,inputs,context,nt=10):
@@ -307,3 +305,4 @@ class FlowMatching(nn.Module):
         Phi = 0.0
 
         return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy(),"pixelID":pixelID.numpy(),"channel":channel.numpy()}
+
