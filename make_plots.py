@@ -250,7 +250,7 @@ def make_ratios(path_,label,momentum,outpath):
     ax[0].hist(t_true, density=True, color='k', label='Truth', bins=t_bins, histtype='step', lw=2)
     ax[0].hist(t, density=True, color='red', label='Generated', bins=t_bins, histtype='step', linestyle='dashed', lw=2)
     ax[0].set_xlabel("Hit Time (ns)", fontsize=20, labelpad=10)
-    ax[0].set_ylabel("Density", fontsize=20, labelpad=10)
+    ax[0].set_ylabel("Density", fontsize=36, labelpad=20)
 
     # X PDF
     n_true_x, _ = np.histogram(x_true, bins=bins_x, density=True)
@@ -260,8 +260,8 @@ def make_ratios(path_,label,momentum,outpath):
     ratio_err_x = 3*alea_x / (n_true_x + 1e-10)
     ax[1].hist(x_true, density=True, color='k', label='Truth', bins=bins_x, histtype='step', lw=2)
     ax[1].hist(x, density=True, color='red', label='Generated', bins=bins_x, histtype='step', linestyle='dashed', lw=2)
-    ax[1].set_xlabel("X (mm)", fontsize=20, labelpad=10)
-    ax[1].set_title(str(label)+r" - $|\vec{p}|$ ="+r" {0} GeV/c".format(text_momentum),fontsize=25)
+    ax[1].set_xlabel("X (mm)", fontsize=20, labelpad=20)
+    ax[1].set_title(r"{0} GeV/c ".format(text_momentum) + str(label) + 's',fontsize=40, pad=30)
 
     # Y PDF
     n_true_y, _ = np.histogram(y_true, bins=bins_y, density=True)
@@ -271,7 +271,7 @@ def make_ratios(path_,label,momentum,outpath):
     n_gen_y, _ = np.histogram(y, bins=bins_y, density=True)
     ax[2].hist(y_true, density=True, color='k', label='Truth', bins=bins_y, histtype='step', lw=2)
     ax[2].hist(y, density=True, color='red', label='Generated', bins=bins_y, histtype='step', linestyle='dashed', lw=2)
-    ax[2].set_xlabel("Y (mm)", fontsize=20, labelpad=10)
+    ax[2].set_xlabel("Y (mm)", fontsize=20, labelpad=20)
 
     # Ratio plot for Time PDF
     ratio_t = n_gen_t / (n_true_t + 1e-50)
@@ -280,9 +280,9 @@ def make_ratios(path_,label,momentum,outpath):
     ratio_t_lower = ratio_t - ratio_err_t
     ax[3].step((t_bins[:-1] + t_bins[1:]) /2, ratio_t, color='red',linestyle='-',linewidth=1)
     ax[3].fill_between((t_bins[:-1] + t_bins[1:])/2 , ratio_t_lower, ratio_t_upper, color='red', alpha=0.3, step='pre')
-    ax[3].set_ylabel('Ratio', fontsize=15)
+    ax[3].set_ylabel('Ratio', fontsize=36, labelpad=20)
     ax[3].set_ylim([0, 2])
-    ax[3].set_yticks([0.5, 1, 1.5])
+    ax[3].set_yticks([0, 0.5, 1, 1.5])
     ax[3].axhline(1.0, color='black', linestyle='--', lw=1)
 
     # Ratio plot for X PDF
@@ -311,15 +311,18 @@ def make_ratios(path_,label,momentum,outpath):
 
     # Format
     legend_lines = [
-        Line2D([0], [0], color='k', linewidth=2, label="Geant4",linestyle='-'),
-        Line2D([0], [0], color='r', linewidth=2, label="FastSim.",linestyle='--')
+        Line2D([0], [0], color='r', linewidth=2, label="FastSim.",linestyle='--'),
+        Line2D([0], [0], color='k', linewidth=2, label="Geant4",linestyle='-')
     ]
     
-    ax[1].legend(handles=legend_lines,loc="upper center", fontsize=18.5,)
+    legend = fig.legend(handles=legend_lines,loc="upper center", bbox_to_anchor= (0.51, 0.92),fontsize=26, ncol=2, frameon=True, columnspacing=0.3, framealpha=1)
+    legend.get_frame().set_zorder(100)  # Set zorder to a higher value
+
     for i in range(3):
         ax[i].tick_params(axis='both', which='major', labelsize=18)
         ax[i].set_yscale('log')
-        
+    
+    ax[3].set_xticks([0, 50, 100, 150])
     ax[3].set_xlabel("Time (ns)",fontsize=20)
     ax[4].set_xlabel("X (mm)",fontsize=20)
     ax[5].set_xlabel("Y (mm)",fontsize=20)

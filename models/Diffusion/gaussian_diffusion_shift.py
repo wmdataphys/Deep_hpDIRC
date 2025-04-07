@@ -3,7 +3,6 @@ import torch
 import numpy as np
 
 from functools import partial
-from tqdm import tqdm
 import torch.nn as nn
 
 from .ddim import DDIM
@@ -291,7 +290,7 @@ class ShiftGaussianDiffusion(nn.Module):
         shape = x_T.shape
         batch_size = shape[0]
         sample = x_T
-        for i in tqdm(reversed(range(0, self.timesteps)), desc='sampling loop time step', total=self.timesteps):
+        for i in reversed(range(0, self.timesteps)):
             t = torch.full((batch_size,), i, device=self.device, dtype=torch.long)
             predicted_noise = denoise_fn(sample, t, condition)
             sample = self.noise_p_sample(sample, t, predicted_noise)
@@ -347,7 +346,7 @@ class ShiftGaussianDiffusion(nn.Module):
             sample = x_T
         else:
             raise NotImplementedError
-        for i in tqdm(reversed(range(0, self.timesteps)), desc='sampling loop time step', total=self.timesteps):
+        for i in reversed(range(0, self.timesteps)):
             t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
             tmp = self.extract_coef_at_t(self.shift, t, shape) * u / self.extract_coef_at_t(self.sqrt_one_minus_alphas_cumprod, t, shape)
             predicted_noise = self.denoise_fn(sample, t, None) - tmp
@@ -388,7 +387,7 @@ class ShiftGaussianDiffusion(nn.Module):
             sample = x_T
         else:
             raise NotImplementedError
-        for i in tqdm(reversed(range(0, self.timesteps)), desc='sampling loop time step', total=self.timesteps):
+        for i in reversed(range(0, self.timesteps)):
             t = torch.full((shape[0],), i, device=self.device, dtype=torch.long)
             tmp = self.extract_coef_at_t(self.shift, t, shape) * u / self.extract_coef_at_t(self.sqrt_one_minus_alphas_cumprod, t, shape)
             predicted_noise = denoise_fn(sample, t, None) - tmp

@@ -123,9 +123,9 @@ class ResNet(nn.Module):
         #     sinu_pos_emb = RandomOrLearnedSinusoidalPosEmb(learned_sinusoidal_dim, random_fourier_features)
         #     fourier_dim = learned_sinusoidal_dim + 1
         # else:
-
-        self.projection = self.GaussianFourierProjection(scale = 16)
-        self.time_dense = nn.Linear(32, mlp_dim)
+        self.time_dense = nn.Linear(1, mlp_dim)
+        # self.projection = self.GaussianFourierProjection(scale = 16)
+        # self.time_dense = nn.Linear(32, mlp_dim)
 
         if cond_dim:
             self.context_encoder =  nn.Sequential(*[nn.Linear(cond_dim,16),
@@ -142,7 +142,8 @@ class ResNet(nn.Module):
         ])
 
         # Final layers
-        self.final_dense = nn.Linear(mlp_dim, end_dim)
+        # self.final_dense = nn.Linear(mlp_dim, end_dim)
+        self.final_dense = nn.Linear(mlp_dim, 2 * mlp_dim)
         self.output_dense = nn.Linear(2 * mlp_dim, end_dim)
 
     def GaussianFourierProjection(self, scale = 30):
@@ -153,8 +154,6 @@ class ResNet(nn.Module):
 
     def Embedding(self,inputs,projection):
         projection = projection.to(inputs.device)
-        print(inputs.shape)
-        print(projection.unsqueeze(0).shape)
         angle = inputs * projection.unsqueeze(0) * 1000
         embedding = torch.cat([torch.sin(angle),torch.cos(angle)],dim=1)
 
