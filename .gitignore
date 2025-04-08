@@ -41,3 +41,4 @@ train_shift.py
 gen_mix_hpDIRC.sh
 batch_timing.py
 plotting_extras.ipynb
+config/hpDIRC_config_local.json

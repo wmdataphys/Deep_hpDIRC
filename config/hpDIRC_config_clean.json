@@ -1,5 +1,5 @@
 {
-    "name": "PGSGM_4L_T100",
+    "name": "Model_Name",
     "seed": 752022,
     "run_val": 0,
     "method": "Pion",
@@ -54,15 +54,6 @@
         "num_steps":100,
         "hidden_nodes": 128
     },
-    "model_Shift":{
-        "num_layers":4,
-        "input_shape":3,
-        "cond_shape":2,
-        "num_steps":125,
-        "hidden_nodes": 128,
-        "noise_schedule":"cosine",
-        "shift_type":"quadratic_shift"
-    },
     "model_FlowMatching": {
         "num_layers": 20,
         "input_shape": 3,
@@ -83,35 +74,35 @@
             "data_path_3GeV": "data/TimeImaging_3GeV/Combined_pik_3GeV_TimeImaging_PiK.pkl"
         },
         "fixed_point": {
-            "pion_data_path_6GeV": "/sciclone/data10/mcmartinez/fixed_thetas/new_6GeV/merged_pik_6GeV_Pions.pkl",
-            "kaon_data_path_6GeV": "/sciclone/data10/mcmartinez/fixed_thetas/new_6GeV/merged_pik_6GeV_Kaons.pkl",
-            "pion_data_path_9GeV": "/sciclone/data10/mcmartinez/fixed_thetas/new_9GeV/merged_pik_9GeV_Pions.pkl",
-            "kaon_data_path_9GeV": "/sciclone/data10/mcmartinez/fixed_thetas/new_9GeV/merged_pik_9GeV_Kaons.pkl",
-            "pion_data_path_3GeV": "/sciclone/data10/mcmartinez/fixed_thetas/new_3GeV/merged_pik_3GeV_Pions.pkl",
-            "kaon_data_path_3GeV": "/sciclone/data10/mcmartinez/fixed_thetas/new_3GeV/merged_pik_3GeV_Kaons.pkl"
+            "pion_data_path_6GeV": "data/fixed_thetas/new_6GeV/merged_pik_6GeV_Pions.pkl",
+            "kaon_data_path_6GeV": "data/fixed_thetas/new_6GeV/merged_pik_6GeV_Kaons.pkl",
+            "pion_data_path_9GeV": "data/fixed_thetas/new_9GeV/merged_pik_9GeV_Pions.pkl",
+            "kaon_data_path_9GeV": "data/fixed_thetas/new_9GeV/merged_pik_9GeV_Kaons.pkl",
+            "pion_data_path_3GeV": "data/fixed_thetas/new_3GeV/merged_pik_3GeV_Pions.pkl",
+            "kaon_data_path_3GeV": "data/fixed_thetas/new_3GeV/merged_pik_3GeV_Kaons.pkl"
         },
         "full_phase_space": {
-            "pion_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
-            "kaon_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl"
+            "pion_data_path": "data/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
+            "kaon_data_path": "data/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl"
         },
         "training": {
             "smeared": {
-                "pion_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC_Smeared.feather",
-                "kaon_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC_Smeared.feather"
+                "pion_data_path": "data/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC_Smeared.feather",
+                "kaon_data_path": "data/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC_Smeared.feather"
             },
             "unsmeared": {
-                "pion_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC.feather",
-                "kaon_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC.feather"
+                "pion_data_path": "data/hpDIRC/FullPhaseSpace/Training_Pions_hpDIRC.feather",
+                "kaon_data_path": "data/hpDIRC/FullPhaseSpace/Training_Kaons_hpDIRC.feather"
             }
         },
         "validation": {
-            "pion_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Validation_Pions_hpDIRC.feather",
-            "kaon_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Validation_Kaons_hpDIRC.feather"
+            "pion_data_path": "data/hpDIRC/FullPhaseSpace/Validation_Pions_hpDIRC.feather",
+            "kaon_data_path": "data/hpDIRC/FullPhaseSpace/Validation_Kaons_hpDIRC.feather"
         },
         "testing": {
             "DLL": {
-                "pion_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
-                "kaon_data_path": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl"
+                "pion_data_path": "data/hpDIRC/FullPhaseSpace/Testing_Pions_hpDIRC.pkl",
+                "kaon_data_path": "data/hpDIRC/FullPhaseSpace/Testing_Kaons_hpDIRC.pkl"
             },
             "gen": {
                 "pion_data_path": "data/Testing_Pions_hpDIRC.feather",
@@ -127,7 +118,6 @@
         "lr_NF": 0.0001,
         "lr_CNF": 0.001,
         "lr_FlowMatching": 0.001,
-        "lr_GSGM":0.0003,
         "lr_Score":0.0003,
         "lr_DDPM":0.00007,
         "weight_decay": 0.0,
@@ -144,52 +134,46 @@
             "batch_size_NF": 2048,
             "batch_size_CNF": 10000,
             "batch_size_FlowMatching": 2048,
-            "batch_size_GSGM": 2048,
             "batch_size_DDPM": 2048,
-            "batch_size_Score": 2048,
-            "batch_size_CFG": 2048
+            "batch_size_Score": 2048
         },
         "val": {
             "batch_size_NF": 10000,
             "batch_size_CNF": 10000,
             "batch_size_FlowMatching": 10000,
-            "batch_size_GSGM": 10000,
             "batch_size_DDPM": 10000,
-            "batch_size_Score": 10000,
-            "batch_size_CFG": 10000
+            "batch_size_Score": 10000
         },
         "test": {
             "batch_size": 25
         }
     },
     "output": {
-        "dir": "/sciclone/data10/mcmartinez/hpDIRC_Models"
+        "dir": "data/hpDIRC_Models"
     },
     "Inference": {
         "samples": 1,
-        "pion_model_path_NF": "/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Pion_NF_Model.pth",
-        "kaon_model_path_NF": "/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Kaon_NF_Model.pth",
-        "pion_model_path_CNF": "/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Pion_CNF_Model.pth",
-        "kaon_model_path_CNF": "/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Kaon_CNF_Model.pth",
-        "pion_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/PScore_6L_T100_cosine___Jan-18-2025/PScore_6L_T100_cosine_epoch111_train_loss_0.228536.pth",
-        "kaon_model_path_Score":"/sciclone/data10/mcmartinez/hpDIRC_Models/KScore_6L_T100_cosine___Jan-24-2025/KScore_6L_T100_cosine_epoch148_train_loss_0.229109.pth",
-        "pion_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/PDDPM_4L_T100___Mar-16-2025_v2/PDDPM_4L_T100_epoch174_train_loss_0.224423.pth",
-        "kaon_model_path_DDPM":"/sciclone/data10/mcmartinez/hpDIRC_Models/KDDPM_4L_T100___Mar-17-2025/KDDPM_4L_T100_epoch174_train_loss_0.224459.pth",
-        "pion_model_path_Shift":"/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Pion_Shift_Model.pth",
-        "kaon_model_path_Shift":"/sciclone/data10/mcmartinez/hpDIRC_Models/KShift_4L_T125___Mar-31-2025_v3/KShift_4L_T125_epoch174_train_loss_0.278269.pth",
-        "pion_model_path_FlowMatching": "/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Pion_FlowMatching_Model.pth",
-        "kaon_model_path_FlowMatching": "/sciclone/data10/mcmartinez/hpDIRC_Models/Trained_Models/Kaon_FlowMatching_Model.pth",
-        "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/Score6L_T100_cosine_3GeV_new",
-        "full_phase_space_dir": "/sciclone/data10/mcmartinez/hpDIRC/FullPhaseGen/GSGM_4L_T100",
-        "out_dir_fixed": "Inference/NF_PhotonSampling",
-        "out_dir_cont": "Inference/NF_FastSimulated_FPS_PhotonSampling",
-        "time_imaging_dir": "FlowMatching_TimeImaging_6GeV",
-        "KDE_dir": "KDE_Fits/6.0/Test_FastDIRC_800k_NF_10kG"
+        "pion_model_path_NF": "Trained_Models/Pion_NF_Model.pth",
+        "kaon_model_path_NF": "Trained_Models/Kaon_NF_Model.pth",
+        "pion_model_path_CNF": "Trained_Models/Pion_CNF_Model.pth",
+        "kaon_model_path_CNF": "Trained_Models/Kaon_CNF_Model.pth",
+        "pion_model_path_Score":"Trained_Models/Pion_Score_Model.pth",
+        "kaon_model_path_Score":"Trained_Models/Kaon_Score_Model.pth",
+        "pion_model_path_DDPM":"Trained_Models/Pion_DDPM_Model.pth",
+        "kaon_model_path_DDPM":"Trained_Models/Kaon_DDPM_Model.pth",
+        "pion_model_path_FlowMatching": "Trained_Models/Pion_FlowMatching_Model.pth",
+        "kaon_model_path_FlowMatching": "Trained_Models/Kaon_FlowMatching_Model.pth",
+        "fixed_point_dir": "FixedPointGenerations",
+        "full_phase_space_dir": "FullPhaseGenerations",
+        "out_dir_fixed": "Inference/FixedPoint",
+        "out_dir_cont": "Inference/FullPhaseSpace",
+        "time_imaging_dir": "TimeImaging",
+        "KDE_dir": "KDE_Fits/6.0/Test_FastDIRC_800k_NF_800kG"
     },
     "Photon_Sampler": {
         "Pion_dataset": "data/Pion_Hits_Dataset.pkl",
         "Kaon_dataset": "data/Kaon_Hits_Dataset.pkl",
-        "Pion_LUT_path": "/sciclone/data10/mcmartinez/hpDIRC/Photon_Yield/Pion_Photon_Yield.pkl",
-        "Kaon_LUT_path": "/sciclone/data10/mcmartinez/hpDIRC/Photon_Yield/Kaon_Photon_Yield.pkl"
+        "Pion_LUT_path": "Photon_Yield/Pion_Photon_Yield.pkl",
+        "Kaon_LUT_path": "Photon_Yield/Kaon_Photon_Yield.pkl"
     }
 }
