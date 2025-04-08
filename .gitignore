@@ -29,5 +29,15 @@ config/hpDIRC_config.json
 *gen_thetas_hpDIRC.tcsh*
 *LUT_Stats*
 *gen_spec_thetas.sh*
-
-
+models/Diffusion/classifier_free_guidance.py
+models/Diffusion/ddim.py
+models/Diffusion/guassian_diffusion_shift.py
+models/Diffusion/resnet_cfg.py
+models/Diffusion/shift_predictor.py
+test.py
+generate_mix_hpDIRC.py
+train_cfg.py
+train_shift.py
+gen_mix_hpDIRC.sh
+batch_timing.py
+plotting_extras.ipynb
