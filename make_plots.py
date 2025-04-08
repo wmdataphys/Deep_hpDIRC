@@ -102,7 +102,7 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
     ax3.set_ylabel("A.U.", fontsize=30)
     ax3.set_yscale('log')
     ax3.set_ylim(1e-5, 10e-1)
-    ax3.text(108, 0.015, r"$|\vec{p}|$" + f" = {text_momentum} GeV/c" "\n" r"$\theta =$"+ f"{int(theta)}" +r"$^\circ$".format(momentum, theta), fontsize=24,
+    ax3.text(108, 0.015, r"$|\vec{p}|$" + f" = {text_momentum} GeV/c" "\n" r"$\theta =$"+ f"{int(theta)}" +r"$^\circ$", fontsize=24,
     verticalalignment='top',  # Align text at the top
     bbox=dict(facecolor='white', edgecolor='grey', boxstyle='round,pad=0.3'))
     legend_lines = [
