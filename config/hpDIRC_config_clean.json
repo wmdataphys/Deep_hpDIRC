@@ -149,7 +149,7 @@
         }
     },
     "output": {
-        "dir": "data/hpDIRC_Models"
+        "dir": "Trained_Models"
     },
     "Inference": {
         "samples": 1,
