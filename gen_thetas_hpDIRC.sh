@@ -1,17 +1,6 @@
-#!/bin/bash
-
-#!/bin/bash
-#SBATCH --export=ALL
-#SBATCH --job-name=gen_thetas
-#SBATCH --nodes=1
-#SBATCH --tasks=8
-#SBATCH --mem-per-cpu=2000
-#SBATCH --gpus=1
-#SBATCH -t 72:00:00
-
 theta=25
 momentum=6
-model_type="DDPM"
+model_type="NF"
 config_file="config/hpDIRC_config_clean.json"
 
 output_dir=$(python -c "

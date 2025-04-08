@@ -27,9 +27,7 @@ from models.NF.freia_models import FreiaNet
 from models.OT_Flow.ot_flow import OT_Flow
 from models.FlowMatching.flow_matching import FlowMatching
 from models.Diffusion.resnet import ResNet
-from models.Diffusion.resnet_cfg import ResNet as CFGResNet
 from models.Diffusion.continuous_diffusion import ContinuousTimeGaussianDiffusion
-from models.Diffusion.classifier_free_guidance import CFGDiffusion
 from models.Diffusion.gaussian_diffusion import GaussianDiffusion
 
 
@@ -119,15 +117,6 @@ def main(config,args):
 
         model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
         net = ContinuousTimeGaussianDiffusion(model=model, stats=stats,num_sample_steps=num_steps, noise_schedule=noise_schedule, learned_schedule_net_hidden_dim=learned_schedule_net_hidden_dim, min_snr_loss_weight = True, min_snr_gamma=gamma,LUT_path=sampler_path)
-    elif args.model_type == 'CFG':
-        num_steps = int(config['model_CFG']['num_steps'])
-        noise_schedule = config['model_CFG']['noise_schedule']
-        sampling_timesteps = config['model_CFG']['sampling_timesteps']
-        noising_level = config['model_CFG']['noising_level']
-        gamma = config['model_CFG']['gamma']
-
-        model = CFGResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
-        net = CFGDiffusion(model=model, stats=stats, timesteps=num_steps, sampling_timesteps=sampling_timesteps, beta_schedule=noise_schedule, ddim_sampling_eta = noising_level, min_snr_loss_weight = True,min_snr_gamma=gamma,LUT_path=sampler_path)
     elif args.model_type == 'DDPM':
         num_steps = int(config['model_DDPM']['num_steps'])
 
@@ -140,7 +129,6 @@ def main(config,args):
     print("Network Parameters: ",t_params)
     net.to('cuda')
     net.load_state_dict(dicte['net_state_dict'])
-    n_samples = int(config['Inference']['samples'])
 
     if config['method'] == 'Pion':
         print("Generating Pions over entire phase space.")
@@ -231,10 +219,8 @@ def main(config,args):
     print("Making ratio plots.")
     del gen_dict,datapoints 
 
-    ratio_title = f"Ratios_{args.method}_{args.n_particles}_LUT.pdf" if args.sample_photons else f"Ratios_{args.method}_{args.n_particles}.pdf"
-    # pkl_label = args.method + 
 
-    make_ratios(path_=out_folder,label=args.method,momentum="1-10",outpath=os.path.join(out_folder,ratio_title))
+    make_ratios(path_=out_folder,label=args.method,momentum="1-10",outpath=os.path.join(out_folder,f"Ratios_{args.method}.pdf"))
 
 
 if __name__=='__main__':

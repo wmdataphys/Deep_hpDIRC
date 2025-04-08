@@ -27,10 +27,7 @@ from models.NF.freia_models import FreiaNet
 from models.OT_Flow.ot_flow import OT_Flow
 from models.FlowMatching.flow_matching import FlowMatching
 from models.Diffusion.resnet import ResNet
-from models.Diffusion.resnet_cfg import ResNet as CFGResNet
 from models.Diffusion.continuous_diffusion import ContinuousTimeGaussianDiffusion
-from models.Diffusion.gsgm import GSGM
-from models.Diffusion.classifier_free_guidance import CFGDiffusion
 from models.Diffusion.gaussian_diffusion import GaussianDiffusion
 
 
@@ -106,16 +103,6 @@ def main(config,args):
             kaon_net = ContinuousTimeGaussianDiffusion(model=model, stats=stats,num_sample_steps=num_steps, noise_schedule=noise_schedule, learned_schedule_net_hidden_dim=learned_schedule_net_hidden_dim, min_snr_loss_weight = True, min_snr_gamma=gamma,LUT_path=Ksampler_path)
         if args.method in ['Pion','MixPK']:
             pion_net = ContinuousTimeGaussianDiffusion(model=model, stats=stats,num_sample_steps=num_steps, noise_schedule=noise_schedule, learned_schedule_net_hidden_dim=learned_schedule_net_hidden_dim, min_snr_loss_weight = True, min_snr_gamma=gamma,LUT_path=Psampler_path)
-    elif args.model_type == 'GSGM':
-        num_steps = int(config['model_GSGM']['num_steps'])
-        num_embed = int(config['model_GSGM']['num_embed'])
-        learned_variance = config['model_GSGM']['learned_variance']
-        nonlinear_noise_schedule = int(config['model_GSGM']['nonlinear_noise_schedule'])
-
-        if args.method in ['Kaon','MixPK']:
-            kaon_net = GSGM(num_input=input_shape, num_conds=cond_shape, device=device, stats=stats, num_layers=num_layers, num_steps=num_steps, num_embed=num_embed, mlp_dim=hidden_nodes, nonlinear_noise_schedule=nonlinear_noise_schedule, learnedvar=learned_variance,LUT_path=Ksampler_path)
-        if args.method in ['Pion','MixPK']:
-            pion_net = GSGM(num_input=input_shape, num_conds=cond_shape, device=device, stats=stats, num_layers=num_layers, num_steps=num_steps, num_embed=num_embed, mlp_dim=hidden_nodes, nonlinear_noise_schedule=nonlinear_noise_schedule, learnedvar=learned_variance,LUT_path=Psampler_path)
     elif args.model_type == 'DDPM':
         num_steps = int(config['model_DDPM']['num_steps'])
 
@@ -185,6 +172,7 @@ def main(config,args):
                 k = torch.tensor(np.array([p_scaled,theta_scaled])).to('cuda').float()
 
                 gen = kaon_net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=p,theta=theta,fine_grained_prior=args.fine_grained_prior)
+                gen['PID']=321
 
             generations.append(gen)
             running_gen +=1 
@@ -223,7 +211,7 @@ def main(config,args):
                 k = torch.tensor(np.array([p_scaled,theta_scaled])).to('cuda').float()
 
                 gen = pion_net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=p,theta=theta,fine_grained_prior=args.fine_grained_prior)
-
+                gen['PID']=211
             generations.append(gen)
             running_gen +=1 
             kbar.update(running_gen)
@@ -308,13 +296,12 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='FastSim Generation')
     parser.add_argument('-c', '--config', default='config.json',type=str,
                         help='Path to the config file (default: config.json)')
-    parser.add_argument('-nt', '--n_tracks', default=1e4,type=int,help='Number of particles to generate. Take the first n_tracks.')
+    parser.add_argument('-nt', '--n_tracks', default=1e5,type=int,help='Number of particles to generate. Take the first n_tracks.')
     parser.add_argument('-nd', '--n_dump', default=None, type=int, help='Number of particles to dump per .pkl file.')
     parser.add_argument('-m', '--method',default="MixPK",type=str,help='Generated particle type, Kaon, Pion, or MixPK.')
     parser.add_argument('-rho','--momentum',default=3,type=str,help='Which momentum to generate for.')
     parser.add_argument('-th','--theta',default=30,type=str,help='Which theta angle to generate for.')
     parser.add_argument('-mt','--model_type',default="NF",type=str,help='Which model to use.')
-    # parser.add_argument('-sp','--sample_photons', action='store_true', help="Enable verbose mode")
     parser.add_argument('-f','--fine_grained_prior',action='store_true',help="Enable fine grained prior, default False.")
     args = parser.parse_args()
 
