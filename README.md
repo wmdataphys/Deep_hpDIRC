@@ -96,3 +96,4 @@ The following is a list of references used in the creation of this repository.
 - [OT-Flow](https://github.com/EmoryMLIP/OT-Flow)
 - [denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch/tree/5989f4c77eafcdc6be0fb4739f0f277a6dd7f7d8)
 - [FastDIRC](https://github.com/jmhardin/FastDIRC)
+- [Deep(er)RICH](https://github.com/wmdataphys/DeeperRICH)
