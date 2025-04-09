@@ -43,3 +43,4 @@ config/hpDIRC_config_local.json
 gen_fullphase_hpDIRC.sh
 train_script.sh
 torch_linux.yml
+gen_fullphase_hpDIRC.sh
