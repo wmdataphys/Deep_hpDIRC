@@ -34,13 +34,13 @@ Noteable requirements:
 The dependencies for the networks can be installed with the following command:
 
 ```bash
-$ conda env create -f env.yml
+conda env create -f env.yml
 ```
 
 In the case that some packages do not install through the provided conda command, you can install them using pip once your conda environment is activated:
 
 ```bash
-$ python3 -m pip install <package>
+python3 -m pip install <package>
 ```
 
 
@@ -58,7 +58,7 @@ The default simulation method provides both the fastest, and highest quality gen
 
 # Usage 
 
-Note we have provided all code required to reproduce the results found within the paper, although these require large amounts of simulation from GEANT4. For those interested in training their own models, or reproducing our work, please open an issue. If their exists a high demand, we will update our documentation to and provide instructions for dataset creation, model training and model evaluation.
+Note we have provided all code required to reproduce the results found within the paper, although these require large amounts of simulation from GEANT4. For those interested in training their own models, or reproducing our work, please open an issue. If their exists a high demand, we will update our documentation to and provide instructions for dataset creation, model training and model evaluation. We also plan to release a streamlined, containerized version for those who only wish to utilize the fast simulation methods for dataset creation.
 
 ## Running Fast Simulation
 
@@ -93,6 +93,6 @@ To further automate the process for those that wish to generate various hit patt
 
 The following is a list of references used in the creation of this repository.
 
-[OT-Flow](https://github.com/EmoryMLIP/OT-Flow)
-[denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch/tree/5989f4c77eafcdc6be0fb4739f0f277a6dd7f7d8)
-[FastDIRC](https://github.com/jmhardin/FastDIRC)
+- [OT-Flow](https://github.com/EmoryMLIP/OT-Flow)
+- [denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch/tree/5989f4c77eafcdc6be0fb4739f0f277a6dd7f7d8)
+- [FastDIRC](https://github.com/jmhardin/FastDIRC)
