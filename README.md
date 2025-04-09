@@ -76,7 +76,7 @@ python run_simulation.py --config config/config.json --n_tracks {} --n_dump {} -
 | `--method`             | `str`   | `"MixPK"`     | Generated particle type (`Kaon`, `Pion`, or `MixPK`)                     |
 | `--momentum`           | `str`   | `"3"`         | Momentum to generate     (e.g., "6", "1-10")                             |
 | `--theta`              | `str`   | `"30"`        | Theta angle to generate  (e.g., "30", "25-155")                          |
-| `--model_type`         | `str`   | `"NF"`        | Which model to use                                                       |
+| `--model_type`         | `str`   | `"NF"`        | Which model to use (`NF`,`CNF`,`FlowMatching`,`Score`,`DDPM`)            |
 | `--fine_grained_prior` | `flag`  | `False`       | Enable fine-grained prior (just include the flag to activate the option) |
 
 ## Hit Pattern Creation
