@@ -83,13 +83,19 @@ python run_simulation.py --config config/config.json --n_tracks {} --n_dump {} -
 
 ## Hit Pattern Creation
 
-We have provided an example script to generate hit patterns at fixed kinematics for viewing purposes, in which the arguments inherit from the script above for simplicity.
+We have provided an example script to generate visualizations of hit patterns at fixed momentum (user provided), and over various theta in 5 degree bins. This will be done for both pions and kaons within the same script by default.
 
 ```
-python hit_patterns.py --config config/config.json --n_tracks {} --method {} --momentum {} --theta {} --model_type {} --fine_grained_prior
+python plot_PDF.py --config config/config.json --method {} --momentum {} --model_type {} --fine_grained_prior --fs_support {}
 ```
 
-To further automate the process for those that wish to generate various hit patterns as a function of angle we have provided *hit_patterns.sh*. Which will produce hit patterns in increments of 5 degrees, at a fixed momentum value (see script for setting of momentum.) 
+| Argument               | Type     | Default        | Description                                                             |
+|------------------------|----------|---------------|--------------------------------------------------------------------------|
+| `--config`             | `str`    | `config.json` | Path to the config file                                                  |
+| `--momentum`           | `float`  | `6`           | Momentum to generate (e.g., 6.5, 1.25)                                   |
+| `--model_type`         | `str`    | `"NF"`        | Which model to use (`NF`,`CNF`,`FlowMatching`,`Score`,`DDPM`)            |
+| `--fine_grained_prior` | `flag`   | `False`       | Enable fine-grained prior (just include the flag to activate the option) |
+| `--fs_support`         | `float`  | `False`       | Number of photons to generate per PDF (default 200k)                     |
 
 # Reference Packages
 

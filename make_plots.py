@@ -345,6 +345,70 @@ def make_ratios(path_,label,momentum,outpath):
     print(" ")
         
 
+def make_PDFs(pions, kaons, outpath, momentum=6.0, theta=30, log_norm=True):
+    t_bins = np.arange(9.0,157.0,0.5)
+
+    pion_xs = pions[:, 0]
+    pion_ys = pions[:, 1]
+    pion_time = pions[:, 2] 
+    kaon_xs = kaons[:, 0] 
+    kaon_ys = kaons[:, 1] 
+    kaon_time = kaons[:, 2]
+    
+    if log_norm:
+        norm = LogNorm()
+    else:
+        norm = None
+
+    gs = gridspec.GridSpec(3, 2, height_ratios=[1.5, 0.5, 1])
+
+    fig = plt.figure(figsize=(18, 12))
+    ax1 = fig.add_subplot(gs[0, 0])  # Top-left
+    ax2 = fig.add_subplot(gs[0, 1])  # Top-right
+    ax3 = fig.add_subplot(gs[2, :])  # Bottom image, spans both columns
+
+    ax3.set_position([
+        ax1.get_position().x0 - 0.05 + (ax2.get_position().x0 - ax1.get_position().x0) / 2,  # Center horizontally
+        ax3.get_position().y0 - 0.02,  # Keep original y position
+        ax1.get_position().width * 1.2,  # Keep same width as top images
+        ax1.get_position().height  # Keep same height
+    ])
+
+    # FastSim 2D Hit Pattern
+    h_fs, xedges, yedges, im1 = ax1.hist2d(pion_xs, pion_ys, bins=[bins_x, bins_y], norm=norm, density=True)
+    ax1.set_title("Pion Hit Pattern", fontsize=30)
+    ax1.tick_params(axis="both", labelsize=28)
+    ax1.set_xlabel("X (mm)",fontsize=30,labelpad=15)
+    ax1.set_ylabel("Y (mm)",fontsize=30,labelpad=15)
+    # Geant4 2D Hit Pattern
+    h_g, xedges, yedges, im2 = ax2.hist2d(kaon_xs, kaon_ys, bins=[bins_x, bins_y], norm=norm, density=True)
+    ax2.set_title("Kaon Hit Pattern", fontsize=30)
+    ax2.tick_params(axis="both", labelsize=28)
+    ax2.set_xlabel("X (mm)",fontsize=30,labelpad=15)
+    #ax2.set_tlabel("Y [mm]",fontsize=24)    
+
+    # Bottom row: Combined Time Distribution
+    ax3.hist(pion_time, bins=t_bins, density=True, histtype='step', color='k', label="Pion",linewidth=2)
+    ax3.hist(kaon_time, bins=t_bins, density=True, histtype='step', color='r', label="Kaon",linewidth=2)
+    
+    ax3.set_xlabel("Time (ns)", fontsize=30)
+    ax3.tick_params(axis="both", labelsize=28)
+    ax3.set_ylabel("A.U.", fontsize=30)
+    ax3.set_yscale('log')
+    ax3.set_ylim(1e-5, 10e-1)
+    ax3.text(108, 0.5, r"$|\vec{p}|$" + f" = {int(momentum)} GeV/c" "\n" r"$\theta =$"+ f"{int(theta)}" +r"$^\circ$".format(momentum, theta), fontsize=24,
+    verticalalignment='top',  # Align text at the top
+    bbox=dict(facecolor='white', edgecolor='grey', boxstyle='round,pad=0.3'))
+    legend_lines = [
+        Line2D([0], [0], color='k', linewidth=2, label="Pion"),
+        Line2D([0], [0], color='r', linewidth=2, label="Kaon.")
+    ]
+    
+    legend = ax3.legend(handles=legend_lines, fontsize=24,loc=(0.638,0.435),frameon=True)
+    legend.get_frame().set_edgecolor('grey')
+    plt.savefig(outpath, bbox_inches="tight")
+    plt.close()
+
 
 def main(config,args):
     print("Making plots for generations.")
