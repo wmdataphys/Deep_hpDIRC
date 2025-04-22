@@ -372,7 +372,7 @@ class GaussianDiffusion(nn.Module):
         return hits
 
 
-    def create_tracks(self,num_samples,context,p=None,theta=None,fine_grained_prior=True): # resampling logic
+    def create_tracks(self,num_samples,context,p=None,theta=None,fine_grained_prior=True,dark_rate=None): # resampling logic
         if num_samples is None:
             assert p is not None and theta is not None, "p and theta must be provided if num_samples is None."
             num_samples = self.__sample_photon_yield(p,theta)

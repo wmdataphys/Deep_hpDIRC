@@ -15,7 +15,7 @@ from nflows.utils import torchutils
 from typing import Union, Iterable, Tuple
 import scipy
 from models.MADE import MixtureOfGaussiansMADE
-from utils.hpDIRC import ALLOWED_X,ALLOWED_Y
+from utils.hpDIRC import ALLOWED_X,ALLOWED_Y,gapx,gapy,pixel_width,pixel_height,npix,npmt
 
 class ResNetBlock(nn.Module):
     def __init__(self, hidden_units):
@@ -244,7 +244,7 @@ class FreiaNet(nn.Module):
 
         return int(np.random.choice(self.global_values,p=self.LUT[closest_p][closest_theta]))
 
-    def create_tracks(self,num_samples,context,p=None,theta=None,fine_grained_prior=True):
+    def create_tracks(self,num_samples,context,p=None,theta=None,fine_grained_prior=True,dark_rate=None):
         if num_samples is None:
             assert p is not None and theta is not None, "p and theta must be provided if num_samples is None."
             num_samples = self.__sample_photon_yield(p,theta)
@@ -281,8 +281,45 @@ class FreiaNet(nn.Module):
         Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])
         Phi = 0.0
 
-        return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy(),"pixelID":pixelID.numpy(),"channel":channel.numpy()}
+        if dark_rate is not None:
+            x,y,t,pmtID,pixelID,channel,dn_hits = self.add_dark_noise(np.concatenate([np.c_[x],np.c_[y],np.c_[t],np.c_[pmtID],np.c_[pixelID],np.c_[channel]],axis=1),dark_noise_pmt=dark_rate)
+            num_samples += dn_hits
+            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x,"y":y,"leadTime":t,"pmtID":pmtID,"pixelID":pixelID,"channel":channel}
+        else:
+            return {"NHits":num_samples,"P":P,"Theta":Theta,"Phi":Phi,"x":x.numpy(),"y":y.numpy(),"leadTime":t.numpy(),"pmtID":pmtID.numpy(),"pixelID":pixelID.numpy(),"channel":channel.numpy()}
 
+
+
+
+
+    # Based off of: https://github.com/rdom/eicdirc/blob/996e031d40825ce14292d1379fc173c54594ec5f/src/PrtPixelSD.cxx#L212
+    # Dark rate coincides with -c 2031 in standalone simulation
+    def add_dark_noise(self,hits,dark_noise_pmt=28000):
+        # probability to have a noise hit in 100 ns window
+        prob = dark_noise_pmt * 100 / 1e9
+        new_hits = []
+        for p in range(npmt):
+            for i in range(int(prob) + 1):
+                if(i == 0) and (prob - int(prob) < np.random.uniform()):
+                    continue
+
+                dn_time = 100 * np.random.uniform() # [1,100] ns
+                dn_pix = int(npix * np.random.uniform())
+                dn_channel = int(dn_pix * p)
+                row = (p//6) * 16 + dn_pix//16 
+                col = (p%6) * 16 + dn_pix%16
+                x = 2 + col * pixel_width + (p % 6) * gapx + (pixel_width) / 2. # Center at middle
+                y = 2 + row * pixel_height + (p // 6) * gapy + (pixel_height) / 2. # Center at middle
+                # x,y,t,pmtID,pixelID,channel
+                h = [x,y,dn_time,p,dn_pix,dn_channel]
+                new_hits.append(h)
+
+        if new_hits:
+            new_hits = np.array(new_hits)
+            hits = np.vstack([hits,new_hits])
+            return hits[:,0],hits[:,1],hits[:,2],hits[:,3],hits[:,4],hits[:,5],hits.shape[0]
+        else:
+            return hits[:,0],hits[:,1],hits[:,2],hits[:,3],hits[:,4],hits[:,5],0
 
     def to_noise(self,inputs,context):
         if self.embedding:
@@ -292,8 +329,6 @@ class FreiaNet(nn.Module):
         noise,_ = self.sequence.forward(inputs,rev=False,c=[embedded_context])
 
         return noise
-
-
 
 
         

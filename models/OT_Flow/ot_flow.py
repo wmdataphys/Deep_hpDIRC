@@ -218,7 +218,7 @@ class OT_Flow(nn.Module):
 
         return int(np.random.choice(self.global_values,p=self.LUT[closest_p][closest_theta]))
 
-    def create_tracks(self,num_samples,context,nt=20,p=None,theta=None,fine_grained_prior=True):
+    def create_tracks(self,num_samples,context,nt=20,p=None,theta=None,fine_grained_prior=True,dark_rate=None):
         if num_samples is None:
             assert p is not None and theta is not None, "p and theta must be provided if num_samples is None."
             num_samples = self.__sample_photon_yield(p,theta)

@@ -65,7 +65,7 @@ Note we have provided all code required to reproduce the results found within th
 We have provided an example script to allow simulation at both fixed kinematics, and continuously over the phase space. An example command and argument details is provided below:
 
 ```
-python run_simulation.py --config config/config.json --n_tracks {} --n_dump {} --method {} --momentum {} --theta {} --model_type {} --fine_grained_prior
+python run_simulation.py --config config/config.json --n_tracks {} --n_dump {} --method {} --momentum {} --theta {} --model_type {} --fine_grained_prior --dark_rate --dark_noise 22800
 ```
 
 | Argument               | Type    | Default       | Description                                                              |
@@ -78,6 +78,8 @@ python run_simulation.py --config config/config.json --n_tracks {} --n_dump {} -
 | `--theta`              | `str`   | `"30"`        | Theta angle to generate  (e.g., "30", "25-155")                          |
 | `--model_type`         | `str`   | `"NF"`        | Which model to use (`NF`,`CNF`,`FlowMatching`,`Score`,`DDPM`)            |
 | `--fine_grained_prior` | `flag`  | `False`       | Enable fine-grained prior (just include the flag to activate the option) |
+| `--dark_noise`         | `flag`  | `False`       | Whether or not to include dark rate in generations                       |
+| `--dark_rate`          | `float` | `22800`       | Dark rate - default corresponds to -c 2031 in standalone Geant simulation|
 
 ## Hit Pattern Creation
 
