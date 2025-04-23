@@ -109,7 +109,7 @@ def main(config,args):
     
     net.to('cuda')
     
-    net.load_state_dict(dicte['net_state_dict'], strict=False)
+    net.load_state_dict(dicte['net_state_dict'])
     n_samples = int(config['Inference']['samples'])
 
     if config['method'] == 'Pion':

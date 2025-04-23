@@ -129,8 +129,8 @@ def main(config,args):
 
     Kdicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
     Pdicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)])
-    kaon_net.load_state_dict(Kdicte['net_state_dict'], strict=False)
-    pion_net.load_state_dict(Pdicte['net_state_dict'], strict=False)
+    kaon_net.load_state_dict(Kdicte['net_state_dict'])
+    pion_net.load_state_dict(Pdicte['net_state_dict'])
 
     kaon_net.to(device)
     pion_net.to(device)

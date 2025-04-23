@@ -138,9 +138,9 @@ def main(config,args):
         print("Fine grained prior disabled. Consider enabling for high fidelity.")
 
     if args.method in ['Kaon','MixPiK']:
-        kaon_net.load_state_dict(Kdicte['net_state_dict'], strict=False)
+        kaon_net.load_state_dict(Kdicte['net_state_dict'])
     if args.method in ['Pion','MixPiK']:
-        pion_net.load_state_dict(Pdicte['net_state_dict'], strict=False)
+        pion_net.load_state_dict(Pdicte['net_state_dict'])
 
     generations = []
     kbar = pkbar.Kbar(target=args.n_tracks, width=20, always_stateful=False)
