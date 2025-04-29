@@ -1,4 +1,4 @@
-# [A Fast Simulation Suite for Cherenkov Detectors at the future Electron Ion Collider]()
+# [A Fast Simulation Suite for Cherenkov Detectors at the future Electron Ion Collider](https://arxiv.org/abs/2504.19042)
 
 # Abstract
 
@@ -105,3 +105,18 @@ The following is a list of references used in the creation of this repository.
 - [denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch/tree/5989f4c77eafcdc6be0fb4739f0f277a6dd7f7d8)
 - [FastDIRC](https://github.com/jmhardin/FastDIRC)
 - [Deep(er)RICH](https://github.com/wmdataphys/DeeperRICH)
+
+
+# Citation
+
+```
+@misc{giroux2025generativemodelsfastsimulation,
+      title={Generative Models for Fast Simulation of Cherenkov Detectors at the Electron-Ion Collider}, 
+      author={James Giroux and Michael Martinez and Cristiano Fanelli},
+      year={2025},
+      eprint={2504.19042},
+      archivePrefix={arXiv},
+      primaryClass={physics.ins-det},
+      url={https://arxiv.org/abs/2504.19042}, 
+}
+```
