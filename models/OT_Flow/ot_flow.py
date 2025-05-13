@@ -40,7 +40,6 @@ class OT_Flow(nn.Module):
         self.num_pmts_x = 6
         self.num_pmts_y = 4
 
-        print("Using alph: ",self.alph)
         if train_T:
             T = 1.0
             self.register_parameter("end_time", nn.Parameter(torch.tensor(T),requires_grad=True))
@@ -115,7 +114,7 @@ class OT_Flow(nn.Module):
         else:
             embedded_context = context
 
-        z = self.distribution.sample(num_samples,context=embedded_context)
+        z = self.distribution.sample(num_samples,context=embedded_context,device=self.device)
 
         if embedded_context is not None:
             z = torchutils.merge_leading_dims(z, num_dims=2)

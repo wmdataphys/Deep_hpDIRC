@@ -194,17 +194,17 @@ class GaussianDiffusion(nn.Module):
 
     def predict_start_from_noise(self, x_t, t, noise):
         return (
-            extract(self.sqrt_recip_alphas_cumprod.to('cuda'), t, x_t.shape) * x_t -
-            extract(self.sqrt_recipm1_alphas_cumprod.to('cuda'), t, x_t.shape) * noise
+            extract(self.sqrt_recip_alphas_cumprod.to(self.device), t, x_t.shape) * x_t -
+            extract(self.sqrt_recipm1_alphas_cumprod.to(self.device), t, x_t.shape) * noise
         )
 
     def q_posterior(self, x_start, x_t, t):
         posterior_mean = (
-            extract(self.posterior_mean_coef1.to('cuda'), t, x_t.shape) * x_start +
-            extract(self.posterior_mean_coef2.to('cuda'), t, x_t.shape) * x_t
+            extract(self.posterior_mean_coef1.to(self.device), t, x_t.shape) * x_start +
+            extract(self.posterior_mean_coef2.to(self.device), t, x_t.shape) * x_t
         )
-        posterior_variance = extract(self.posterior_variance.to('cuda'), t, x_t.shape)
-        posterior_log_variance_clipped = extract(self.posterior_log_variance_clipped.to('cuda'), t, x_t.shape)
+        posterior_variance = extract(self.posterior_variance.to(self.device), t, x_t.shape)
+        posterior_log_variance_clipped = extract(self.posterior_log_variance_clipped.to(self.device), t, x_t.shape)
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
     def p_mean_variance(self, x, t, cond, clip_denoised: bool):

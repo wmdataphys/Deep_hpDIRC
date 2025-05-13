@@ -1,25 +1,17 @@
 import os
+import re
 import json
-import argparse
-import torch
-import random
-import numpy as np
-from torch.utils.data import TensorDataset, DataLoader
-from dataloader.dataloader import CreateLoaders
-import pkbar
-import torch.nn as nn
-from datetime import datetime
-import itertools
-import matplotlib.pyplot as plt
 import time
-from matplotlib.colors import LogNorm
-import matplotlib.colors as mcolors
+import copy
+import pkbar
+import random
 import pickle
 import warnings
-from make_plots import make_ratios
-import itertools
-import copy
-import re
+import multiprocessing
+import argparse
+import numpy as np
+
+import torch
 
 warnings.filterwarnings("ignore", message=".*weights_only.*")
 
@@ -38,7 +30,6 @@ def main(config,args):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-    torch.cuda.manual_seed(seed)
 
     if args.method in ['Kaon','MixPiK']:
         Kdicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
@@ -64,11 +55,26 @@ def main(config,args):
     else:
         pass
 
-
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and args.use_gpu:
+        print("Using GPU.")
+        torch.cuda.manual_seed(seed)
         device = torch.device('cuda')
     else:
-        raise RuntimeError("No GPU was found! Exiting the program.")
+        print("Defaulting to CPU.")
+        device = 'cpu'
+        if args.num_threads is not None:
+            print("Setting threads...")
+            num_cores = args.num_threads
+            torch.set_num_threads(num_cores)
+            torch.set_num_interop_threads(num_cores)
+        else:
+            print("Defaulting to thread pytorch values.")
+            pass
+
+        
+        print(f"PyTorch is now using {torch.get_num_threads()} threads for intra-op parallelism.")
+        print(f"PyTorch is now using {torch.get_num_interop_threads()} threads for inter-op parallelism.")
+        
     
     if not args.n_dump:
         print('No value found for n_dump. Setting it equal to {}'.format(args.n_tracks))
@@ -87,28 +93,27 @@ def main(config,args):
     if args.model_type == "NF":
         num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         if args.method in ['Kaon','MixPiK']:
-            kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=Ksampler_path)
+            kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=Ksampler_path,device=device)
         if args.method in ['Pion','MixPiK']:
-            pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=Psampler_path)
+            pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=Psampler_path,device=device)
     elif args.model_type == "CNF":
         num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         alph = config['model_'+str(args.model_type)]['alph']
         train_T = bool(config['model_'+str(args.model_type)]['train_T'])
         if args.method in ['Kaon','MixPiK']:
-            kaon_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=Ksampler_path)
+            kaon_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=Ksampler_path,device=device)
         if args.method in ['Pion','MixPiK']:
-            pion_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=Psampler_path)
+            pion_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=Psampler_path,device=device)
     elif args.model_type == "FlowMatching":
         if args.method in ['Kaon','MixPiK']:
-            kaon_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=Ksampler_path)
+            kaon_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=Ksampler_path,device=device)
         if args.method in ['Pion','MixPiK']:
-            pion_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=Psampler_path)
+            pion_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=Psampler_path,device=device)
     elif args.model_type == 'Score':
         num_steps = int(config['model_Score']['num_steps'])
         noise_schedule = config['model_Score']['noise_schedule']
         learned_schedule_net_hidden_dim = int(config['model_Score']['learned_schedule_net_hidden_dim'])
         gamma = int(config['model_Score']['gamma'])
-
         model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
         if args.method in ['Kaon','MixPiK']:
             kaon_net = ContinuousTimeGaussianDiffusion(model=model, stats=stats,num_sample_steps=num_steps, noise_schedule=noise_schedule, learned_schedule_net_hidden_dim=learned_schedule_net_hidden_dim, min_snr_loss_weight = True, min_snr_gamma=gamma,LUT_path=Ksampler_path)
@@ -116,7 +121,6 @@ def main(config,args):
             pion_net = ContinuousTimeGaussianDiffusion(model=model, stats=stats,num_sample_steps=num_steps, noise_schedule=noise_schedule, learned_schedule_net_hidden_dim=learned_schedule_net_hidden_dim, min_snr_loss_weight = True, min_snr_gamma=gamma,LUT_path=Psampler_path)
     elif args.model_type == 'DDPM':
         num_steps = int(config['model_DDPM']['num_steps'])
-
         model = ResNet(input_dim=input_shape, end_dim=input_shape, cond_dim=cond_shape, mlp_dim=hidden_nodes, num_layer=num_layers)
         if args.method in ['Kaon','MixPiK']:
             kaon_net = GaussianDiffusion(denoise_fn=model, device=device, stats=stats, timesteps=num_steps, loss_type='l2',LUT_path=Ksampler_path)
@@ -126,9 +130,9 @@ def main(config,args):
         raise ValueError("Model type not found.")
     
     if args.method in ['Kaon','MixPiK']:
-        kaon_net.to('cuda')
+        kaon_net.to(device)
     if args.method in ['Pion','MixPiK']:
-        pion_net.to('cuda')
+        pion_net.to(device)
 
     print("Using LUT photon yield sampling.")
     
@@ -139,12 +143,15 @@ def main(config,args):
 
     if args.method in ['Kaon','MixPiK']:
         kaon_net.load_state_dict(Kdicte['net_state_dict'])
+        kaon_net.eval()
+        kaon_net = torch.compile(model=kaon_net,mode="max-autotune")
     if args.method in ['Pion','MixPiK']:
         pion_net.load_state_dict(Pdicte['net_state_dict'])
+        pion_net.eval()
+        pion_net = torch.compile(model=pion_net,mode="max-autotune")
 
     generations = []
     kbar = pkbar.Kbar(target=args.n_tracks, width=20, always_stateful=False)
-    start = time.time()
 
     if re.fullmatch(r"\d+(?:\.\d+)?", args.momentum):
         p_low = float(args.momentum)
@@ -174,6 +181,7 @@ def main(config,args):
     os.makedirs(out_folder,exist_ok=True)
 
     print("Simulation can be found in: ",out_folder)
+    start = time.time()
     running_gen = 0
     file_count = 1
     while running_gen < args.n_tracks:
@@ -185,7 +193,7 @@ def main(config,args):
                 theta = np.random.uniform(low = theta_low, high = theta_high, size = None)
                 theta_scaled = theta = (theta - stats['theta_max']) / (stats['theta_max'] - stats['theta_min'])
 
-                k = torch.tensor(np.array([p_scaled,theta_scaled])).to('cuda').float()
+                k = torch.tensor(np.array([p_scaled,theta_scaled])).to(device).float()
 
                 gen = kaon_net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=p,theta=theta,fine_grained_prior=args.fine_grained_prior,dark_rate=args.dark_rate)
                 gen['PID']=321
@@ -197,19 +205,14 @@ def main(config,args):
             if running_gen >= args.n_tracks:
                 break
 
-            if len(generations) == args.n_dump:
-                print(f'Generated {args.n_dump} samples. Making .pkl file...')
-                gen_dict = {}
-                gen_dict['fast_sim'] = generations
-
+            if len(generations) >= args.n_dump:
                 out_path_ = os.path.join(out_folder,str(args.method)+f"_p_{args.momentum}_theta_{args.theta}_PID_{args.method}_ntracks_{len(generations)}_{file_count}.pkl")
-                
+                random.shuffle(generations)
                 with open(out_path_,"wb") as file:
-                    pickle.dump(gen_dict,file)
+                    pickle.dump(generations,file)
 
                 # reset lists
                 generations = []
-                gen_dict = {}
                 file_count += 1
 
         if args.method in ['Pion','MixPiK']:
@@ -220,10 +223,11 @@ def main(config,args):
                 theta = np.random.uniform(low = theta_low, high = theta_high, size = None)
                 theta_scaled = theta = (theta - stats['theta_max']) / (stats['theta_max'] - stats['theta_min'])
 
-                k = torch.tensor(np.array([p_scaled,theta_scaled])).to('cuda').float()
+                k = torch.tensor(np.array([p_scaled,theta_scaled])).to(device).float()
 
                 gen = pion_net.create_tracks(num_samples=None,context=k.unsqueeze(0),p=p,theta=theta,fine_grained_prior=args.fine_grained_prior,dark_rate=args.dark_rate)
                 gen['PID']=211
+
             generations.append(gen)
             running_gen +=1 
             kbar.update(running_gen)
@@ -231,67 +235,42 @@ def main(config,args):
             if running_gen >= args.n_tracks:
                 break
 
-            if len(generations) == args.n_dump:
-                print(f'Generated {args.n_dump} samples. Making .pkl file...')
-                gen_dict = {}
-                gen_dict['fast_sim'] = generations
-
+            if len(generations) >= args.n_dump:
                 out_path_ = os.path.join(out_folder,str(args.method)+f"_p_{args.momentum}_theta_{args.theta}_PID_{args.method}_ntracks_{len(generations)}_{file_count}.pkl")
-                
+                random.shuffle(generations)
                 with open(out_path_,"wb") as file:
-                    pickle.dump(gen_dict,file)
+                    pickle.dump(generations,file)
 
                 # reset lists
                 generations = []
-                gen_dict = {}
+                file_count += 1
         
     end = time.time()
 
     n_photons = 0
-    n_gamma = 0
+    n_gamma_kaon = 0
+    n_gamma_pion = 0
 
     for i in range(len(generations)):
-        n_gamma += generations[i]['NHits']
-
-    time_per_photon = (end - start) / n_gamma if n_gamma > 0 else r'N/A'
-    time_per_track = (end - start) / len(generations) if len(generations) > 0 else r'N/A'
+        if generations[i]['PID'] == 321:
+            n_gamma_kaon += generations[i]['NHits']
+        else:
+            n_gamma_pion += generations[i]['NHits']
     
-    if args.method == 'Kaon' or args.method == 'MixPiK':
-        print(" ")
-        print("Sampling statistics for kaons:")
-        print("Number of tracks generated: ",len(generations))
-        print("Number of photons generated: ",kaon_net.photons_generated)
-        print("Number of photons resampled: ",kaon_net.photons_resampled)
-        kaon_percentage_effect = kaon_net.photons_resampled * 100 / kaon_net.photons_generated if kaon_net.photons_generated != 0 else r'N/A' 
-        print('Percentage effect: ',kaon_percentage_effect)
-        print("Elapsed Time: ", end - start)
-        print("Time / photon: ",time_per_photon)
-        print("Average time / track: ",time_per_track)
-        print("Generated photon yield: ",n_gamma)
-        print(" ")
-
-    if args.method == 'Pion' or args.method == 'MixPiK':
-        print(" ")
-        print("Sampling statistics for pions:")
-        print("Number of tracks generated: ",len(generations))
-        print("Number of photons generated: ",pion_net.photons_generated)
-        print("Number of photons resampled: ",pion_net.photons_resampled)
-        pion_percentage_effect = pion_net.photons_resampled * 100 / pion_net.photons_generated if pion_net.photons_generated != 0 else r'N/A' 
-        print('Percentage effect: ',pion_percentage_effect)
-        print("Elapsed Time: ", end - start)
-        print("Time / photon: ",time_per_photon)
-        print("Average time / track: ",time_per_track)
-        print("Generated photon yield: ",n_gamma)
-        print(" ")
+    time_per_track = (end - start) / args.n_tracks if args.n_tracks > 0 else r'N/A'
     
-    print(f'Writing final samples...')
-    gen_dict = {}
-    gen_dict['fast_sim'] = generations
+    print(" ")
+    print("Sampling statistics:")
+    print("Elapsed Time: ", end - start)
+    print("Average time / track: ",time_per_track)
+    print(" ")
 
-    out_path_ = os.path.join(out_folder,str(args.method)+f"_p_{args.momentum}_theta_{args.theta}_PID_{args.method}_ntracks_{len(generations)}_{file_count}.pkl")
-    
-    with open(out_path_,"wb") as file:
-        pickle.dump(gen_dict,file)
+    if len(generations) > 0:
+        print(f'Writing final samples...')
+        out_path_ = os.path.join(out_folder, str(args.method) + f"_p_{args.momentum}_theta_{args.theta}_PID_{args.method}_ntracks_{len(generations)}_{file_count}.pkl")
+        random.shuffle(generations)
+        with open(out_path_, "wb") as file:
+            pickle.dump(generations, file)
     
 
 if __name__=='__main__':
@@ -305,9 +284,11 @@ if __name__=='__main__':
     parser.add_argument('-rho','--momentum',default=3,type=str,help='Which momentum to generate for.')
     parser.add_argument('-th','--theta',default=30,type=str,help='Which theta angle to generate for.')
     parser.add_argument('-mt','--model_type',default="NF",type=str,help='Which model to use.')
-    parser.add_argument('-f','--fine_grained_prior',action='store_true',help="Enable fine grained prior, default False.")
+    parser.add_argument('-f','--fine_grained_prior',action='store_false',help="Enable fine grained prior, default True.")
     parser.add_argument('-dn','--dark_noise',action='store_true',help='Included hits from dark noise with specific rate. Currently only implmeneted for DNF.')
     parser.add_argument('-dr','--dark_rate', default=22800,type=float,help='Dark rate value. Default 22800.')
+    parser.add_argument('-ug','--use_gpu', action='store_true',help="Whether to use a GPU. Note that CPU can be faster depending on # of cores. We reccomend testing with both.")
+    parser.add_argument('-nthreads','--num_threads', default=None,type=int,help="Number of CPU threads - default is all pytorch defaults (1/2).")
     args = parser.parse_args()
 
     config = json.load(open(args.config))

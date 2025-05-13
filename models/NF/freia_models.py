@@ -157,7 +157,7 @@ class FreiaNet(nn.Module):
         else:
             embedded_context = context
 
-        noise = self.distribution.sample(num_samples,context=embedded_context)
+        noise = self.distribution.sample(num_samples,context=embedded_context,device=self.device)
 
         if embedded_context is not None:
             noise = torchutils.merge_leading_dims(noise, num_dims=2)

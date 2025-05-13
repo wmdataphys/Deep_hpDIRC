@@ -1,23 +1,19 @@
 import os
-import json
+import re
 import math
+import json
 import time
+import copy
 import pkbar
-import torch
-import pickle
 import random
+import pickle
 import warnings
 import argparse
-import itertools
 import numpy as np
-from datetime import datetime
 
-import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader
-from dataloader.dataloader import CreateLoaders
+import torch
 
-from utils.KDE_utils import perform_fit_KDE,gaussian_normalized,gaussian_unnormalized,plot,FastDIRC
-from utils.hpDIRC import gapx,gapy,pixel_width,pixel_height,npix,npmt
+#from utils.hpDIRC import gapx,gapy,pixel_width,pixel_height,npix,npmt
 from make_plots import make_PDFs
 
 from models.NF.freia_models import FreiaNet
@@ -76,7 +72,6 @@ def main(config,args):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-    torch.cuda.manual_seed(seed)
     gpu_mem, _ = torch.cuda.mem_get_info()
     gpu_mem = gpu_mem / (1024 ** 3) # GB
     assert torch.cuda.is_available()
@@ -100,17 +95,17 @@ def main(config,args):
     
     if args.model_type == "NF":
         num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
-        kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=None)
-        pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=None)
+        kaon_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=None,device=device)
+        pion_net = FreiaNet(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,num_blocks=num_blocks,stats=stats,LUT_path=None,device=device)
     elif args.model_type == "CNF":
         num_blocks = int(config['model_'+str(args.model_type)]['num_blocks'])
         alph = config['model_'+str(args.model_type)]['alph']
         train_T = bool(config['model_'+str(args.model_type)]['train_T'])
-        kaon_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=None)
-        pion_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=None)
+        kaon_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=None,device=device)
+        pion_net = OT_Flow(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,train_T=train_T,alph=alph,LUT_path=None,device=device)
     elif args.model_type == "FlowMatching":
-        kaon_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=None)
-        pion_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=None)
+        kaon_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=None,device=device)
+        pion_net = FlowMatching(input_shape,num_layers,cond_shape,embedding=False,hidden_units=hidden_nodes,stats=stats,LUT_path=None,device=device)
     elif args.model_type == 'Score':
         num_steps = int(config['model_Score']['num_steps'])
         noise_schedule = config['model_Score']['noise_schedule']
@@ -136,6 +131,9 @@ def main(config,args):
     pion_net.to(device)
     kaon_net.eval()
     pion_net.eval()
+
+    pionkaon_net_net = torch.compile(model=kaon_net,mode="max-autotune")
+    pion_net = torch.compile(model=pion_net,mode="max-autotune")
 
 
     os.makedirs("PDFs",exist_ok=True)

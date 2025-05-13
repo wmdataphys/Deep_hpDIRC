@@ -68,20 +68,28 @@ We have provided an example script to allow simulation at both fixed kinematics,
 python run_simulation.py --config config/config.json --n_tracks {} --n_dump {} --method {} --momentum {} --theta {} --model_type {} --fine_grained_prior --dark_rate --dark_noise 22800
 ```
 
-| Argument               | Type    | Default       | Description                                                              |
-|------------------------|---------|---------------|--------------------------------------------------------------------------|
-| `--config`             | `str`   | `config.json` | Path to the config file                                                  |
-| `--n_tracks`           | `int`   | `1e5`         | Number of particles to generate                                          |
-| `--n_dump`             | `int`   | `None`        | Number of particles to dump per `.pkl` file                              |
-| `--method`             | `str`   | `"MixPK"`     | Generated particle type (`Kaon`, `Pion`, or `MixPK`)                     |
-| `--momentum`           | `str`   | `"3"`         | Momentum to generate     (e.g., "6", "1-10")                             |
-| `--theta`              | `str`   | `"30"`        | Theta angle to generate  (e.g., "30", "25-155")                          |
-| `--model_type`         | `str`   | `"NF"`        | Which model to use (`NF`,`CNF`,`FlowMatching`,`Score`,`DDPM`)            |
-| `--fine_grained_prior` | `flag`  | `False`       | Enable fine-grained prior (just include the flag to activate the option) |
-| `--dark_noise`         | `flag`  | `False`       | Whether or not to include dark rate in generations                       |
-| `--dark_rate`          | `float` | `22800`       | Dark rate - default corresponds to -c 2031 in standalone Geant simulation|
+| Argument                   | Type    | Default       | Description                                                              |
+|----------------------------|---------|---------------|--------------------------------------------------------------------------|
+| `--config`                 | `str`   | `config.json` | Path to the config file                                                  |
+| `--n_tracks`               | `int`   | `1e5`         | Number of particles to generate                                          |
+| `--n_dump`                 | `int`   | `None`        | Number of particles to dump per `.pkl` file                              |
+| `--method`                 | `str`   | `"MixPK"`     | Generated particle type (`Kaon`, `Pion`, or `MixPK`)                     |
+| `--momentum`               | `str`   | `"3"`         | Momentum to generate     (e.g., "6", "1-10")                             |
+| `--theta`                  | `str`   | `"30"`        | Theta angle to generate  (e.g., "30", "25-155")                          |
+| `--model_type`             | `str`   | `"NF"`        | Which model to use (`NF`,`CNF`,`FlowMatching`,`Score`,`DDPM`)            |
+| `--fine_grained_prior`     | `flag`  | `True`        | Enable fine-grained prior (just include the flag to activate the option) |
+| `--dark_noise`             | `flag`  | `False`       | Whether or not to include dark rate in generations                       |
+| `--dark_rate`              | `float` | `22800`       | Dark rate - default corresponds to -c 2031 in standalone Geant simulation|
+| `--use_gpu`                | `flag`  | `False`       | Whether to use a GPU - note CPU can be faster.                           |
+| `--num_threads`            | `int`   | `None`        | Number of CPU threads - default is pytorch defaults (1/2).               | 
+
+Given the way our models create individual tracks, we are actually capable of faster generations on CPU (i9-14900K is 2x as fast as RTX4090). Given relatively low model overhead and aggregation strategy, using a GPU can potentially lead to losses in performance
+due to data transfers. We reccomend testing this on your system. We also reccomend testing the number of threads argument, in which
+providing more threads may not increase performance. Generally the default pytorch values will suffice.
 
 ## Hit Pattern Creation
+
+For hit pattern creation we still require GPU in order to leverage large batch sizes of photons. In future updates we will also allow CPU generation, as some work is required to figure out scaling of memory overheads.
 
 We have provided an example script to generate visualizations of hit patterns at fixed momentum (user provided), and over various theta in 5 degree bins. This will be done for both pions and kaons within the same script by default.
 
