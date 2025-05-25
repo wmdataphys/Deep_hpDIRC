@@ -1,8 +1,6 @@
 # ported directly from LucidRains: 
 # https://github.com/lucidrains/denoising-diffusion-pytorch/blob/5989f4c77eafcdc6be0fb4739f0f277a6dd7f7d8/denoising_diffusion_pytorch/denoising_diffusion_pytorch.py#L281
 
-import math
-import copy
 import torch
 from torch import nn, einsum
 import torch.nn.functional as F
@@ -230,7 +228,7 @@ class GaussianDiffusion(nn.Module):
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @torch.no_grad()
-    def p_sample_loop(self, n_samples, input_dim, cond, unscale = True):
+    def p_sample_loop(self, n_samples, input_dim, cond, interT, unscale = True):
         device = next(self.denoise_fn.parameters()).device
 
         # Initialize sample with random noise
@@ -239,7 +237,7 @@ class GaussianDiffusion(nn.Module):
         sample = torch.randn((n_samples, input_dim), device=device)
 
         #print("sample device:",sample.device, "cond device:", cond.device)
-        for i in reversed(range(0, self.num_timesteps)):
+        for i in reversed(range(0, interT)):
             t = torch.full((n_samples,), i, dtype=torch.long, device=device)
             sample = self.p_sample(sample, 
                                    t, 
@@ -263,8 +261,8 @@ class GaussianDiffusion(nn.Module):
         return sample
     
     @torch.no_grad()
-    def sample(self, cond, n_samples, input_dim, unscale = True): 
-        return self.p_sample_loop(n_samples=n_samples, input_dim=input_dim, cond=cond, unscale=unscale)
+    def sample(self, cond, n_samples, input_dim, inter_T, unscale = True): 
+        return self.p_sample_loop(n_samples=n_samples, input_dim=input_dim, cond=cond, unscale=unscale, interT=inter_T)
     
     # Resampling specific for FastDIRC
     @torch.no_grad()
@@ -314,11 +312,12 @@ class GaussianDiffusion(nn.Module):
 
     # --------------- hpDIRC sampling ----------------
 
-    def __get_track(self,n_samples, cond, input_dim=3):
+    def __get_track(self,n_samples, cond, interT, input_dim=3):
         samples = self.sample(
                             cond, 
                             n_samples, 
                             input_dim,
+                            interT,
                             unscale=False
                             )
         x = self.unscale(samples[:,0].flatten(),self.stats_['x_max'],self.stats_['x_min'])#.round()
@@ -372,27 +371,27 @@ class GaussianDiffusion(nn.Module):
         return hits
 
 
-    def create_tracks(self,num_samples,context,p=None,theta=None,fine_grained_prior=True): # resampling logic
+    def create_tracks(self,num_samples,context,interT, p=None,theta=None,fine_grained_prior=True): # resampling logic
         if num_samples is None:
             assert p is not None and theta is not None, "p and theta must be provided if num_samples is None."
             num_samples = self.__sample_photon_yield(p,theta)
         
-        hits = self.__get_track(num_samples,context)
+        hits = self.__get_track(num_samples,context, interT)
         updated_hits = self._apply_mask(hits,fine_grained_prior=fine_grained_prior)
         n_resample = int(num_samples - len(updated_hits))
         
 
         self.photons_generated += len(hits)
         self.photons_resampled += n_resample
-        while n_resample != 0:
-            resampled_hits = self.__get_track(n_resample,context)
-            updated_hits = torch.concat((updated_hits,resampled_hits),0)
-            updated_hits = self._apply_mask(updated_hits,fine_grained_prior=fine_grained_prior)
-            n_resample = int(num_samples - len(updated_hits))
-            self.photons_resampled += n_resample
-            self.photons_generated += len(resampled_hits)
+        if interT == self.num_timesteps:
+            while n_resample != 0:
+                resampled_hits = self.__get_track(n_resample,context,interT)
+                updated_hits = torch.concat((updated_hits,resampled_hits),0)
+                updated_hits = self._apply_mask(updated_hits,fine_grained_prior=fine_grained_prior)
+                n_resample = int(num_samples - len(updated_hits))
+                self.photons_resampled += n_resample
+                self.photons_generated += len(resampled_hits)
             
-
         # Use euclidean distance
         x,y = self.set_to_closest_2d(updated_hits[:,:-1])
         #x,y = updated_hits[:,0].detach().cpu(),updated_hits[:,1].detach().cpu()
@@ -404,9 +403,9 @@ class GaussianDiffusion(nn.Module):
         pixelID = 16 * (row - (pmtID // 6) * 16) + (col - (pmtID % 6) * 16)
         channel = pmtID * self.num_pixels**2 + pixelID
 
-        assert(len(row) == num_samples)
-        assert(len(col) == num_samples)
-        assert(len(pmtID) == num_samples)
+        # assert(len(row) == num_samples)
+        # assert(len(col) == num_samples)
+        # assert(len(pmtID) == num_samples)
 
         P = self.unscale_conditions(context[0][0].detach().cpu().numpy(),self.stats_['P_max'],self.stats_['P_min'])
         Theta = self.unscale_conditions(context[0][1].detach().cpu().numpy(),self.stats_['theta_max'],self.stats_['theta_min'])

@@ -163,7 +163,7 @@
         "kaon_model_path_DDPM":"Trained_Models/Kaon_DDPM_Model.pth",
         "pion_model_path_FlowMatching": "Trained_Models/Pion_FlowMatching_Model.pth",
         "kaon_model_path_FlowMatching": "Trained_Models/Kaon_FlowMatching_Model.pth",
-        "fixed_point_dir": "FixedPointGenerations",
+        "fixed_point_dir": "/sciclone/data10/mcmartinez/hpDIRC/Inference/interpolate_v2",
         "full_phase_space_dir": "FullPhaseGenerations",
         "out_dir_fixed": "Inference/FixedPoint",
         "out_dir_cont": "Inference/FullPhaseSpace",

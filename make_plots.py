@@ -12,6 +12,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from pdf2image import convert_from_path 
 from utils.hpDIRC import bins_x,bins_y,gapx,gapy,pixel_width,pixel_height
+import glob
 
 t_bins = np.arange(9.0,157.0,0.5)
 
@@ -157,6 +158,131 @@ def make_plots_fastsim(file_path,label,momentum,theta,outpath,filename,log_norm=
     save_path = os.path.join(out_path_radius,filename[:-3]+"_RadiusVsTime.pdf")
     plt.savefig(save_path,bbox_inches='tight')
     plt.close()
+
+def make_plots_individual(file_path,label,momentum,theta,outpath,filename,log_norm=True):
+    data = np.load(file_path,allow_pickle=True)
+    xs = []
+    ys = []
+    time = []
+    true_xs = []
+    true_ys = []
+    true_time = []
+     
+    for i in range(len(data['fast_sim'])):
+        xs.append(data['fast_sim'][i]['x'])
+        ys.append(data['fast_sim'][i]['y'])
+        time.append(data['fast_sim'][i]['leadTime'])
+        x_,y_ = convert_indices(data['truth'][i]['pmtID'],data['truth'][i]['pixelID'])
+        true_xs.append(x_)
+        true_ys.append(y_)
+        true_time.append(data['truth'][i]['leadTime'])
+    
+    xs = np.concatenate(xs).astype('float32')
+    ys = np.concatenate(ys).astype('float32')
+    time = np.concatenate(time)
+    true_xs = np.concatenate(true_xs).astype('float32')
+    true_ys = np.concatenate(true_ys).astype('float32')
+    true_time = np.concatenate(true_time)
+
+    if log_norm:
+        norm = LogNorm()
+    else:
+        norm = None
+
+    #gs = gridspec.GridSpec(3, 2, height_ratios=[1.5, 0.5, 1])
+
+    text_momentum = label_mom(momentum)
+
+    fig = plt.figure(figsize=(18, 12))
+
+    fig, ax = plt.subplots(1, 1, figsize=(11, 8), sharey=True)
+
+    h_fs, xedges, yedges, im1 = ax.hist2d(xs, ys, bins=[bins_x, bins_y], norm=norm, density=True)
+    ax.set_title(label + r" Fast Simulated Hit Pattern", fontsize=30)
+    ax.tick_params(axis="both", labelsize=28)
+    ax.set_xlabel("X (mm)",fontsize=30,labelpad=15)
+    ax.set_ylabel("Y (mm)",fontsize=30,labelpad=15)
+
+    save_path = os.path.join(outpath,filename[:-3]+"pdf")
+    plt.savefig(save_path,bbox_inches="tight")
+    plt.close()
+
+    return
+
+def plot_diffusion_sequence(
+    pkl_dir: str,
+    log_norm: bool = True
+):
+    """
+    Reads every .pkl in `pkl_dir`, makes a 2D histogram of the 'fast_sim' hits,
+    arranges them side-by-side with no labels or ticks, and saves to `outpdf`.
+
+    Arguments:
+    - pkl_dir:    path to folder containing your .pkl files
+    - outpdf:     full path (including .pdf) where the joint figure will be saved
+    - bins_x:     bin edges or number of bins for the X axis
+    - bins_y:     bin edges or number of bins for the Y axis
+    - log_norm:   if True, use a LogNorm color scale; else linear
+    """
+    # 1) find all .pkl files
+
+    files = glob.glob(os.path.join(pkl_dir, '*.pkl'))
+    if not files:
+        raise FileNotFoundError(f"No .pkl files found in {pkl_dir!r}")
+
+    def extract_timestep(fp):
+        name = os.path.basename(fp)
+        m = re.search(r'(\d+)(?=\.pkl$)', name)
+        if not m:
+            raise ValueError(f"Could not parse timestep from filename {name!r}")
+        return int(m.group(1))
+    files = sorted(files, key=extract_timestep, reverse=True)
+
+    # files = sorted(glob.glob(os.path.join(pkl_dir, '*.pkl')))
+    if not files:
+        raise FileNotFoundError(f"No .pkl files found in {pkl_dir!r}")
+
+    # 2) load and concatenate xs, ys from each
+    sequences = []
+    for path in files:
+        data = np.load(path, allow_pickle=True)
+        xs, ys = [], []
+        for entry in data['fast_sim']:
+            xs.append(entry['x'])
+            ys.append(entry['y'])
+        xs = np.concatenate(xs).astype('float32')
+        ys = np.concatenate(ys).astype('float32')
+        sequences.append((xs, ys))
+
+
+    # 3) choose normalization
+    norm = LogNorm() if log_norm else None
+
+    # 4) build the side-by-side figure
+    n = len(sequences)
+    fig, axes = plt.subplots(1, n,
+                             figsize=(4*n, 4),
+                             sharex=True,
+                             sharey=True)
+    # if only one file, axes is not a list
+    if n == 1:
+        axes = [axes]
+
+    for ax, (xs, ys) in zip(axes, sequences):
+        ax.hist2d(xs, ys,
+                  bins=[bins_x, bins_y],
+                  norm=norm,
+                  density=True)
+        # strip off all ticks/labels
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        ax.set_title('')  # no title
+
+    plt.tight_layout()
+    plt.savefig('diffusion_diagram.jpg', bbox_inches='tight')
+    plt.close(fig)
 
 def combine_images_to_pdf(image_folder, output_pdf, images_per_page=(2, 2), figure_size=(8, 6)):
     images = [f for f in os.listdir(image_folder) if f.endswith('.pdf') and "theta" in f]
@@ -358,52 +484,54 @@ def main(config,args):
 
     plot_files = os.listdir(outpath)
 
-    for file in file_list:
-        if ".pkl" in file:
-            if "Kaon" in file:
-                label = 'Kaon'
-            elif "Pion" in file:
-                label = 'Pion'
+    # for file in file_list:
+    #     if ".pkl" in file:
+    #         if "Kaon" in file:
+    #             label = 'Kaon'
+    #         elif "Pion" in file:
+    #             label = 'Pion'
                 
-            match = re.search(r'theta_(\d+\.\d+)', file)
-            if match:
-                theta_value = float(match.group(1))
+    #         match = re.search(r'theta_(\d+\.\d+)', file)
+    #         if match:
+    #             theta_value = float(match.group(1))
 
-                already_processed = False
-                for out_file in plot_files:
-                    out_match = re.search(r'theta_(\d+\.\d+)', out_file)
-                    if out_match and float(out_match.group(1)) == theta_value:
-                        already_processed = True
-                        break
+    #             already_processed = False
+    #             for out_file in plot_files:
+    #                 out_match = re.search(r'theta_(\d+\.\d+)', out_file)
+    #                 if out_match and float(out_match.group(1)) == theta_value:
+    #                     already_processed = True
+    #                     break
                 
-                if already_processed:
-                    print(f"File with theta {theta_value} already exists in {outpath}. Skipping {file}.")
-                    continue
+    #             # if already_processed:
+    #             #     print(f"File with theta {theta_value} already exists in {outpath}. Skipping {file}.")
+    #             #     continue
 
-                file_path = os.path.join(file_folder,file)
-                make_plots_fastsim(file_path=file_path,label=label,momentum=args.momentum,theta=theta_value,outpath=outpath,filename=file)
-                print("Made plot for ", label, " at theta=",theta_value," momentum=",args.momentum)
+    #             file_path = os.path.join(file_folder,file)
+    #             make_plots_individual(file_path=file_path,label=label,momentum=args.momentum,theta=theta_value,outpath=outpath,filename=file)
+    #             print("Made plot for ", label, " at theta=",theta_value," momentum=",args.momentum)
                 
-            else:
-                print('Cant find theta')
-        else:
-            continue
+    #         else:
+    #             print('Cant find theta')
+    #     else:
+    #         continue
 
-    print("Combining images into a single PDF.")
+    # print("Combining images into a single PDF.")
 
-    pdf_output = os.path.join(outpath,"Combined_FastSim_Plots.pdf")
-    combine_images_to_pdf(outpath,pdf_output,images_per_page=(2,3),figure_size=(8,8))
-    print(" ")
+    # pdf_output = os.path.join(outpath,"Combined_FastSim_Plots.pdf")
+    # combine_images_to_pdf(outpath,pdf_output,images_per_page=(2,3),figure_size=(8,8))
+    # print(" ")
 
-    # pdf_output = os.path.join(outpath,"Combined_FastSim_Plots_Radius.pdf")
-    # combine_images_to_pdf(os.path.join(outpath,"RadiusPlots"),pdf_output,images_per_page=(3,2),figure_size=(8,4))
+    # # pdf_output = os.path.join(outpath,"Combined_FastSim_Plots_Radius.pdf")
+    # # combine_images_to_pdf(os.path.join(outpath,"RadiusPlots"),pdf_output,images_per_page=(3,2),figure_size=(8,4))
     
-    print("Making ratio plots at ",args.momentum," integrated over theta for Pions.")
-    make_ratios(path_=file_folder,label="Pion",momentum=args.momentum,outpath=os.path.join(outpath,"Ratios_Pion.pdf"))
+    # print("Making ratio plots at ",args.momentum," integrated over theta for Pions.")
+    # make_ratios(path_=file_folder,label="Pion",momentum=args.momentum,outpath=os.path.join(outpath,"Ratios_Pion.pdf"))
 
-    print("Making ratio plots at ",args.momentum," integrated over theta for Kaons.")
-    make_ratios(path_=file_folder,label="Kaon",momentum=args.momentum,outpath=os.path.join(outpath,"Ratios_Kaon.pdf"))
+    # print("Making ratio plots at ",args.momentum," integrated over theta for Kaons.")
+    # make_ratios(path_=file_folder,label="Kaon",momentum=args.momentum,outpath=os.path.join(outpath,"Ratios_Kaon.pdf"))
     
+    print("Making diffusion sequence plots.")
+    plot_diffusion_sequence(pkl_dir= file_folder, log_norm = True)
 
 
 if __name__=='__main__':

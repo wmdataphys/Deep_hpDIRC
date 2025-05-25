@@ -148,7 +148,7 @@ def main(config,args):
         if (datapoints[i]['Theta'] == args.theta) and (datapoints[i]['P'] == args.momentum) and (datapoints[i]['Phi'] == 0.0):
             list_to_gen.append(datapoints[i])
 
-    out_path_ = os.path.join(out_folder,str(config['method'])+f"_p_{args.momentum}_theta_{args.theta}_PID_{config['method']}_ntracks_{len(list_to_gen)}.pkl")
+    out_path_ = os.path.join(out_folder,str(config['method'])+f"_p_{args.momentum}_theta_{args.theta}_PID_{config['method']}_ntracks_{len(list_to_gen)}_{args.timesteps}.pkl")
 
     # Checking for existing data files
     exists = False
@@ -175,7 +175,6 @@ def main(config,args):
     else:
         print("Fine grained prior disabled. Consider enabling for high fidelity.")
 
-
     generations = []
     kbar = pkbar.Kbar(target=len(list_to_gen), width=20, always_stateful=False)
     start = time.time()
@@ -189,7 +188,7 @@ def main(config,args):
             
             if not args.sample_photons:
                 if list_to_gen[i]['NHits'] > 0 and list_to_gen[i]['NHits'] < 300:
-                    gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0),fine_grained_prior=args.fine_grained_prior)
+                    gen = net.create_tracks(num_samples=list_to_gen[i]['NHits'],context=k.unsqueeze(0),interT = args.timesteps, fine_grained_prior=args.fine_grained_prior)
                     truth.append(list_to_gen[i])
                 else:
                     #print("Error with number of hits to generate: ",list_to_gen[i]['NHits'])
@@ -250,6 +249,7 @@ if __name__=='__main__':
     parser.add_argument('-t','--theta',default=30.0,type=float,help='Particle theta.')
     parser.add_argument('-m', '--method',default="Kaon",type=str,help='Generated particle type, Kaon or Pion.')
     parser.add_argument('-mt','--model_type',default="NF",type=str,help='Which model to use.')
+    parser.add_argument('-ts', '--timesteps', default=100, type=int, help='Number of timesteps for the diffusion model.')
     parser.add_argument('-sp','--sample_photons', action='store_true', help="Enable verbose mode")
     parser.add_argument('-f','--fine_grained_prior',action='store_true',help="Enable fine grained prior, default False.")
     args = parser.parse_args()
