@@ -1,0 +1,20 @@
+
+version: "3.9"
+services:
+  generator:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: deep_hpdirc:latest
+
+    deploy: 
+      resources:                 # new Compose ≥ 3.8 way to get GPUs
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    volumes: 
+      - ./Trained_Models:/workspace/Trained_Models:ro 
+      - ./outputs:/workspace/outputs
