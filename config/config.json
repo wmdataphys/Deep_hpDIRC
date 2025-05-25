@@ -163,14 +163,14 @@
         "kaon_model_path_DDPM":"Trained_Models/Kaon_DDPM_Model.pth",
         "pion_model_path_FlowMatching": "Trained_Models/Pion_FlowMatching_Model.pth",
         "kaon_model_path_FlowMatching": "Trained_Models/Kaon_FlowMatching_Model.pth",
-        "fixed_point_dir": "FixedPointGenerations",
-        "full_phase_space_dir": "FullPhaseGenerations",
-        "out_dir_fixed": "Inference/FixedPoint",
-        "out_dir_cont": "Inference/FullPhaseSpace",
-        "time_imaging_dir": "TimeImaging",
-        "KDE_dir": "KDE_Fits/6.0/Test_FastDIRC_800k_NF_800kG",
-        "simulation_dir": "MySample",
-        "pdf_dir": "MySample"
+        "fixed_point_dir": "outputs/FixedPointGenerations",
+        "full_phase_space_dir": "outputs/FullPhaseGenerations",
+        "out_dir_fixed": "outputs/Inference/FixedPoint",
+        "out_dir_cont": "outputs/Inference/FullPhaseSpace",
+        "time_imaging_dir": "outputs/TimeImaging",
+        "KDE_dir": "outputs/KDE_Fits/6.0/Test_FastDIRC_800k_NF_800kG",
+        "simulation_dir": "outputs/MySample",
+        "pdf_dir": "outputs/MySample"
     },
     "Photon_Sampler": {
         "Pion_dataset": "data/Pion_Hits_Dataset.pkl",

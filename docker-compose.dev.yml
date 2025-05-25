@@ -1,0 +1,8 @@
+services:
+  generator:
+    build:
+      # swap in the CPU-only base image at build time
+      args:
+        BASE_IMAGE: pytorch/pytorch:2.5.1-cpu
+    # don’t ask Compose for GPUs
+    device_requests: []
