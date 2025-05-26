@@ -3,6 +3,6 @@ services:
     build:
       # swap in the CPU-only base image at build time
       args:
-        BASE_IMAGE: pytorch/pytorch:2.5.1-cpu
+        BASE_IMAGE: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
     # don’t ask Compose for GPUs
     deploy: {}
