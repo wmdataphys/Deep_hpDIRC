@@ -3,21 +3,11 @@ FROM ${BASE_IMAGE}
 
 WORKDIR /workspace
 
-# # Remove NVIDIA channel & global Arrow pins,
-# # keep conda-forge first *but* retain pytorch for GPU wheels
-# RUN conda config --system --remove channels rapidsai || true \
-#  && conda config --system --remove channels nvidia   || true \
-#  && conda config --system --remove channels pytorch  || true \
-#  && conda config --add channels conda-forge \
-#  && conda config --add channels pytorch              \
-#  && conda config --set channel_priority strict       \
-#  && rm -f $CONDA_PREFIX/conda-meta/pinned || true
-
 # use mamba for solving
 RUN conda install -y -n base -c conda-forge mamba
 
-COPY env.yml /tmp/
-RUN mamba env create -n hpdirc -f /tmp/env.yml && conda clean -afy --no-builds
+COPY env.nobuilds.yml /tmp/
+RUN mamba env create -n hpdirc -f /tmp/env.nobuilds.yml && conda clean -afy 
 
 ENV PATH="/opt/conda/envs/hpdirc/bin:$PATH"
 

@@ -23,7 +23,7 @@ spec:
       # ────── 3. actual container ──────
       containers:
       - name: generator
-        image: ghcr.io/mcmartinez/deep_hpdirc:latest # <— your pushed image tag
+        image: ghcr.io/mikemartinez13/deep_hpdirc:latest # <— your pushed image tag
         imagePullPolicy: IfNotPresent    
         workingDir: /workspace
 
