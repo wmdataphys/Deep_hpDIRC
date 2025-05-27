@@ -25,40 +25,43 @@ spec:
       - name: generator
         image: ghcr.io/mikemartinez13/deep_hpdirc:latest # <— your pushed image tag
         imagePullPolicy: IfNotPresent    
-        workingDir: /workspace
+        workingDir: /workspace/
 
         # If your Dockerfile already has an ENTRYPOINT that starts the job,
         # you can omit 'command'.  Otherwise set it explicitly:
-        command: ["python","-m","run_simulation.py",
-                  "--config","/workspace/config/config.json","
-                  --n_tracks", "1e5",
-                  "--method", "MixPK",
-                  "--momentum", "6",
-                  "--theta", "95",
-                  "--fine_grained_prior", "True",
-                  "dark_noise","False",
-                  "--dark_rate","22800",
-                  "--use_gpu", "False"]
+        # command: ["python","-m","run_simulation.py",
+        #           "--config","/workspace/config/config.json","
+        #           --n_tracks", "1e5",
+        #           "--method", "MixPK",
+        #           "--momentum", "6",
+        #           "--theta", "95",
+        #           "--fine_grained_prior", "True",
+        #           "dark_noise","False",
+        #           "--dark_rate","22800",
+        #           "--use_gpu", "False"]
+      command: 
+        - export PYTHONUNBUFFERED=1
+          python /sciclone/home/mcmartinez/Deep_hpDIRC/test.py
 
         # ─── 3a. resource requests/limits ───
-        resources:
-          requests:
-            cpu: "14"
-            memory: "88Gi"
-            nvidia.com/gpu: "1"
-          limits:
-            cpu: "14"
-            memory: "88Gi"
-            nvidia.com/gpu: "1"
+      resources:
+        requests:
+          cpu: "14"
+          memory: "88Gi"
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "14"
+          memory: "88Gi"
+          nvidia.com/gpu: "1"
 
-        # ─── 3b. volume mounts inside the container ───
-        volumeMounts:
-        - name: nsf-home
-          mountPath: /sciclone/home/mcmartinez         # same absolute path
-          readOnly: false
-        - name: nsf-data
-          mountPath: /sciclone/data10/mcmartinez
-          readOnly: false
+      # ─── 3b. volume mounts inside the container ───
+      volumeMounts:
+      - name: nsf-home
+        mountPath: /sciclone/home/mcmartinez         # same absolute path
+        readOnly: false
+      - name: nsf-data
+        mountPath: /sciclone/data10/mcmartinez
+        readOnly: false
 
       # ────── 4. volumes backed by NFS ──────
       volumes:
