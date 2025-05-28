@@ -27,6 +27,9 @@ spec:
     - name: nsf-data
       mountPath: /sciclone/data10/mcmartinez
       readOnly: false
+    - name: cwd # gives user a writable working directory
+      mountPath: /workspace
+      readOnly: false
     workingDir: /workspace
 
     # command: ["python", "-u", "-c", "import os; print('test'); print(os.getcwd()); print(os.listdir())"]
