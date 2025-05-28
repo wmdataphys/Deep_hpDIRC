@@ -21,18 +21,24 @@ spec:
     image: ghcr.io/mikemartinez13/deep_hpdirc:v2 # <— your pushed image tag
     imagePullPolicy: IfNotPresent    
     volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+      
+    - name: outputs # gives user a writable working directory
+      mountPath: /workspace/outputs
+      readOnly: false
+
     - name: nsf-home
       mountPath: /sciclone/home/mcmartinez         # same absolute path
       readOnly: false
+
     - name: nsf-data
       mountPath: /sciclone/data10/mcmartinez
       readOnly: false
-    - name: cwd # gives user a writable working directory
-      mountPath: /workspace
-      readOnly: false
+    
     workingDir: /workspace
 
-    # command: ["python", "-u", "-c", "import os; print('test'); print(os.getcwd()); print(os.listdir())"]
+    #command: ["python", "-u", "-c", "import os; print('test'); print(os.getcwd()); print(os.listdir())"]
 
     command: ["python", "run_simulation.py",
               "--config","config/config.json",
@@ -58,6 +64,10 @@ spec:
 
   # ────── 4. volumes backed by NFS ──────
   volumes:
+  - name: workspace
+    nfs:
+      server: 128.239.56.166
+      path: /sciclone/home/mcmartinez/Deep_hpDIRC
   - name: nsf-home
     nfs:
       server: 128.239.56.166
@@ -66,3 +76,5 @@ spec:
     nfs:
       server: 128.239.56.30
       path: /sciclone/data10/mcmartinez
+  - name: outputs
+    emptyDir: {}  # gives user a writable working directory
