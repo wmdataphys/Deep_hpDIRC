@@ -1,75 +1,65 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: v1
+kind: Pod
 metadata:
   name: hpdirc-fastsim           # <— pick any DNS-safe name
 spec:
-  template:
-    metadata:
-      labels:
-        app: hpdirc-fastsim
-    spec:
-      restartPolicy: Never         # one-shot batch: never restart
+  restartPolicy: Never         # one-shot batch: never restart
 
-      # ────── 1. runtime identity ──────
-      securityContext:
-        runAsUser: 249309          # your Unix UID
-        runAsGroup: 50027          # your Unix GID
-        fsGroup: 50027             # makes NFS files group-writable
+  # ────── 1. runtime identity ──────
+  securityContext:
+    runAsUser: 249309          # your Unix UID
+    runAsGroup: 50027          # your Unix GID
+    fsGroup: 50027             # makes NFS files group-writable
 
-      # ────── 2. where to land the Pod ──────
-      nodeSelector:
-        nvidia.com/gpu.product: "NVIDIA-A40"
+  # ────── 2. where to land the Pod ──────
+  nodeSelector:
+    nvidia.com/gpu.product: "NVIDIA-A40"
 
-      # ────── 3. actual container ──────
-      containers:
-      - name: generator
-        image: ghcr.io/mikemartinez13/deep_hpdirc:latest # <— your pushed image tag
-        imagePullPolicy: IfNotPresent    
-        workingDir: /workspace/
+  # ────── 3. actual container ──────
+  containers:
+  - name: generator
+    image: ghcr.io/mikemartinez13/deep_hpdirc:v2 # <— your pushed image tag
+    imagePullPolicy: IfNotPresent    
+    volumeMounts:
+    - name: nsf-home
+      mountPath: /sciclone/home/mcmartinez         # same absolute path
+      readOnly: false
+    - name: nsf-data
+      mountPath: /sciclone/data10/mcmartinez
+      readOnly: false
+    workingDir: /workspace
 
-        # If your Dockerfile already has an ENTRYPOINT that starts the job,
-        # you can omit 'command'.  Otherwise set it explicitly:
-        # command: ["python","-m","run_simulation.py",
-        #           "--config","/workspace/config/config.json","
-        #           --n_tracks", "1e5",
-        #           "--method", "MixPK",
-        #           "--momentum", "6",
-        #           "--theta", "95",
-        #           "--fine_grained_prior", "True",
-        #           "dark_noise","False",
-        #           "--dark_rate","22800",
-        #           "--use_gpu", "False"]
-      command: 
-        - export PYTHONUNBUFFERED=1
-          python /sciclone/home/mcmartinez/Deep_hpDIRC/test.py
+    # command: ["python", "-u", "-c", "import os; print('test'); print(os.getcwd()); print(os.listdir())"]
 
-        # ─── 3a. resource requests/limits ───
-      resources:
-        requests:
-          cpu: "14"
-          memory: "88Gi"
-          nvidia.com/gpu: "1"
-        limits:
-          cpu: "14"
-          memory: "88Gi"
-          nvidia.com/gpu: "1"
+    command: ["python", "run_simulation.py",
+              "--config","config/config.json",
+              "--n_tracks", "10000",
+              "--method", "MixPK",
+              "--momentum", "6",
+              "--theta", "95",
+              "--fine_grained_prior",
+              "--dark_noise",
+              "--dark_rate","22800",
+              "--use_gpu"]
+    
+    # ─── 3a. resource requests/limits ───
+    resources:
+      requests:
+        cpu: "14"
+        memory: "88Gi"
+        nvidia.com/gpu: "1"
+      limits:
+        cpu: "14"
+        memory: "88Gi"
+        nvidia.com/gpu: "1"
 
-      # ─── 3b. volume mounts inside the container ───
-      volumeMounts:
-      - name: nsf-home
-        mountPath: /sciclone/home/mcmartinez         # same absolute path
-        readOnly: false
-      - name: nsf-data
-        mountPath: /sciclone/data10/mcmartinez
-        readOnly: false
-
-      # ────── 4. volumes backed by NFS ──────
-      volumes:
-      - name: nsf-home
-        nfs:
-          server: 128.239.56.166
-          path: /sciclone/home/mcmartinez
-      - name: nsf-data
-        nfs:
-          server: 128.239.56.30
-          path: /sciclone/data10/mcmartinez
+  # ────── 4. volumes backed by NFS ──────
+  volumes:
+  - name: nsf-home
+    nfs:
+      server: 128.239.56.166
+      path: /sciclone/home/mcmartinez
+  - name: nsf-data
+    nfs:
+      server: 128.239.56.30
+      path: /sciclone/data10/mcmartinez
