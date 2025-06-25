@@ -176,7 +176,8 @@ def main(config,args):
     assert 1 <= p_low <= 10 and 1 <= p_high <= 10, "momentum range must be between 0 and 10, got {}, {} instead.".format(p_low, p_high)
     assert 25 <= theta_low <= 155 and 25 <= theta_high <= 155, "theta range must be between 25 and 155, got {}, {} instead.".format(theta_low, theta_high)
 
-    output_folder = os.makedirs(os.path.join("outputs","Simulation"),exist_ok=True)
+    output_folder = os.path.join("outputs","Simulation")
+    os.makedirs(output_folder,exist_ok=True)
     out_folder = os.path.join(output_folder,config['Inference']['simulation_dir'])
     os.makedirs(out_folder,exist_ok=True)
 

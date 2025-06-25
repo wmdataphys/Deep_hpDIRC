@@ -3,6 +3,7 @@ kind: Pod
 metadata:
   name: hpdirc-fastsim           # <— pick any DNS-safe name
 spec:
+  nodeName: gu13.sciclone.wm.edu # <— pick a node with an A40 GPU
   restartPolicy: Never         # one-shot batch: never restart
 
   # ────── 1. runtime identity ──────
@@ -13,19 +14,20 @@ spec:
 
   # ────── 2. where to land the Pod ──────
   nodeSelector:
+    kubernetes.io/hostname: gu13.sciclone.wm.edu
     nvidia.com/gpu.product: "NVIDIA-A40"
 
   # ────── 3. actual container ──────
   containers:
   - name: generator
-    image: ghcr.io/mikemartinez13/deep_hpdirc:v2 # <— your pushed image tag
+    image: ghcr.io/mikemartinez13/deep_hpdirc:v3 # <— your pushed image tag
     imagePullPolicy: IfNotPresent    
     volumeMounts:
     - name: workspace
       mountPath: /workspace
       
     - name: outputs # gives user a writable working directory
-      mountPath: /workspace/outputs
+      mountPath: /outputs
       readOnly: false
 
     - name: nsf-home
@@ -36,12 +38,12 @@ spec:
       mountPath: /sciclone/data10/mcmartinez
       readOnly: false
     
-    workingDir: /workspace
+    workingDir: /
 
     #command: ["python", "-u", "-c", "import os; print('test'); print(os.getcwd()); print(os.listdir())"]
 
-    command: ["python", "run_simulation.py",
-              "--config","config/config.json",
+    command: ["python", "workspace/run_simulation.py",
+              "--config","workspace/config/config.json",
               "--n_tracks", "10000",
               "--method", "MixPK",
               "--momentum", "6",
@@ -54,12 +56,12 @@ spec:
     # ─── 3a. resource requests/limits ───
     resources:
       requests:
-        cpu: "14"
-        memory: "88Gi"
+        cpu: "8"
+        memory: "32Gi"
         nvidia.com/gpu: "1"
       limits:
-        cpu: "14"
-        memory: "88Gi"
+        cpu: "8"
+        memory: "32Gi"
         nvidia.com/gpu: "1"
 
   # ────── 4. volumes backed by NFS ──────
