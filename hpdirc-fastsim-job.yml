@@ -21,21 +21,34 @@ spec:
   containers:
   - name: generator
     image: ghcr.io/mikemartinez13/deep_hpdirc:v3 # <— your pushed image tag
+
+    # Optional arguments to override the defaults in the Dockerfile
+    args: 
+      - "--config=workspace/config/config_docker.json"
+      - "--n_tracks=10000"
+      - "--method=MixPK"
+      - "--momentum=6"
+      - "--theta=95"
+      - "--fine_grained_prior" 
+      - "--dark_noise"
+      - "--dark_rate=22800" 
+      - "--use_gpu"
+    
     imagePullPolicy: IfNotPresent    
     volumeMounts:
     - name: workspace
       mountPath: /workspace
       
-    - name: outputs # gives user a writable working directory
-      mountPath: /outputs
-      readOnly: false
+    # - name: results # gives user a writable working directory
+    #   mountPath: /outputs
+    #   readOnly: false
 
     - name: nsf-home
       mountPath: /sciclone/home/mcmartinez         # same absolute path
       readOnly: false
 
     - name: nsf-data
-      mountPath: /sciclone/data10/mcmartinez
+      mountPath: /outputs
       readOnly: false
     
     workingDir: /
@@ -78,5 +91,8 @@ spec:
     nfs:
       server: 128.239.56.30
       path: /sciclone/data10/mcmartinez
-  - name: outputs
-    emptyDir: {}  # gives user a writable working directory
+    # gives user a writable working directory
+  # so users can retrieve outputs after job completion
+  # - name: results
+  #   persistentVolumeClaim:
+  #     claimName: hpdirc-outputs-pvc

@@ -19,7 +19,7 @@ USER appuser
 COPY . /workspace
 
 ENTRYPOINT ["python", "-u", "run_simulation.py", \
-        "--config","config/config.json", \
+        "--config","config/config_docker.json", \
         "--n_tracks", "10000", \
         "--method", "MixPK", \
         "--momentum", "6", \

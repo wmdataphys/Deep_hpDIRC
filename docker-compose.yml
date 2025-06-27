@@ -4,7 +4,7 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-    image: deep_hpdirc:latest
+    image: deep_hpdirc:v3
 
     deploy: 
       resources:                 # new Compose ≥ 3.8 way to get GPUs

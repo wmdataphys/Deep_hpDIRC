@@ -31,11 +31,13 @@ def main(config,args):
     np.random.seed(seed)
     random.seed(seed)
 
+    args.method = 'MixPiK'
+
     if args.method in ['Kaon','MixPiK']:
         Kdicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
         Ksampler_path = config['Photon_Sampler']['Kaon_LUT_path']
         PID = 321
-    if args.method == "Pion" or "MixPiK":
+    if args.method in ["Pion", "MixPiK"]:
         Pdicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)])
         Psampler_path = config['Photon_Sampler']['Pion_LUT_path']
         PID = 211
@@ -272,6 +274,8 @@ def main(config,args):
         random.shuffle(generations)
         with open(out_path_, "wb") as file:
             pickle.dump(generations, file)
+
+    print("\nSimulation complete.")
     
 
 if __name__=='__main__':
@@ -293,5 +297,7 @@ if __name__=='__main__':
     args = parser.parse_args()
 
     config = json.load(open(args.config))
+
+    print("Starting simulation...\n")
 
     main(config,args)
