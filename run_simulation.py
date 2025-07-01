@@ -31,30 +31,7 @@ def main(config,args):
     np.random.seed(seed)
     random.seed(seed)
 
-    if args.method in ['Kaon','MixPiK']:
-        Kdicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)])
-        Ksampler_path = config['Photon_Sampler']['Kaon_LUT_path']
-        PID = 321
-    if args.method == "Pion" or "MixPiK":
-        Pdicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)])
-        Psampler_path = config['Photon_Sampler']['Pion_LUT_path']
-        PID = 211
-    else:
-        print("Specify particle to generate in config file")
-        exit()
-
     print('------------------------ Setup ------------------------')
-    print("Generating: ",args.method)
-    print("Using model type: ",str(args.model_type))
-
-    if args.dark_noise and args.model_type != "NF":
-        raise ValueError("Dark noise is only currently only implemented in our DNF (most performant) model.")
-    elif args.dark_noise:
-        print("Adding dark noise in 100 ns window with provided rate: ",args.dark_rate)
-        print("See https://github.com/rdom/eicdirc for more information on dark rates.")
-    else:
-        pass
-
     if torch.cuda.is_available() and args.use_gpu:
         print("Using GPU.")
         torch.cuda.manual_seed(seed)
@@ -74,6 +51,29 @@ def main(config,args):
         
         print(f"PyTorch is now using {torch.get_num_threads()} threads for intra-op parallelism.")
         print(f"PyTorch is now using {torch.get_num_interop_threads()} threads for inter-op parallelism.")
+
+    if args.method in ['Kaon','MixPiK']:
+        Kdicte = torch.load(config['Inference']['kaon_model_path_'+str(args.model_type)],map_location=torch.device(device))
+        Ksampler_path = config['Photon_Sampler']['Kaon_LUT_path']
+        PID = 321
+    if args.method == "Pion" or "MixPiK":
+        Pdicte = torch.load(config['Inference']['pion_model_path_'+str(args.model_type)],map_location=torch.device(device))
+        Psampler_path = config['Photon_Sampler']['Pion_LUT_path']
+        PID = 211
+    else:
+        print("Specify particle to generate in config file")
+        exit()
+
+    print("Generating: ",args.method)
+    print("Using model type: ",str(args.model_type))
+
+    if args.dark_noise and args.model_type != "NF":
+        raise ValueError("Dark noise is only currently only implemented in our DNF (most performant) model.")
+    elif args.dark_noise:
+        print("Adding dark noise in 100 ns window with provided rate: ",args.dark_rate)
+        print("See https://github.com/rdom/eicdirc for more information on dark rates.")
+    else:
+        pass
         
     
     if not args.n_dump:
@@ -281,10 +281,10 @@ if __name__=='__main__':
     parser.add_argument('-nt', '--n_tracks', default=1e5,type=int,help='Number of particles to generate. Take the first n_tracks.')
     parser.add_argument('-nd', '--n_dump', default=None, type=int, help='Number of particles to dump per .pkl file.')
     parser.add_argument('-m', '--method',default="MixPiK",type=str,help='Generated particle type, Kaon, Pion, or MixPiK.')
-    parser.add_argument('-rho','--momentum',default=3,type=str,help='Which momentum to generate for.')
-    parser.add_argument('-th','--theta',default=30,type=str,help='Which theta angle to generate for.')
+    parser.add_argument('-rho','--momentum',default="3",type=str,help='Which momentum to generate for.')
+    parser.add_argument('-th','--theta',default="30",type=str,help='Which theta angle to generate for.')
     parser.add_argument('-mt','--model_type',default="NF",type=str,help='Which model to use.')
-    parser.add_argument('-f','--fine_grained_prior',action='store_false',help="Enable fine grained prior, default True.")
+    parser.add_argument('-f','--fine_grained_prior',action='store_true',help="Enable fine grained prior, default False.")
     parser.add_argument('-dn','--dark_noise',action='store_true',help='Included hits from dark noise with specific rate. Currently only implmeneted for DNF.')
     parser.add_argument('-dr','--dark_rate', default=22800,type=float,help='Dark rate value. Default 22800.')
     parser.add_argument('-ug','--use_gpu', action='store_true',help="Whether to use a GPU. Note that CPU can be faster depending on # of cores. We reccomend testing with both.")

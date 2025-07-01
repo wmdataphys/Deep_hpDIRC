@@ -77,7 +77,7 @@ python run_simulation.py --config config/config.json --n_tracks {} --n_dump {} -
 | `--momentum`               | `str`   | `"3"`         | Momentum to generate     (e.g., "6", "1-10")                             |
 | `--theta`                  | `str`   | `"30"`        | Theta angle to generate  (e.g., "30", "25-155")                          |
 | `--model_type`             | `str`   | `"NF"`        | Which model to use (`NF`,`CNF`,`FlowMatching`,`Score`,`DDPM`)            |
-| `--fine_grained_prior`     | `flag`  | `True`        | Enable fine-grained prior (just include the flag to activate the option) |
+| `--fine_grained_prior`     | `flag`  | `False`        | Enable fine-grained prior (just include the flag to activate the option) |
 | `--dark_noise`             | `flag`  | `False`       | Whether or not to include dark rate in generations                       |
 | `--dark_rate`              | `float` | `22800`       | Dark rate - default corresponds to -c 2031 in standalone Geant simulation|
 | `--use_gpu`                | `flag`  | `False`       | Whether to use a GPU - note CPU can be faster.                           |
