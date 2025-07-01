@@ -18,15 +18,6 @@ USER appuser
 
 COPY . /workspace
 
-ENTRYPOINT ["python", "-u", "run_simulation.py", \
-        "--config","config/config_docker.json", \
-        "--n_tracks", "10000", \
-        "--method", "MixPK", \
-        "--momentum", "6", \
-        "--theta", "95", \ 
-        "--fine_grained_prior", \
-        "--dark_noise", \
-        "--dark_rate","22800", \
-        "--use_gpu"]
+ENTRYPOINT ["python","-u","run_simulation.py","--config","config/config_docker.json","--n_tracks","10000","--method","MixPK","--momentum","6","--theta","95","--fine_grained_prior","--dark_noise","--dark_rate","22800","--use_gpu"]
 
 CMD []
